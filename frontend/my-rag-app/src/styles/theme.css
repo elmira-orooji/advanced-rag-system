@@ -1,0 +1,18 @@
+:root {
+  --brand-blue: #2563eb;
+  --brand-indigo: #4f46e5;
+
+  --ui-bg: #f8fafc;
+  --ui-card: #ffffff;
+  --ui-border: #e2e8f0;
+  --ui-text: #0f172a;
+  --ui-text-secondary: #475569;
+}
+
+.dark {
+  --ui-bg: #0b1120;
+  --ui-card: #1c2534;
+  --ui-border: #374151;
+  --ui-text: #f1f5f9;
+  --ui-text-secondary: #94a3b8;
+}
