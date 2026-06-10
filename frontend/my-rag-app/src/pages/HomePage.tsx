@@ -112,9 +112,6 @@ const handleSendMessage = (
           <h1 className="text-2xl font-semibold tracking-tight">
             Welcome back, <span className="text-blue-500">Analyst</span> 👋
           </h1>
-          <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 transition rounded-lg text-white">
-            New Report
-          </button>
         </div>
 
   <ChatWindow
