@@ -9,12 +9,14 @@ export interface Source {
 
 export interface ChatMessage {
   id: string;
+
   role: MessageRole;
+
   content: string;
 
-  sources?: Source[];
-
   createdAt: string;
+
+  sources?: Source[];
 }
 
 export interface ChatSession {

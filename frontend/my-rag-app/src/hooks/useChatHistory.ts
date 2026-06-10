@@ -1,11 +1,12 @@
+
 import { useEffect, useState } from "react";
 
 import type {
+  ChatMessage,
   ChatSession,
 } from "../types/chat";
 
-const STORAGE_KEY =
-  "knowledgeflow-chats";
+const STORAGE_KEY = "knowledgeflow-chats";
 
 export function useChatHistory() {
   const [sessions, setSessions] =
@@ -18,6 +19,7 @@ export function useChatHistory() {
     null
   );
 
+  /* Load chats from LocalStorage */
   useEffect(() => {
     const saved =
       localStorage.getItem(
@@ -27,7 +29,7 @@ export function useChatHistory() {
     if (!saved) return;
 
     try {
-      const parsed =
+      const parsed: ChatSession[] =
         JSON.parse(saved);
 
       setSessions(parsed);
@@ -39,12 +41,13 @@ export function useChatHistory() {
       }
     } catch (error) {
       console.error(
-        "Failed to load chats",
+        "Failed to load chats:",
         error
       );
     }
   }, []);
 
+  /* Save chats to LocalStorage */
   useEffect(() => {
     localStorage.setItem(
       STORAGE_KEY,
@@ -52,6 +55,7 @@ export function useChatHistory() {
     );
   }, [sessions]);
 
+  /* Create new chat */
   const createNewChat = () => {
     const now =
       new Date().toISOString();
@@ -79,13 +83,14 @@ export function useChatHistory() {
     );
   };
 
+  /* Delete chat */
   const deleteChat = (
     sessionId: string
   ) => {
     setSessions((prev) =>
       prev.filter(
-        (chat) =>
-          chat.id !== sessionId
+        (session) =>
+          session.id !== sessionId
       )
     );
 
@@ -96,6 +101,7 @@ export function useChatHistory() {
     }
   };
 
+  /* Update entire session */
   const updateSession = (
     session: ChatSession
   ) => {
@@ -108,6 +114,45 @@ export function useChatHistory() {
     );
   };
 
+  /* Add message to active chat */
+  const addMessage = (
+    sessionId: string,
+    message: ChatMessage
+  ) => {
+    setSessions((prev) =>
+      prev.map((session) => {
+        if (
+          session.id !== sessionId
+        ) {
+          return session;
+        }
+
+        return {
+          ...session,
+
+          title:
+            session.messages
+              .length === 0 &&
+            message.role === "user"
+              ? message.content.slice(
+                  0,
+                  30
+                )
+              : session.title,
+
+          messages: [
+            ...session.messages,
+            message,
+          ],
+
+          updatedAt:
+            new Date().toISOString(),
+        };
+      })
+    );
+  };
+
+  /* Current active chat */
   const activeSession =
     sessions.find(
       (session) =>
@@ -129,5 +174,8 @@ export function useChatHistory() {
     deleteChat,
 
     updateSession,
+
+    addMessage,
   };
 }
+
