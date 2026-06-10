@@ -47,7 +47,7 @@ export default function ChatInput({
           rows={1}
           value={value}
           disabled={disabled}
-          placeholder="Ask KnowledgeFlow AI..."
+          placeholder="How can I help you today?"
           onChange={(e) =>
             setValue(
               e.target.value
