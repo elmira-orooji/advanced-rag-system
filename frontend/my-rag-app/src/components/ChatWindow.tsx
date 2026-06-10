@@ -1,5 +1,5 @@
 import { Copy, FileText } from "lucide-react";
-
+import toast from "react-hot-toast";
 import type {
   ChatMessage,
 } from "../types/chat";
@@ -90,11 +90,15 @@ export default function ChatWindow({
               "assistant" && (
               <div className="mt-4 flex justify-end">
                 <button
-                  onClick={() =>
-                    navigator.clipboard.writeText(
-                      message.content
-                    )
-                  }
+                  onClick={() => {
+              navigator.clipboard.writeText(
+                       message.content
+                       );
+
+                     toast.success(
+                          "Response copied!"
+                           );
+                      }}
                   className="
                     rounded-lg
                     p-2

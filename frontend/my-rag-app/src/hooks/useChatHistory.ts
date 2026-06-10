@@ -1,4 +1,4 @@
-
+import toast from "react-hot-toast";
 import { useEffect, useState } from "react";
 
 import type {
@@ -83,23 +83,21 @@ export function useChatHistory() {
     );
   };
 
-  /* Delete chat */
-  const deleteChat = (
-    sessionId: string
-  ) => {
-    setSessions((prev) =>
+  const deleteChat = (id: string) => {
+  setSessions((prev) => {
+    const updatedSessions =
       prev.filter(
         (session) =>
-          session.id !== sessionId
-      )
-    );
+          session.id !== id
+      );
 
-    if (
-      activeSessionId === sessionId
-    ) {
-      setActiveSessionId(null);
-    }
-  };
+    return updatedSessions;
+  });
+
+  toast.success(
+    "Chat deleted"
+  );
+};
 
   /* Update entire session */
   const updateSession = (

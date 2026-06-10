@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
+import toast from "react-hot-toast";
 import {
   Upload,
   FileText,
@@ -10,16 +11,21 @@ export default function UploadPanel() {
   const [files, setFiles] =
     useState<File[]>([]);
 
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      setFiles((prev) => [
-        ...prev,
-        ...acceptedFiles,
-      ]);
-    },
-    []
-  );
+const onDrop = useCallback(
+  (acceptedFiles: File[]) => {
+    setFiles((prev) => [
+      ...prev,
+      ...acceptedFiles,
+    ]);
 
+    acceptedFiles.forEach((file) =>
+      toast.success(
+        `${file.name} uploaded`
+      )
+    );
+  },
+  []
+);
   const {
     getRootProps,
     getInputProps,
@@ -37,16 +43,20 @@ export default function UploadPanel() {
     },
   });
 
-  const removeFile = (
-    fileName: string
-  ) => {
-    setFiles((prev) =>
-      prev.filter(
-        (file) =>
-          file.name !== fileName
-      )
-    );
-  };
+const removeFile = (
+  fileName: string
+) => {
+  setFiles((prev) =>
+    prev.filter(
+      (file) =>
+        file.name !== fileName
+    )
+  );
+
+  toast.success(
+    "Document removed"
+  );
+};
 
   return (
     <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
@@ -130,6 +140,7 @@ export default function UploadPanel() {
                 onClick={() =>
                   removeFile(
                     file.name
+                    
                   )
                 }
                 className="

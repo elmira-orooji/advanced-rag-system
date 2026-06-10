@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-
+import toast from "react-hot-toast";
 import {
   FaUser,
   FaLock,
@@ -67,6 +67,10 @@ const onSubmit = async (
 
     console.log(data);
 
+  toast.success(
+  "Welcome to KnowledgeFlow AI!"
+  );
+  
     navigate("/home");
   } catch (error) {
     console.error(error);
