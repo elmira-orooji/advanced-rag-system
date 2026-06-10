@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useEffect } from "react";
 import Sidebar from "../components/Sidebar";
 import ChatInput from "../components/ChatInput";
+import UploadPanel from "../components/UploadPanel";
 import {
   useChatHistory,
 } from "../hooks/useChatHistory";
@@ -12,6 +13,8 @@ import ChatWindow from "../components/ChatWindow";
 export default function HomePage() {
   const [darkMode] = useState(true);
   const [isThinking,setIsThinking, ] = useState(false);
+  const [showUploadPanel, setShowUploadPanel] = useState(false);
+  
 
   const {
   sessions,
@@ -96,6 +99,7 @@ const handleSendMessage = (
         darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-800"
       }`}
     >
+      
 <Sidebar
   darkMode={darkMode}
   sessions={sessions}
@@ -103,6 +107,9 @@ const handleSendMessage = (
   onSelectChat={setActiveSessionId}
   onNewChat={createNewChat}
   onDeleteChat={deleteChat}
+  onOpenUpload={() =>
+    setShowUploadPanel(true)
+  }
 />
 
       {/* Main Content */}
@@ -113,19 +120,22 @@ const handleSendMessage = (
             Welcome back, <span className="text-blue-500">Analyst</span> 👋
           </h1>
         </div>
+        
+  {showUploadPanel && (
+    <UploadPanel />
+  )}
 
-  <ChatWindow
-  messages={
-    activeSession?.messages ?? []
-  }
+<ChatWindow
+  messages={activeSession?.messages ?? []}
   isThinking={isThinking}
 />
+{showUploadPanel && (
+  <UploadPanel />
+)}
 
 <ChatInput
   disabled={isThinking}
-  onSend={
-    handleSendMessage
-  }
+  onSend={handleSendMessage}
 />
       </main>
     </div>

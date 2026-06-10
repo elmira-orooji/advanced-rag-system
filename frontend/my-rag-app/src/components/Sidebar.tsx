@@ -1,7 +1,7 @@
 import {
   Plus,
   MessageSquare,
-  FileText,
+  Upload,
   FolderOpen,
   BarChart3,
   Settings,
@@ -20,15 +20,13 @@ interface SidebarProps {
 
   activeSessionId: string | null;
 
-  onSelectChat: (
-    id: string
-  ) => void;
+  onSelectChat: (id: string) => void;
 
   onNewChat: () => void;
 
-  onDeleteChat: (
-    id: string
-  ) => void;
+  onDeleteChat: (id: string) => void;
+
+  onOpenUpload: () => void;
 }
 
 export default function Sidebar({
@@ -38,7 +36,11 @@ export default function Sidebar({
   onSelectChat,
   onNewChat,
   onDeleteChat,
+  onOpenUpload,
 }: SidebarProps) {
+  const currentUser = JSON.parse(
+  localStorage.getItem("current-user") ?? "null"
+);
     return (
   <aside
     className={`
@@ -164,52 +166,90 @@ export default function Sidebar({
 
     {/* Footer */}
     <div className="p-3 border-t border-inherit">
-      {[
-        {
-          icon: FileText,
-          label: "Documents",
-        },
+<button
+  onClick={() =>
+    {onOpenUpload}
+  }
+  className="
+    w-full
+    flex
+    items-center
+    justify-center
+    lg:justify-start
+    gap-3
+    px-4
+    py-3
+    rounded-xl
+    hover:bg-blue-500/10
+    transition
+  "
+>
+  <Upload size={18} />
 
-        {
-          icon: FolderOpen,
-          label: "Collections",
-        },
+  <span className="hidden lg:block">
+    Upload Documents
+  </span>
+</button>
 
-        {
-          icon: BarChart3,
-          label: "Analytics",
-        },
+{[
+  {
+    icon: Upload,
+    label: "Upload Documents",
+    adminOnly: true,
+  },
 
-        {
-          icon: Settings,
-          label: "Settings",
-        },
-      ].map(
-        ({ icon: Icon, label }) => (
-          <button
-            key={label}
-            className="
-              w-full
-              flex
-              items-center
-              justify-center
-              lg:justify-start
-              gap-3
-              px-4
-              py-3
-              rounded-xl
-              hover:bg-blue-500/10
-              transition
-            "
-          >
-            <Icon size={18} />
+  {
+    icon: FolderOpen,
+    label: "Collections",
+  },
 
-            <span className="hidden lg:block">
-              {label}
-            </span>
-          </button>
-        )
-      )}
+  {
+    icon: BarChart3,
+    label: "Analytics",
+  },
+
+  {
+    icon: Settings,
+    label: "Settings",
+  },
+]
+  .filter(
+    (item) =>
+      !item.adminOnly ||
+      currentUser?.role === "admin"
+  )
+  .map(({ icon: Icon, label }) => (
+    <button
+      key={label}
+      onClick={() => {
+        if (
+          label ===
+          "Upload Documents"
+        ) {
+          onOpenUpload();
+        }
+      }}
+      className="
+        w-full
+        flex
+        items-center
+        justify-center
+        lg:justify-start
+        gap-3
+        px-4
+        py-3
+        rounded-xl
+        hover:bg-blue-500/10
+        transition
+      "
+    >
+      <Icon size={18} />
+
+      <span className="hidden lg:block">
+        {label}
+      </span>
+    </button>
+  ))}
     </div>
   </aside>
 )};
