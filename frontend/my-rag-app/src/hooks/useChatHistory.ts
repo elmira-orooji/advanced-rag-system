@@ -1,0 +1,133 @@
+import { useEffect, useState } from "react";
+
+import type {
+  ChatSession,
+} from "../types/chat";
+
+const STORAGE_KEY =
+  "knowledgeflow-chats";
+
+export function useChatHistory() {
+  const [sessions, setSessions] =
+    useState<ChatSession[]>([]);
+
+  const [
+    activeSessionId,
+    setActiveSessionId,
+  ] = useState<string | null>(
+    null
+  );
+
+  useEffect(() => {
+    const saved =
+      localStorage.getItem(
+        STORAGE_KEY
+      );
+
+    if (!saved) return;
+
+    try {
+      const parsed =
+        JSON.parse(saved);
+
+      setSessions(parsed);
+
+      if (parsed.length > 0) {
+        setActiveSessionId(
+          parsed[0].id
+        );
+      }
+    } catch (error) {
+      console.error(
+        "Failed to load chats",
+        error
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(sessions)
+    );
+  }, [sessions]);
+
+  const createNewChat = () => {
+    const now =
+      new Date().toISOString();
+
+    const newSession: ChatSession =
+      {
+        id: crypto.randomUUID(),
+
+        title: "New Chat",
+
+        messages: [],
+
+        createdAt: now,
+
+        updatedAt: now,
+      };
+
+    setSessions((prev) => [
+      newSession,
+      ...prev,
+    ]);
+
+    setActiveSessionId(
+      newSession.id
+    );
+  };
+
+  const deleteChat = (
+    sessionId: string
+  ) => {
+    setSessions((prev) =>
+      prev.filter(
+        (chat) =>
+          chat.id !== sessionId
+      )
+    );
+
+    if (
+      activeSessionId === sessionId
+    ) {
+      setActiveSessionId(null);
+    }
+  };
+
+  const updateSession = (
+    session: ChatSession
+  ) => {
+    setSessions((prev) =>
+      prev.map((chat) =>
+        chat.id === session.id
+          ? session
+          : chat
+      )
+    );
+  };
+
+  const activeSession =
+    sessions.find(
+      (session) =>
+        session.id ===
+        activeSessionId
+    ) ?? null;
+
+  return {
+    sessions,
+
+    activeSession,
+
+    activeSessionId,
+
+    setActiveSessionId,
+
+    createNewChat,
+
+    deleteChat,
+
+    updateSession,
+  };
+}
