@@ -7,18 +7,20 @@ import {
 import {
   Search,
   Send,
-  Copy,
 } from "lucide-react";
+import ChatWindow from "../components/ChatWindow";
 
 
 
 export default function HomePage() {
   const [darkMode] = useState(true);
+  const [isThinking, ] = useState(false);
   const [query, setQuery] = useState("");
-  const [response, setResponse] = useState<string | null>(null);
+
 
   const {
   sessions,
+  activeSession,
   activeSessionId,
   createNewChat,
   deleteChat,
@@ -31,15 +33,6 @@ export default function HomePage() {
    }
   }, [sessions.length]);
 
-  const handleAsk = () => {
-    if (!query.trim()) return;
-    setResponse("Analyzing your question with advanced RAG system...");
-    setTimeout(() => {
-      setResponse(
-        "📊 Here’s your insight:\n\nThe model found strong correlations in the dataset between user engagement and content recency."
-      );
-    }, 1200);
-  };
 
   return (
     <div
@@ -85,34 +78,17 @@ export default function HomePage() {
             className="flex-1 bg-transparent outline-none text-base"
           />
           <button
-            onClick={handleAsk}
             className="bg-blue-600 hover:bg-blue-700 transition text-white p-2 rounded-xl"
           >
             <Send size={20} />
           </button>
-        </div>
-
-        {/* AI Response Box */}
-        {response && (
-          <div
-            className={`p-6 rounded-2xl backdrop-blur-md border shadow-lg transition hover:shadow-blue-500/10 whitespace-pre-line ${
-              darkMode
-                ? "bg-slate-800 border-slate-700 text-slate-300"
-                : "bg-white border-slate-200 text-slate-700"
-            }`}
-          >
-            <div className="flex justify-between items-start mb-2">
-              <h2 className="font-bold text-blue-400">AI Response</h2>
-              <button
-                onClick={() => navigator.clipboard.writeText(response)}
-                className="text-slate-400 hover:text-blue-500 transition"
-              >
-                <Copy size={18} />
-              </button>
-            </div>
-            {response}
           </div>
-        )}
+  <ChatWindow
+  messages={
+    activeSession?.messages ?? []
+  }
+  isThinking={isThinking}
+/>
 
         {/* Insight Cards */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
