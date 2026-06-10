@@ -9,7 +9,11 @@ export const loginSchema = z.object({
     .string()
     .min(8, "Password must be at least 8 characters"),
 
-  rememberMe: z.boolean().default(false),
+  rememberMe: z.boolean(),
 });
 
-export type LoginSchemaType = z.infer<typeof loginSchema>;
+export interface LoginSchemaType {
+  username: string;
+  password: string;
+  rememberMe: boolean;
+}
