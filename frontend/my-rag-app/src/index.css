@@ -1,2 +1,23 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "Inter";
+  src: url("./assets/fonts/Inter-Variable.ttf")
+    format("truetype");
+  font-weight: 100 900;
+}
+
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("./assets/fonts/Vazirmatn-Variable.ttf")
+    format("truetype");
+  font-weight: 100 900;
+}
+
+body {
+  font-family: "Inter", sans-serif;
+}
+
+html[dir="rtl"] body {
+  font-family: "Vazirmatn", sans-serif;
+}
