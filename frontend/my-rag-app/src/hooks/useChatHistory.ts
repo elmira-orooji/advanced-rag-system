@@ -64,7 +64,7 @@ export function useChatHistory() {
       {
         id: crypto.randomUUID(),
 
-        title: "New Chat",
+        title: "Untitled Chat",
 
         messages: [],
 
