@@ -5,10 +5,6 @@ import ChatInput from "../components/ChatInput";
 import {
   useChatHistory,
 } from "../hooks/useChatHistory";
-import {
-  Search,
-  Send,
-} from "lucide-react";
 import ChatWindow from "../components/ChatWindow";
 
 
@@ -16,8 +12,6 @@ import ChatWindow from "../components/ChatWindow";
 export default function HomePage() {
   const [darkMode] = useState(true);
   const [isThinking,setIsThinking, ] = useState(false);
-  const [query, setQuery] = useState("");
-
 
   const {
   sessions,
@@ -123,28 +117,6 @@ const handleSendMessage = (
           </button>
         </div>
 
-        {/* Search Box */}
-        <div
-          className={`flex items-center gap-3 px-4 py-3 rounded-2xl shadow-md transition-all ${
-            darkMode
-              ? "bg-slate-800 border border-slate-700"
-              : "bg-white border border-slate-200"
-          }`}
-        >
-          <Search size={20} className="text-slate-400" />
-          <input
-            type="text"
-            placeholder="Ask anything about your documents..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 bg-transparent outline-none text-base"
-          />
-          <button
-            className="bg-blue-600 hover:bg-blue-700 transition text-white p-2 rounded-xl"
-          >
-            <Send size={20} />
-          </button>
-          </div>
   <ChatWindow
   messages={
     activeSession?.messages ?? []
