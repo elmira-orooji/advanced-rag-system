@@ -130,35 +130,6 @@ const handleSendMessage = (
     handleSendMessage
   }
 />
-
-        {/* Insight Cards */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {[
-            {
-              title: "Documents Analyzed",
-              value: "1,240",
-              color: "bg-gradient-to-r from-blue-500 to-indigo-500",
-            },
-            {
-              title: "Knowledge Graphs",
-              value: "312",
-              color: "bg-gradient-to-r from-purple-500 to-pink-500",
-            },
-            {
-              title: "Search Queries",
-              value: "24K",
-              color: "bg-gradient-to-r from-green-500 to-emerald-500",
-            },
-          ].map(({ title, value, color }, i) => (
-            <div
-              key={i}
-              className={`rounded-2xl p-6 text-white ${color} shadow-lg hover:scale-[1.02] active:scale-[0.99] transition-transform`}
-            >
-              <p className="text-sm opacity-90">{title}</p>
-              <h3 className="text-3xl font-semibold mt-2">{value}</h3>
-            </div>
-          ))}
-        </section>
       </main>
     </div>
   );
