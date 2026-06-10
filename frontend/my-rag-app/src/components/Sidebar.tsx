@@ -2,9 +2,6 @@ import {
   Plus,
   MessageSquare,
   Upload,
-  FolderOpen,
-  BarChart3,
-  Settings,
   Trash2,
   Database,
 } from "lucide-react";
@@ -198,20 +195,6 @@ export default function Sidebar({
     adminOnly: true,
   },
 
-  {
-    icon: FolderOpen,
-    label: "Collections",
-  },
-
-  {
-    icon: BarChart3,
-    label: "Analytics",
-  },
-
-  {
-    icon: Settings,
-    label: "Settings",
-  },
 ]
   .filter(
     (item) =>

@@ -116,9 +116,14 @@ const handleSendMessage = (
       <main className="flex-1 p-8 flex flex-col gap-8">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Welcome back, <span className="text-blue-500">Analyst</span> 👋
-          </h1>
+            <h1 className="text-3xl font-bold">
+    KnowledgeFlow AI
+  </h1>
+
+  <p className="text-slate-400 mt-1">
+    Enterprise Retrieval-Augmented
+    Generation Platform
+  </p>
         </div>
         
   {showUploadPanel && (
