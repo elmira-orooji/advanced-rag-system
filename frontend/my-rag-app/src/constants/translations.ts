@@ -1,4 +1,6 @@
 export const translations = {
+  
+
   en: {
     title: "Welcome Back",
     subtitle: "Sign in to your account",
@@ -8,6 +10,8 @@ export const translations = {
     forgot: "Forgot password?",
     remember: "Remember me",
     loading: "Signing in...",
+    brand: "KnowledgeFlow AI",
+    copyright: "©2026 KnowledgeFlow AI",
   },
 
   fa: {
@@ -19,5 +23,8 @@ export const translations = {
     forgot: "فراموشی رمز عبور؟",
     remember: "مرا به خاطر بسپار",
     loading: "در حال ورود...",
+    brand: "KnowledgeFlow AI",
+    copyright: "©2026 KnowledgeFlow AI",
   },
 };
+
