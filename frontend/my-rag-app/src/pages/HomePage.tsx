@@ -1,20 +1,35 @@
 import { useState } from "react";
+import { useEffect } from "react";
+import Sidebar from "../components/Sidebar";
 import {
-  Sun,
-  Moon,
-  User,
+  useChatHistory,
+} from "../hooks/useChatHistory";
+import {
   Search,
   Send,
-  BarChart3,
-  Database,
-  Settings,
   Copy,
 } from "lucide-react";
 
+
+
 export default function HomePage() {
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode] = useState(true);
   const [query, setQuery] = useState("");
   const [response, setResponse] = useState<string | null>(null);
+
+  const {
+  sessions,
+  activeSessionId,
+  createNewChat,
+  deleteChat,
+  setActiveSessionId,
+ } = useChatHistory();
+
+  useEffect(() => {
+  if (sessions.length === 0) {
+    createNewChat();
+   }
+  }, [sessions.length]);
 
   const handleAsk = () => {
     if (!query.trim()) return;
@@ -32,45 +47,14 @@ export default function HomePage() {
         darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-800"
       }`}
     >
-      {/* Sidebar */}
-      <aside
-        className={`w-20 md:w-64 border-r border-slate-800/40 flex flex-col justify-between transition-all ${
-          darkMode ? "bg-slate-900/80" : "bg-white/80 border-slate-200"
-        }`}
-      >
-        <div>
-          <div className="flex items-center gap-3 p-5">
-            <Database className="text-blue-500" />
-            <span className="font-bold text-lg hidden md:block">RAG System</span>
-          </div>
-          <nav className="flex flex-col mt-6 space-y-2">
-            {[
-              { icon: BarChart3, label: "Dashboard" },
-              { icon: Settings, label: "Settings" },
-              { icon: User, label: "Profile" },
-            ].map(({ icon: Icon, label }) => (
-              <button
-                key={label}
-                className="flex items-center gap-3 px-5 py-2 text-sm font-medium hover:bg-blue-500/10 hover:text-blue-400 transition-colors"
-              >
-                <Icon size={20} />
-                <span className="hidden md:block">{label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-        <div className="p-4">
-          <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="flex items-center gap-2 w-full text-sm font-medium px-3 py-2 rounded-lg hover:bg-blue-500/10 transition-colors"
-          >
-            {darkMode ? <Sun size={18} /> : <Moon size={18} />}
-            <span className="hidden md:block">
-              {darkMode ? "Light Mode" : "Dark Mode"}
-            </span>
-          </button>
-        </div>
-      </aside>
+<Sidebar
+  darkMode={darkMode}
+  sessions={sessions}
+  activeSessionId={activeSessionId}
+  onSelectChat={setActiveSessionId}
+  onNewChat={createNewChat}
+  onDeleteChat={deleteChat}
+/>
 
       {/* Main Content */}
       <main className="flex-1 p-8 flex flex-col gap-8">
