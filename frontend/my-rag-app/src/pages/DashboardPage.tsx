@@ -125,6 +125,22 @@ const handleSendMessage = (
 
       </div>
 
+      {/* Card 2 */}
+      <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
+
+  <p className="text-sm text-slate-400 mb-4">
+    Summarize your last meeting
+  </p>
+
+  <h3 className="font-semibold text-xl">
+    UX Strategy Meet up
+  </h3>
+
+  <p className="text-slate-400 mt-2">
+    1 Apr 2025, 14:00 pm
+  </p>
+
+</div>
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
