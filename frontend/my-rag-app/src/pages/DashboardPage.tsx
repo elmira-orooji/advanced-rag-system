@@ -103,6 +103,29 @@ const handleSendMessage = (
       </p>
     </div>
 
+         {/* Top Cards */}
+         <div className="grid grid-cols-2 gap-6"></div>
+
+          {/* Card 1 */}
+         <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
+
+        <p className="text-sm text-slate-400 mb-4">
+          Previously viewed files
+        </p>
+
+        <div className="space-y-3">
+
+          <p>Miro - Product Analytics and Statistics</p>
+
+          <p>Figma - UX Research</p>
+
+          <p>R2 Strategic Goals & Objectives.pdf</p>
+
+        </div>
+
+      </div>
+
+
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
   <div className="bg-white rounded-3xl p-6 shadow-sm">
