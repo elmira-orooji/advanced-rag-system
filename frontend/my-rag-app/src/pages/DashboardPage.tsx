@@ -158,194 +158,228 @@ const handleSendMessage = (
 </div>
  
       {/* Card 4 */}
-      <div className="flex items-center justify-between mb-8">
+     <div
+  className="
+    bg-white
+    rounded-[28px]
+    border border-slate-200
+    p-8
+    shadow-sm
+    mt-8
+  "
+>
+  {/* Header */}
+  <div className="flex items-center justify-between mb-8">
+    <div className="flex items-center gap-6">
+      <h2 className="text-2xl font-semibold flex items-center">
+        My Tasks
+        <span className="ml-2 text-slate-400 font-normal text-xl">
+          13
+        </span>
+      </h2>
 
-  <div className="flex items-center gap-4">
+      <div className="relative">
+        <Search
+          size={18}
+          className="
+            absolute
+            left-4
+            top-1/2
+            -translate-y-1/2
+            text-slate-400
+          "
+        />
 
-    <h2 className="text-2xl font-semibold">
-      My Tasks
-      <span className="ml-2 text-slate-400 font-normal">
-        13
-      </span>
-    </h2>
+        <input
+          placeholder="Search for name..."
+          className="
+            w-[180px]
+            rounded-full
+            border
+            border-slate-200
+            bg-white
+            py-2
+            pl-11
+            pr-10
+            text-sm
+            outline-none
+          "
+        />
 
-    <div className="relative">
-      <Search
-        size={18}
-        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-      />
+        <div
+          className="
+            absolute
+            right-3
+            top-1/2
+            -translate-y-1/2
+            w-5
+            h-5
+            rounded-full
+            bg-slate-200
+          "
+        />
+      </div>
+    </div>
 
-      <input
-        placeholder="Search for name..."
-        className="
-          w-64
-          rounded-full
-          border
-          border-slate-200
-          bg-white
-          py-2
-          pl-11
-          pr-10
-          text-sm
-          outline-none
-        "
-      />
-
-      <div className="
-        absolute
-        right-3
-        top-1/2
-        -translate-y-1/2
-        w-5
-        h-5
+    <button
+      className="
         rounded-full
-        bg-slate-200
-      " />
+        border
+        border-purple-300
+        px-5
+        py-2
+        text-sm
+        font-medium
+        text-purple-600
+        hover:bg-purple-50
+        transition
+      "
+    >
+      Prioritize Tasks
+    </button>
+  </div>
+
+  {/* Tasks */}
+  <div className="space-y-5">
+
+    {/* Task 1 */}
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 rounded-full bg-orange-500" />
+
+      <span>Design Meeting</span>
+
+      <span
+        className="
+          rounded-full
+          bg-slate-100
+          px-3
+          py-1
+          text-sm
+        "
+      >
+        2 pm
+      </span>
+
+      <span
+        className="
+          rounded-full
+          bg-purple-100
+          text-purple-600
+          px-3
+          py-1
+          text-sm
+        "
+      >
+        Join now
+      </span>
+    </div>
+
+    {/* Task 2 */}
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 rounded-full bg-red-500" />
+
+      <span>
+        Refine UI components based on user feedback
+      </span>
+
+      <span
+        className="
+          rounded-full
+          bg-red-100
+          text-red-600
+          px-3
+          py-1
+          text-sm
+        "
+      >
+        Urgent
+      </span>
+
+      <span
+        className="
+          rounded-full
+          bg-red-50
+          text-red-500
+          px-3
+          py-1
+          text-sm
+        "
+      >
+        By today
+      </span>
+    </div>
+
+    {/* Task 3 */}
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 rounded-full bg-blue-500" />
+
+      <span>
+        Prepare a prototype for usability testing
+      </span>
+
+      <span
+        className="
+          rounded-full
+          bg-blue-100
+          text-blue-600
+          px-3
+          py-1
+          text-sm
+        "
+      >
+        In progress
+      </span>
+
+      <span
+        className="
+          rounded-full
+          bg-cyan-100
+          text-cyan-600
+          px-3
+          py-1
+          text-sm
+        "
+      >
+        By tomorrow
+      </span>
+    </div>
+
+    {/* Task 4 */}
+    <div className="flex items-center gap-3">
+      <div className="w-2 h-2 rounded-full bg-blue-500" />
+
+      <span>
+        Collaborate with developers on implementation detail
+      </span>
+
+      <span
+        className="
+          rounded-full
+          bg-slate-100
+          text-slate-600
+          px-3
+          py-1
+          text-sm
+        "
+      >
+        To do
+      </span>
+
+      <span
+        className="
+          rounded-full
+          bg-cyan-100
+          text-cyan-600
+          px-3
+          py-1
+          text-sm
+        "
+      >
+        By tomorrow
+      </span>
     </div>
 
   </div>
-
-  <button
-    className="
-      rounded-full
-      border
-      border-purple-300
-      px-5
-      py-2
-      text-purple-600
-      hover:bg-purple-50
-      transition
-    "
-  >
-    Prioritize Tasks
-  </button>
-
-</div>
-
-<div className="space-y-5">
-  <div className="flex items-center gap-4">
-
-  <div className="w-2 h-2 rounded-full bg-orange-500" />
-
-  <span className="flex-1">
-    Design Meeting
-  </span>
-
-  <span className="
-    rounded-full
-    bg-slate-100
-    px-3
-    py-1
-    text-sm
-  ">
-    2 pm
-  </span>
-
-  <span className="
-    rounded-full
-    bg-purple-100
-    text-purple-600
-    px-3
-    py-1
-    text-sm
-  ">
-    Join now
-  </span>
-
-</div>
-
-<div className="flex items-center gap-4">
-
-  <div className="w-2 h-2 rounded-full bg-red-500" />
-
-  <span className="flex-1">
-    Refine UI components based on user feedback
-  </span>
-
-  <span className="
-    rounded-full
-    bg-red-100
-    text-red-600
-    px-3
-    py-1
-    text-sm
-  ">
-    Urgent
-  </span>
-
-  <span className="
-    rounded-full
-    bg-red-50
-    text-red-500
-    px-3
-    py-1
-    text-sm
-  ">
-    By today
-  </span>
-
-</div>
-<div className="flex items-center gap-4">
-
-  <div className="w-2 h-2 rounded-full bg-blue-500" />
-
-  <span className="flex-1">
-    Prepare a prototype for usability testing
-  </span>
-
-  <span className="
-    rounded-full
-    bg-blue-100
-    text-blue-600
-    px-3
-    py-1
-    text-sm
-  ">
-    In progress
-  </span>
-
-  <span className="
-    rounded-full
-    bg-cyan-100
-    text-cyan-600
-    px-3
-    py-1
-    text-sm
-  ">
-    By tomorrow
-  </span>
-
-</div>
-<div className="flex items-center gap-4">
-
-  <div className="w-2 h-2 rounded-full bg-blue-500" />
-
-  <span className="flex-1">
-    Collaborate with developers on implementation detail
-  </span>
-
-  <span className="
-    rounded-full
-    bg-slate-100
-    text-slate-600
-    px-3
-    py-1
-    text-sm
-  ">
-    To do
-  </span>
-
-  <span className="
-    rounded-full
-    bg-cyan-100
-    text-cyan-600
-    px-3
-    py-1
-    text-sm
-  ">
-    By tomorrow
-  </span>
-
 </div>
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
