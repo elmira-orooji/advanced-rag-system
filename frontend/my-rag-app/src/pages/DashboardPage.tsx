@@ -155,6 +155,19 @@ const handleSendMessage = (
   </h3>
 
 </div>
+ 
+      {/* Card 4 */}
+      <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
+
+  <p className="text-sm text-slate-400 mb-4">
+    Suggested Task
+  </p>
+
+  <h3 className="font-semibold text-2xl">
+    Write a prospect email
+  </h3>
+
+</div>
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
