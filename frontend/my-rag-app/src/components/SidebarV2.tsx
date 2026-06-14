@@ -7,14 +7,14 @@ import {
   Share2,
   Settings,
   MoreHorizontal,
-  ChevronLeft,
+  ChevronsLeft,
 } from "lucide-react";
 
 export default function SidebarV2() {
   return (
     <aside
       className="
-        w-80
+        w-[280px]
         h-screen
         bg-white
         border-r
@@ -38,7 +38,7 @@ export default function SidebarV2() {
         </div>
 
         <button className="text-slate-400">
-          <ChevronLeft size={18} />
+          <ChevronsLeft size={18} />
         </button>
       </div>
 
@@ -100,10 +100,6 @@ export default function SidebarV2() {
 
                 <span>{label}</span>
               </div>
-
-              {active && (
-                <Home size={16} />
-              )}
             </button>
           )
         )}
@@ -115,7 +111,7 @@ export default function SidebarV2() {
           Today
         </p>
 
-        <div className="mt-4 space-y-4 text-sm">
+        <div className="mt-4 space-y-3 text-sm">
           <p className="cursor-pointer hover:text-blue-600">
             Research Assistance Request
           </p>
@@ -140,7 +136,7 @@ export default function SidebarV2() {
         </div>
       </div>
       {/* Settings */}
-      <div className="px-6 py-6">
+      <div className="px-6 py-6 border-t border-slate-200">
         <button
           className="
             w-full

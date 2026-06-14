@@ -29,7 +29,7 @@ export default function ChatInput({
   };
 
   return (
-    <div className="rounded-3xl border border-slate-700 bg-white border border-slate-200 p-4">
+    <div className="rounded-3xl border border-slate-200 bg-white border border-slate-200 p-4">
       <div className="flex items-end gap-3">
         <button
           className="
