@@ -8,9 +8,24 @@ import {
   Settings,
   MoreHorizontal,
   ChevronsLeft,
+  
 } from "lucide-react";
+import type { ChatSession } from "../types/chat";
 
-export default function SidebarV2() {
+interface SidebarV2Props {
+  sessions: ChatSession[];
+
+  activeSessionId: string | null;
+
+  onSelectChat: (id: string) => void;
+
+  onNewChat: () => void;
+}
+
+export default function SidebarV2({
+
+  onNewChat,
+}: SidebarV2Props){
   return (
     <aside
       className="
@@ -23,8 +38,9 @@ export default function SidebarV2() {
         flex-col
       "
     >
+        
       {/* Profile */}
-      <div className="flex items-center justify-between px-6 py-6">
+      <div className="flex items-center px-6 py-6">
         <div className="flex items-center gap-3">
           <img
             src="https://i.pravatar.cc/40"
@@ -53,6 +69,7 @@ export default function SidebarV2() {
           {
             icon: Sparkles,
             label: "New Chat",
+            onClick: onNewChat,
           },
           {
             icon: CheckSquare,
@@ -71,13 +88,15 @@ export default function SidebarV2() {
             label: "Shared with me",
           },
         ].map(
-          ({
-            icon: Icon,
-            label,
-            active,
-          }) => (
+            ({
+                icon: Icon,
+                label,
+                active,
+                onClick,
+            }) => (
             <button
               key={label}
+              onClick={onClick}
               className={`
                 w-full
                 flex
@@ -105,36 +124,25 @@ export default function SidebarV2() {
         )}
       </div>
 
-      {/* History */}
-      <div className="px-6 mt-8">
-        <p className="text-sm text-slate-400">
-          Today
-        </p>
+<div className="mt-8">
+  <p className="px-6 text-sm text-slate-400 mb-4">
+    Today
+  </p>
 
-        <div className="mt-4 space-y-3 text-sm">
-          <p className="cursor-pointer hover:text-blue-600">
-            Research Assistance Request
-          </p>
+  <div className="space-y-4 px-6">
+    <p>Research Assistance Request</p>
+    <p>Summarizing Last Meeting</p>
+    <p>Prioritizing Tasks Request</p>
+  </div>
 
-          <p className="cursor-pointer hover:text-blue-600">
-            Summarizing Last Meeting
-          </p>
+  <p className="px-6 text-sm text-slate-400 mt-8 mb-4">
+    Yesterday
+  </p>
 
-          <p className="cursor-pointer hover:text-blue-600">
-            Prioritizing Tasks Request
-          </p>
-        </div>
-
-        <p className="text-sm text-slate-400 mt-8">
-          Yesterday
-        </p>
-
-        <div className="mt-4 text-sm">
-          <p className="cursor-pointer hover:text-blue-600">
-            Document Summary Request
-          </p>
-        </div>
-      </div>
+  <div className="px-6">
+    <p>Document Summary Request</p>
+  </div>
+</div>
       {/* Settings */}
       <div className="px-6 py-6 border-t border-slate-200">
         <button
