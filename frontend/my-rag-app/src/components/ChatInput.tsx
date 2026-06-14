@@ -1,4 +1,4 @@
-import { Paperclip, Send } from "lucide-react";
+import { Plus, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 interface ChatInputProps {
@@ -29,68 +29,24 @@ export default function ChatInput({
   };
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white border border-slate-200 p-4">
-      <div className="flex items-end gap-3">
-        <button
-          className="
-            rounded-xl
-            p-3
-            text-slate-400
-            transition
-            hover:bg-slate-800
-          "
-        >
-          <Paperclip size={20} />
-        </button>
+    <div className="flex items-center bg-white rounded-full border border-slate-200 px-4 py-3 shadow-sm">
+  <button className="text-purple-500">
+    <Plus size={22} />
+  </button>
 
-        <textarea
-          rows={1}
-          value={value}
-          disabled={disabled}
-          placeholder="How can I help you today?"
-          onChange={(e) =>
-            setValue(
-              e.target.value
-            )
-          }
-          onKeyDown={(e) => {
-            if (
-              e.key === "Enter" &&
-              !e.shiftKey
-            ) {
-              e.preventDefault();
+  <div className="w-px h-6 bg-slate-200 mx-4" />
 
-              handleSend();
-            }
-          }}
-          className="
-            max-h-40
-            flex-1
-            resize-none
-            bg-transparent
-            outline-none
-            text-white
-            placeholder:text-slate-500
-          "
-        />
+  <input
+    placeholder="Ask or search for anything. Use @ to tag a file or collection."
+    className="flex-1 outline-none bg-transparent"
+  />
 
-        <button
-          onClick={handleSend}
-          disabled={disabled}
-          className="
-            rounded-xl
-            bg-blue-600
-            p-3
-            text-white
-            transition
-            hover:bg-blue-700
-            disabled:cursor-not-allowed
-            disabled:opacity-50
-          "
-        >
-          <Send size={20} />
-        </button>
+    <button
+      onClick={handleSend}
+      className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center hover:bg-slate-200"
+    >
+      <ArrowRight size={18} />
+    </button>
       </div>
-    </div>
   );
 }
