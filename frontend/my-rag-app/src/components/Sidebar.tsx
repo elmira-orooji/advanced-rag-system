@@ -1,9 +1,13 @@
 import {
+  Home,
   Plus,
+  CheckSquare,
+  FileText,
+  Users,
+  Settings,
   MessageSquare,
-  Upload,
   Trash2,
-  Database,
+ 
 } from "lucide-react";
 
 import type {
@@ -35,9 +39,7 @@ export default function Sidebar({
   onDeleteChat,
   onOpenUpload,
 }: SidebarProps) {
-  const currentUser = JSON.parse(
-  localStorage.getItem("current-user") ?? "null"
-);
+
     return (
   <aside
     className={`
@@ -55,46 +57,92 @@ export default function Sidebar({
   >
     {/* Header */}
     <div className="p-5 border-b border-inherit">
-      <div className="flex items-center gap-3">
-        <Database className="text-blue-500" />
+<div className="px-6 py-8">
+  <div className="flex items-center gap-4">
 
-        <span className="hidden lg:block font-bold text-lg">
-          KnowledgeFlow AI
-        </span>
+
+<div className="flex items-center justify-between px-6 py-6">
+
+  <div className="flex items-center gap-3">
+
+    <img
+      src="https://i.pravatar.cc/40"
+      className="w-10 h-10 rounded-full"
+    />
+
+    <span className="font-semibold text-slate-800">
+      Lara Smith
+    </span>
+
+  </div>
+
+  <button className="text-slate-400">
+    ≪
+  </button>
+
+</div>
       </div>
     </div>
-
-    {/* New Chat */}
-    <div className="p-4">
-      <button
-        onClick={onNewChat}
-        className="
-          w-full
-          flex
-          items-center
-          justify-center
-          lg:justify-start
-          gap-3
-          rounded-xl
-          bg-blue-600
-          hover:bg-blue-700
-          text-white
-          px-4
-          py-3
-          transition
-        "
-      >
-        <Plus size={18} />
-
-        <span className="hidden lg:block">
-          New Chat
-        </span>
-      </button>
     </div>
 
     {/* Recent Chats */}
     <div className="flex-1 overflow-y-auto px-3">
+      <div className="px-3 space-y-1">
+  {[
+    {
+      icon: Home,
+      label: "Home",
+    },
+    {
+      icon: Plus,
+      label: "New Chat",
+      onClick: onNewChat,
+    },
+    {
+      icon: CheckSquare,
+      label: "My Tasks",
+    },
+    {
+      icon: FileText,
+      label: "Saved Files",
+    },
+    {
+      icon: Users,
+      label: "Shared with me",
+    },
+  ].map(
+    ({
+      icon: Icon,
+      label,
+      onClick,
+    }) => (
+      <button
+        key={label}
+        onClick={onClick}
+        className="
+          flex
+          w-full
+          items-center
+          gap-3
+          rounded-xl
+          px-4
+          py-3
+          text-left
+          text-slate-700
+          transition
+          hover:bg-slate-800
+          hover:text-white
+        "
+      >
+        <Icon size={18} />
+
+        <span>{label}</span>
+      </button>
+    )
+  )}
+</div>
       <p className="hidden lg:block text-xs uppercase text-slate-500 mb-3 px-2">
+        
         Recent Chats
       </p>
 
@@ -138,7 +186,7 @@ export default function Sidebar({
           >
             <MessageSquare size={18} />
 
-            <span className="hidden lg:block truncate text-sm">
+            <span className="truncate text-sm">
               {chat.title}
             </span>
           </div>
@@ -181,58 +229,29 @@ export default function Sidebar({
     transition
   "
 >
-  <Upload size={18} />
 
-  <span className="hidden lg:block">
-    Upload Documents
-  </span>
 </button>
+<div className="mt-auto border-t border-slate-800 p-4">
+  <button
+    className="
+      flex
+      w-full
+      items-center
+      gap-3
+      rounded-xl
+      px-4
+      py-3
+      text-slate-700
+      transition
+      hover:bg-slate-800
+      hover:text-white
+    "
+  >
+    <Settings size={18} />
 
-{[
-  {
-    icon: Upload,
-    label: "Upload Documents",
-    adminOnly: true,
-  },
-
-]
-  .filter(
-    (item) =>
-      !item.adminOnly ||
-      currentUser?.role === "admin"
-  )
-  .map(({ icon: Icon, label }) => (
-    <button
-      key={label}
-      onClick={() => {
-        if (
-          label ===
-          "Upload Documents"
-        ) {
-          onOpenUpload();
-        }
-      }}
-      className="
-        w-full
-        flex
-        items-center
-        justify-center
-        lg:justify-start
-        gap-3
-        px-4
-        py-3
-        rounded-xl
-        hover:bg-blue-500/10
-        transition
-      "
-    >
-      <Icon size={18} />
-
-      <span className="hidden lg:block">
-        {label}
-      </span>
-    </button>
-  ))}
+    <span>Settings</span>
+  </button>
+</div>
     </div>
   </aside>
 )};

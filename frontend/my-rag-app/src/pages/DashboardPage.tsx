@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useEffect } from "react";
-import Sidebar from "../components/Sidebar";
 import ChatInput from "../components/ChatInput";
-import UploadPanel from "../components/UploadPanel";
 import {
   useChatHistory,
 } from "../hooks/useChatHistory";
@@ -11,18 +9,15 @@ import ChatWindow from "../components/ChatWindow";
 
 
 export default function HomePage() {
-  const [darkMode] = useState(true);
-  const [isThinking,setIsThinking, ] = useState(false);
-  const [showUploadPanel, setShowUploadPanel] = useState(false);
-  
 
+  const [isThinking,setIsThinking, ] = useState(false);
+  
   const {
   sessions,
   activeSession,
   activeSessionId,
   createNewChat,
-  deleteChat,
-  setActiveSessionId,
+
   addMessage,
  } = useChatHistory();
 
@@ -94,55 +89,65 @@ const handleSendMessage = (
 };
 
   return (
-    <div
-      className={`flex min-h-screen transition-colors ${
-        darkMode ? "bg-slate-950 text-white" : "bg-slate-100 text-slate-800"
-      }`}
-    >
-      
-<Sidebar
-  darkMode={darkMode}
-  sessions={sessions}
-  activeSessionId={activeSessionId}
-  onSelectChat={setActiveSessionId}
-  onNewChat={createNewChat}
-  onDeleteChat={deleteChat}
-  onOpenUpload={() =>
-    setShowUploadPanel(true)
-  }
-/>
+  <>
+    <main className="flex-1 p-8 flex flex-col gap-8">
 
-      {/* Main Content */}
-      <main className="flex-1 p-8 flex flex-col gap-8">
-        {/* Header */}
-        <div className="flex justify-between items-center">
-            <h1 className="text-3xl font-bold">
-    KnowledgeFlow AI
-  </h1>
+      <div>
+        <h1 className="text-4xl font-bold text-slate-900">
+          Welcome back 👋
+        </h1>
 
-  <p className="text-slate-400 mt-1">
-    Enterprise Retrieval-Augmented
-    Generation Platform
-  </p>
-        </div>
-        
-  {showUploadPanel && (
-    <UploadPanel />
-  )}
+        <p className="mt-2 text-slate-500">
+          How can I help you today?
+        </p>
+      </div>
 
-<ChatWindow
-  messages={activeSession?.messages ?? []}
-  isThinking={isThinking}
-/>
-{showUploadPanel && (
-  <UploadPanel />
-)}
+      <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-<ChatInput
-  disabled={isThinking}
-  onSend={handleSendMessage}
-/>
-      </main>
+  <div className="bg-white rounded-3xl p-6 shadow-sm">
+    <h3 className="font-semibold text-slate-900">
+      Recent Documents
+    </h3>
+
+    <p className="text-slate-500 mt-2">
+      12 files uploaded this week
+    </p>
+  </div>
+
+  <div className="bg-white rounded-3xl p-6 shadow-sm">
+    <h3 className="font-semibold text-slate-900">
+      Pending Tasks
+    </h3>
+
+    <p className="text-slate-500 mt-2">
+      3 tasks need attention
+    </p>
+  </div>
+
+  <div className="bg-white rounded-3xl p-6 shadow-sm">
+    <h3 className="font-semibold text-slate-900">
+      Knowledge Base
+    </h3>
+
+    <p className="text-slate-500 mt-2">
+      142 indexed documents
+    </p>
+  </div>
+
+</section>
+
+      <ChatWindow
+        messages={activeSession?.messages ?? []}
+        isThinking={isThinking}
+      />
+
+      <div className="mt-auto sticky bottom-0 pb-4">
+      <ChatInput
+        disabled={isThinking}
+        onSend={handleSendMessage}
+      />
     </div>
-  );
-}
+
+    </main>
+  </>
+)}
