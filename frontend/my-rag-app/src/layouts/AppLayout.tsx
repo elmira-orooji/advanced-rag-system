@@ -17,7 +17,7 @@ export default function AppLayout({
   } = useChatHistory();
 
   return (
-    <div className="flex min-h-screen bg-[#F6F8FC]">
+    <div className="flex h-screen bg-[#F6F8FC]">
       <SidebarV2
         sessions={sessions}
         activeSessionId={activeSessionId}
@@ -25,7 +25,7 @@ export default function AppLayout({
         onNewChat={createNewChat}
       />
 
-      <main className="flex-1">
+      <main className="flex-1 overflow-hidden">
         {children}
       </main>
     </div>

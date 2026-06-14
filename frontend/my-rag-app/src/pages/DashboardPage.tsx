@@ -8,7 +8,8 @@ import ChatWindow from "../components/ChatWindow";
 
 
 
-export default function HomePage() {
+export default function DasboardPage() {
+  
 
   const [isThinking,setIsThinking, ] = useState(false);
   
@@ -90,6 +91,7 @@ const handleSendMessage = (
 
   return (
   <>
+  <div className="h-full flex flex-col">
     <main className="flex-1 p-8 flex flex-col gap-8">
 
        {/* Header */}
@@ -102,63 +104,10 @@ const handleSendMessage = (
         How can I help you today?
       </p>
     </div>
-{/* Top Cards */}
-<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-  {/* Card 1 */}
-  <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-    <p className="text-sm text-slate-400 mb-4">
-      Previously viewed files
-    </p>
-
-    <div className="space-y-3">
-      <p>Miro - Product Analytics and Statistics</p>
-      <p>Figma - UX Research</p>
-      <p>R2 Strategic Goals & Objectives.pdf</p>
-    </div>
-  </div>
-
-  {/* Card 2 */}
-  <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-    <p className="text-sm text-slate-400 mb-4">
-      Summarize your last meeting
-    </p>
-
-    <h3 className="font-semibold text-xl">
-      UX Strategy Meet up
-    </h3>
-
-    <p className="text-slate-400 mt-2">
-      1 Apr 2025, 14:00 pm
-    </p>
-  </div>
-
-  {/* Card 3 */}
-  <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-    <p className="text-sm text-slate-400 mb-4">
-      Suggested Task
-    </p>
-
-    <h3 className="font-semibold text-2xl">
-      Conduct UX Research
-    </h3>
-  </div>
-
-  {/* Card 4 */}
-  <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
-    <p className="text-sm text-slate-400 mb-4">
-      Suggested Task
-    </p>
-
-    <h3 className="font-semibold text-2xl">
-      Write a prospect email
-    </h3>
-  </div>
-
-</div>
 
   {/* Tasks */}
-  <div className=" space-y-5 bg-white rounded-[28px] border border-slate-200 p-8 shadow-sm mt-8">
+  <div className=" space-y-3 bg-white rounded-[28px] border border-slate-200 p-8 shadow-sm mt-5">
 
     {/* Task 1 */}
     <div className="flex items-center gap-3">
@@ -347,5 +296,6 @@ const handleSendMessage = (
     </div>
 
     </main>
+    </div>
   </>
 )}
