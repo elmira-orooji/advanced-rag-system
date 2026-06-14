@@ -1,7 +1,5 @@
 import type { ReactNode } from "react";
-import Sidebar from "../components/Sidebar";
-
-import { useChatHistory } from "../hooks/useChatHistory";
+import SidebarV2 from "../components/SidebarV2";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -10,25 +8,10 @@ interface AppLayoutProps {
 export default function AppLayout({
   children,
 }: AppLayoutProps) {
-  const {
-    sessions,
-    activeSessionId,
-    setActiveSessionId,
-    createNewChat,
-    deleteChat,
-  } = useChatHistory();
 
   return (
     <div className="flex min-h-screen bg-[#F6F8FC]">
-      <Sidebar
-        darkMode={false}
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        onSelectChat={setActiveSessionId}
-        onNewChat={createNewChat}
-        onDeleteChat={deleteChat}
-        onOpenUpload={() => {}}
-        />
+     <SidebarV2 />
 
       <main
         className="
