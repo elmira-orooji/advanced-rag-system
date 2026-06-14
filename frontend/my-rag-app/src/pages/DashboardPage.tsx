@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useEffect } from "react";
+import { Search } from "lucide-react";
 import ChatInput from "../components/ChatInput";
 import {
   useChatHistory,
@@ -157,15 +158,99 @@ const handleSendMessage = (
 </div>
  
       {/* Card 4 */}
-      <div className="rounded-3xl bg-white p-6 shadow-sm border border-slate-100">
+      <div className="flex items-center justify-between mb-8">
 
-  <p className="text-sm text-slate-400 mb-4">
-    Suggested Task
-  </p>
+  <div className="flex items-center gap-4">
 
-  <h3 className="font-semibold text-2xl">
-    Write a prospect email
-  </h3>
+    <h2 className="text-2xl font-semibold">
+      My Tasks
+      <span className="ml-2 text-slate-400 font-normal">
+        13
+      </span>
+    </h2>
+
+    <div className="relative">
+      <Search
+        size={18}
+        className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+      />
+
+      <input
+        placeholder="Search for name..."
+        className="
+          w-64
+          rounded-full
+          border
+          border-slate-200
+          bg-white
+          py-2
+          pl-11
+          pr-10
+          text-sm
+          outline-none
+        "
+      />
+
+      <div className="
+        absolute
+        right-3
+        top-1/2
+        -translate-y-1/2
+        w-5
+        h-5
+        rounded-full
+        bg-slate-200
+      " />
+    </div>
+
+  </div>
+
+  <button
+    className="
+      rounded-full
+      border
+      border-purple-300
+      px-5
+      py-2
+      text-purple-600
+      hover:bg-purple-50
+      transition
+    "
+  >
+    Prioritize Tasks
+  </button>
+
+</div>
+
+<div className="space-y-5">
+  <div className="flex items-center gap-4">
+
+  <div className="w-2 h-2 rounded-full bg-orange-500" />
+
+  <span className="flex-1">
+    Design Meeting
+  </span>
+
+  <span className="
+    rounded-full
+    bg-slate-100
+    px-3
+    py-1
+    text-sm
+  ">
+    2 pm
+  </span>
+
+  <span className="
+    rounded-full
+    bg-purple-100
+    text-purple-600
+    px-3
+    py-1
+    text-sm
+  ">
+    Join now
+  </span>
 
 </div>
 
