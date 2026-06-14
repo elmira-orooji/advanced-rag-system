@@ -92,15 +92,15 @@ const handleSendMessage = (
   <>
     <main className="flex-1 p-8 flex flex-col gap-8">
 
-      <div>
-        <h1 className="text-4xl font-bold text-slate-900">
-          Welcome back 👋
-        </h1>
+<div className="mb-12">
+ <h1 className="text-6xl font-bold text-[#3B82F6]">
+  Welcome, Sam! 👋
+</h1>
 
-        <p className="mt-2 text-slate-500">
-          How can I help you today?
-        </p>
-      </div>
+  <p className="mt-3 text-4xl font-medium text-slate-400">
+    How can I help you today?
+  </p>
+</div>
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
