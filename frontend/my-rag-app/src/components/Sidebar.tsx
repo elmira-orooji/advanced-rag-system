@@ -122,7 +122,7 @@ export default function Sidebar({
                 ? "hover:bg-slate-800"
                 : "hover:bg-slate-100"
             }
-          `}
+          `} 
         >
           <div
             onClick={() =>
