@@ -52,9 +52,11 @@ export default function SidebarV2({
             Sam Smith
           </span>
         </div>
-
-        <button className="text-slate-400">
-          <ChevronsLeft size={18} />
+        <button className="ml-auto">
+            <ChevronsLeft
+            size={18}
+            className="text-slate-300"
+            />
         </button>
       </div>
 
