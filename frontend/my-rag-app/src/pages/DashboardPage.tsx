@@ -254,6 +254,38 @@ const handleSendMessage = (
 
 </div>
 
+<div className="flex items-center gap-4">
+
+  <div className="w-2 h-2 rounded-full bg-red-500" />
+
+  <span className="flex-1">
+    Refine UI components based on user feedback
+  </span>
+
+  <span className="
+    rounded-full
+    bg-red-100
+    text-red-600
+    px-3
+    py-1
+    text-sm
+  ">
+    Urgent
+  </span>
+
+  <span className="
+    rounded-full
+    bg-red-50
+    text-red-500
+    px-3
+    py-1
+    text-sm
+  ">
+    By today
+  </span>
+
+</div>
+
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
   <div className="bg-white rounded-3xl p-6 shadow-sm">
