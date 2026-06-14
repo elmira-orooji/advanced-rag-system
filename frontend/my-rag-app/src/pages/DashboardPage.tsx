@@ -285,6 +285,37 @@ const handleSendMessage = (
   </span>
 
 </div>
+<div className="flex items-center gap-4">
+
+  <div className="w-2 h-2 rounded-full bg-blue-500" />
+
+  <span className="flex-1">
+    Prepare a prototype for usability testing
+  </span>
+
+  <span className="
+    rounded-full
+    bg-blue-100
+    text-blue-600
+    px-3
+    py-1
+    text-sm
+  ">
+    In progress
+  </span>
+
+  <span className="
+    rounded-full
+    bg-cyan-100
+    text-cyan-600
+    px-3
+    py-1
+    text-sm
+  ">
+    By tomorrow
+  </span>
+
+</div>
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
