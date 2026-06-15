@@ -6,7 +6,7 @@ import {
   FileText,
   Share2,
   Settings,
-  MoreHorizontal,
+  LogOut,
   ChevronsLeft,
   
 } from "lucide-react";
@@ -78,16 +78,8 @@ export default function SidebarV2({
             label: "My Tasks",
           },
           {
-            icon: Calendar,
-            label: "My Meetings",
-          },
-          {
-            icon: FileText,
-            label: "Saved Files",
-          },
-          {
-            icon: Share2,
-            label: "Shared with me",
+            icon: Settings,
+            label: "Settings",
           },
         ].map(
             ({
@@ -145,26 +137,27 @@ export default function SidebarV2({
     <p>Document Summary Request</p>
   </div>
 </div>
-      {/* Settings */}
-      <div className="px-6 py-6 border-t border-slate-200">
-        <button
-          className="
-            w-full
-            flex
-            items-center
-            justify-between
-            text-slate-500
-          "
-        >
-          <div className="flex items-center gap-3">
-            <Settings size={18} />
+    {/* Logout */}
+    <div className="px-6 py-6 border-t border-slate-200">
+      <button
+       className="
+        w-full
+        flex
+        items-center
+        justify-between
+        text-slate-500
+        hover:text-red-500
+        transition-colors
+      "
+      >
+        <div className="flex items-center gap-3">
+          <LogOut size={18} />
 
-            <span>Settings</span>
-          </div>
+          <span>Logout</span>
+        </div>
 
-          <MoreHorizontal size={18} />
-        </button>
-      </div>
+      </button>
+    </div>
     </aside>
   );
 }
