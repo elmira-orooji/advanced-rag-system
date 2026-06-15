@@ -132,54 +132,26 @@ export default function UploadFilesPage() {
         {files.length} documents
       </p>
     </div>
-
-    <button
-      className="
-        rounded-xl
-        bg-blue-600
-        text-white
-        px-5
-        py-3
-        text-sm
-        hover:bg-blue-700
-        transition
-      "
-    >
-      Add New
-    </button>
   </div>
 
   {/* Table Header */}
-  <div
-    className="
-      flex
-      items-center
-      px-6
-      pb-5
-      text-xs
-      font-semibold
-      uppercase
-      tracking-wider
-      text-slate-400
-    "
-  >
-    <div className="flex-1">
-      File Name
-    </div>
-
-    <div className="w-[110px] text-center">
-      Status
-    </div>
-
-    <div className="w-[90px] text-center">
-      Added
-    </div>
-
-    <div className="w-[70px] text-right">
-      Size
-    </div>
+  <div className="flex items-center px-6 pb-5 text-xs font-semibold uppercase tracking-wider text-slate-400">
+  <div className="flex-[2]">
+    File Name
   </div>
 
+  <div className="flex-1 text-center">
+    Status
+  </div>
+
+  <div className="flex-1 text-center">
+    Added
+  </div>
+
+  <div className="flex-1 text-right">
+    Size
+  </div>
+</div>
 
   {/* Files */}
 <div
@@ -213,21 +185,21 @@ export default function UploadFilesPage() {
         "
       >
         {/* File */}
-        <div className="flex-1 flex items-center gap-4 min-w-0">
-          <div
-            className="
-              w-12
-              h-12
-              rounded-2xl
-              bg-slate-50
-              flex
-              items-center
-              justify-center
-              shrink-0
-            "
-          >
+        <div className="flex-[2] flex items-center gap-4 min-w-0">
+<div
+  className="
+    w-10
+    h-10
+    rounded-xl
+    bg-slate-50
+    flex
+    items-center
+    justify-center
+    shrink-0
+  "
+>
             <FileText
-              size={22}
+              size={18}
               className="text-blue-600"
             />
           </div>
@@ -247,10 +219,10 @@ export default function UploadFilesPage() {
         </div>
 
         {/* Status */}
-        <div className="w-[110px] flex justify-center">
+        <div className="flex-1 flex justify-center">
           <span
             className={`
-              px-4
+              px-2
               py-2
               rounded-full
               text-sm
@@ -267,12 +239,12 @@ export default function UploadFilesPage() {
         </div>
 
         {/* Added */}
-        <div className="w-[90px] text-center text-slate-500">
+        <div className="flex-1 text-center text-slate-500">
           {file.added}
         </div>
 
         {/* Size */}
-        <div className="w-[70px] text-right text-slate-500">
+        <div className="flex-1 text-right text-slate-500">
           {file.size}
         </div>
       </div>
