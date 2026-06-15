@@ -126,7 +126,7 @@ export default function SidebarV2({
         )}
       </div>
 
-<div className="mt-8">
+<div className="mt-8 flex-1 overflow-y-auto">
   <p className="px-6 text-sm text-slate-400 mb-4">
     Today
   </p>
