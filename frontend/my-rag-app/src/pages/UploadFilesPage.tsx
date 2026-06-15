@@ -155,36 +155,33 @@ export default function UploadFilesPage() {
 
             {/* Table Header */}
             <div
-              className="
-                grid
-                grid-cols-12
-
-                px-4
-                pb-3
-
-                text-sm
-                font-medium
+            className="
+                flex
+                items-center
+                px-6
+                pb-5
+                text-xs
+                font-semibold
+                uppercase
+                tracking-wider
                 text-slate-400
-
-                border-b
-                border-slate-200
-              "
+            "
             >
-              <span className="col-span-5">
-                File Name
-              </span>
+            <div className="flex-1">
+            File Name
+            </div>
 
-              <span className="col-span-3">
-                Status
-              </span>
+            <div className="w-[110px] text-center">
+            Status
+            </div>
 
-              <span className="col-span-2">
-                Added
-              </span>
+            <div className="w-[90px] text-center">
+            Added
+            </div>
 
-              <span className="col-span-2 text-right">
-                Size
-              </span>
+            <div className="w-[70px] text-right">
+            Size
+            </div>
             </div>
 
             {/* Files */}
@@ -199,112 +196,123 @@ export default function UploadFilesPage() {
               "
             >
               {files.map((file) => (
-                <div
-                  key={file.name}
-                  className="
-                    grid
-                    grid-cols-12
+  <div
+    key={file.name}
+    className="
+      flex
+      items-center
 
-                    items-center
+      px-6
+      py-5
 
-                    p-4
+      rounded-3xl
 
-                    rounded-2xl
+      border
+      border-slate-100
 
-                    border
-                    border-slate-100
+      bg-white
 
-                    hover:bg-slate-50
+      mb-4
 
-                    transition
-                  "
-                >
-                  {/* Name */}
-                  <div
-                    className="
-                      col-span-5
+      hover:shadow-md
+      hover:-translate-y-1
 
-                      flex
-                      items-center
-                      gap-3
-                    "
-                  >
-                    <div
-                      className="
-                        w-10
-                        h-10
+      transition-all
+      duration-300
+    "
+  >
+    {/* File */}
+    <div className="flex-1 flex items-center gap-4 min-w-0">
+      <div
+        className="
+          w-12
+          h-12
 
-                        rounded-xl
+          rounded-2xl
 
-                        bg-blue-50
+          bg-slate-50
 
-                        flex
-                        items-center
-                        justify-center
-                      "
-                    >
-                      <FileText
-                        size={18}
-                        className="text-blue-600"
-                      />
-                    </div>
+          flex
+          items-center
+          justify-center
 
-                    <span
-                      className="
-                        font-medium
-                        text-slate-700
-                      "
-                    >
-                      {file.name}
-                    </span>
-                  </div>
+          shrink-0
+        "
+      >
+        <FileText
+          size={22}
+          className="
+            text-blue-600
+          "
+        />
+      </div>
+        <span
+        title={file.name}
+        className="
+            flex-1
+            min-w-0
 
-                  {/* Status */}
-                  <div className="col-span-3">
-                    <span
-                      className={`
-                        px-3
-                        py-1
+            font-medium
+            text-slate-800
 
-                        rounded-full
+            truncate
+        "
+        >
+        {file.name}
+      </span>
+    </div>
 
-                        text-sm
+    {/* Status */}
+    <div className="w-[110px] flex justify-center">
+      <span
+        className={`
+          px-4
+          py-2
 
-                        ${
-                          file.status === "Indexed"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-yellow-100 text-yellow-600"
-                        }
-                      `}
-                    >
-                      {file.status}
-                    </span>
-                  </div>
+          rounded-full
 
-                  {/* Added */}
-                  <span
-                    className="
-                      col-span-2
+          text-sm
+          font-medium
 
-                      text-slate-500
-                    "
-                  >
-                    {file.added}
-                  </span>
+          ${
+            file.status === "Indexed"
+              ? "bg-green-100 text-green-600"
+              : "bg-yellow-100 text-yellow-600"
+          }
+        `}
+      >
+        {file.status}
+      </span>
+    </div>
 
-                  {/* Size */}
-                  <span
-                    className="
-                      col-span-2
+    {/* Added */}
+    <div
+      className="
+        w-[90px]
 
-                      text-right
-                      text-slate-500
-                    "
-                  >
-                    {file.size}
-                  </span>
-                </div>
-              ))}
+        text-center
+
+        text-slate-500
+      "
+    >
+      {file.added}
+    </div>
+
+    {/* Size */}
+    <div
+      className="
+        w-[70px]
+
+        text-right
+
+        text-slate-500
+      "
+    >
+      {file.size}
+    </div>
+  </div>
+))}
+              
             </div>
           </div>
         </div>
