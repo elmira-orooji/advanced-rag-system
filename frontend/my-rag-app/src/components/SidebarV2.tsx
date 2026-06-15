@@ -11,11 +11,22 @@ import { useState } from "react";
 
 interface SidebarV2Props {
   sessions: ChatSession[];
+
   activeSessionId: string | null;
+
   onSelectChat: (id: string) => void;
+
+  setActivePage: (page: string) => void;
+
+  activePage: string;
 }
 
 export default function SidebarV2({
+  sessions,
+  activeSessionId,
+  onSelectChat,
+  setActivePage,
+  activePage,
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -136,9 +147,11 @@ export default function SidebarV2({
       <div className="px-4 space-y-2">
         {[
           {
-            icon: Home,
-            label: "Home",
-            active: true,
+          icon: Home,
+          label: "Home",
+          active: activePage === "dashboard",
+          onClick: () =>
+          setActivePage("dashboard"),
           },
           {
             icon: CheckSquare,
@@ -147,6 +160,8 @@ export default function SidebarV2({
           {
             icon: Upload,
             label: "Upload Files",
+            active: activePage === "upload",
+            onClick: () => setActivePage("upload"),
           },
           {
             icon: Settings,
@@ -157,10 +172,12 @@ export default function SidebarV2({
             icon: Icon,
             label,
             active,
+            onClick,
           }) => (
             <button
               key={label}
               title={label}
+              onClick={onClick}
               className={`
                 w-full
 
