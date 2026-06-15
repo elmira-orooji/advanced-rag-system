@@ -4,6 +4,7 @@ import {
   CheckSquare,
   Settings,
   LogOut,
+  Upload,
   ChevronsLeft,
 } from "lucide-react";
 import type { ChatSession } from "../types/chat";
@@ -143,13 +144,12 @@ export default function SidebarV2({
             active: true,
           },
           {
-            icon: Sparkles,
-            label: "New Chat",
-            onClick: onNewChat,
-          },
-          {
             icon: CheckSquare,
             label: "My Tasks",
+          },
+          {
+            icon: Upload,
+            label: "Upload Files",
           },
           {
             icon: Settings,
