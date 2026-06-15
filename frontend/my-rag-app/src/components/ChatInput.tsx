@@ -41,7 +41,7 @@ export default function ChatInput({
 {/* Input */}
 <input
   type="text"
-  placeholder="Ask or search for anything. Use @ to tag a file or collection."
+  placeholder="     Ask or search for anything. Use @ to tag a file or collection."
   value={value}
   onChange={(e) => setValue(e.target.value)}
   className="
