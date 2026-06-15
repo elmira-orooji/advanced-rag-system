@@ -114,14 +114,7 @@ export default function ChatInput({
           whitespace-nowrap
         "
       >
-        <AtSign
-          size={18}
-          className="text-slate-400"
-        />
 
-        <span className="font-medium">
-          Select sources
-        </span>
       </motion.div>
 
       <motion.div
@@ -155,58 +148,6 @@ export default function ChatInput({
         <span className="font-medium">
           Upload Files
         </span>
-      </motion.div>
-
-      <motion.div
-        initial={{
-          opacity: 0,
-          x: -10,
-        }}
-
-        animate={{
-          opacity: 1,
-          x: 0,
-        }}
-
-        transition={{
-          delay: 0.35,
-          duration: 0.3,
-        }}
-
-        className="
-          flex
-          items-center
-          gap-3
-          whitespace-nowrap
-        "
-      >
-        <Globe
-          size={18}
-          className="text-slate-400"
-        />
-
-        <span className="font-medium">
-          Search Web
-        </span>
-
-        <div className="
-          w-11
-          h-6
-          rounded-full
-          bg-green-500
-          relative
-        ">
-          <div className="
-            absolute
-            top-0.5
-            right-0.5
-            w-5
-            h-5
-            rounded-full
-            bg-white
-          " />
-        </div>
-
       </motion.div>
 
     </motion.div>
