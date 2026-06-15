@@ -5,7 +5,7 @@ import {
   useChatHistory,
 } from "../hooks/useChatHistory";
 import ChatWindow from "../components/ChatWindow";
-
+import { Search,ArrowRight} from "lucide-react";
 
 
 export default function DasboardPage() {
@@ -107,27 +107,97 @@ const handleSendMessage = (
 
 
   {/* Tasks */}
-          <div
+    <div
         className="
-          rounded-3xl
+        rounded-3xl
+        bg-white
+        p-6
+        border
+        border-slate-100
+        shadow-sm
+        space-y-3
+      "
+    >
+
+
+  {/* Task Header */}
+  <div className="flex items-center justify-between mb-6">
+
+  <div className="flex items-center gap-5">
+
+    <h2 className="text-2xl font-semibold flex items-center">
+      My Tasks
+
+      <span className="ml-2 text-slate-400 font-normal text-xl">
+        13
+      </span>
+    </h2>
+
+    <div className="relative w-[190px]">
+      <Search
+        size={16}
+        className="
+          absolute
+          left-4
+          top-1/2
+          -translate-y-1/2
+          text-slate-400
+        "
+      />
+      
+      <input
+        placeholder="Search ..."
+        className="
+          w-full
+          h-10
+          rounded-full
+          border border-slate-200
           bg-white
-          p-6
-          border
-          border-slate-100
-          shadow-sm
-          space-y-2
+          pl-10
+          pr-10
+          text-sm
+          placeholder:text-slate-400
+          outline-none
+          focus:ring-2
+          focus:ring-slate-100
+        "
+      />
+
+      <button
+        className="
+          absolute
+          right-2
+          top-1/2
+          -translate-y-1/2
+
+          w-8
+          h-8
+
+          rounded-full
+          bg-slate-100
+
+          flex
+          items-center
+          justify-center
+
+          hover:bg-slate-200
           transition-all
-          duration-500
-          ease-out
+          duration-300
 
-          hover:-translate-y-2
-          hover:scale-[1.02]
-          hover:bg-[#9FD7FF]
-          hover:shadow-xl
-
-          cursor-pointer
+          shrink-0
         "
       >
+        <ArrowRight
+          size={16}
+          className="text-slate-500"
+        />
+      </button>
+    </div>
+
+  </div>
+
+</div>
+
 
     {/* Task 1 */}
     <div className="flex items-center gap-3">
