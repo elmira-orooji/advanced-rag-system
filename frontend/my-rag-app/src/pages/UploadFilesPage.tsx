@@ -27,12 +27,12 @@ export default function UploadFilesPage() {
 
   return (
     <div className="flex-1 p-8 overflow-hidden">
-      <div className="grid grid-cols-5 gap-6 h-full">
+      <div className="grid grid-cols-12 gap-6 h-full">
 
         {/* Left Side */}
             <div
             className="
-                col-span-2
+                col-span-5
 
                 flex
                 flex-col
@@ -110,8 +110,7 @@ export default function UploadFilesPage() {
     flex
     flex-col
 
-    flex-1
-    min-h-0
+    h-[260px]
   "
 >
   {/* Header */}
@@ -282,7 +281,7 @@ export default function UploadFilesPage() {
 </div>
 
         {/* Right Side - Chat */}
-        <div className="col-span-3 h-full">
+        <div className="col-span-7 h-[620px]">
           <div
             className="
               bg-white
@@ -363,10 +362,12 @@ export default function UploadFilesPage() {
                     </div>
 
                     {/* Existing Input */}
-                    <ChatInput
+                <div className="px-6 pb-6 pt-2">
+                <ChatInput
                     disabled={false}
                     onSend={() => {}}
-            />
+                />
+                </div>
           </div>
         </div>
       </div>
