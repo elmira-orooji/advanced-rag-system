@@ -85,7 +85,7 @@ export default function ChatInput({
       className="
         flex
         items-center
-        gap-8
+        gap-1
         overflow-hidden
         ml-4
       "
