@@ -47,6 +47,7 @@ export default function ChatInput({
         flex items-center justify-center
         text-purple-500
         transition-all duration-300
+        cursor-pointer
       "
     >
       {showActions ? (
@@ -242,6 +243,7 @@ export default function ChatInput({
       flex items-center justify-center
       hover:bg-slate-200
       transition
+      cursor-pointer
     "
   >
     <ArrowRight size={20} />
