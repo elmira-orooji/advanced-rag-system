@@ -204,8 +204,14 @@ export default function SidebarV2({
     }
   `}
 >
-                <Icon size={18} className="shrink-0" />
-
+                <Icon
+                  size={collapsed ? 24 : 18}
+                  className={`
+                    shrink-0
+                    transition-all
+                    duration-300
+                  `}
+                />
                 <span
                   className={`
                     whitespace-nowrap
@@ -275,7 +281,10 @@ export default function SidebarV2({
             transition-colors
           `}
         >
-          <LogOut size={18} />
+          <LogOut
+              size={collapsed ? 24 : 18}
+              className="transition-all duration-300"
+            />
 
           <span
             className={`
