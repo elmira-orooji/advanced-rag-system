@@ -107,7 +107,27 @@ const handleSendMessage = (
 
 
   {/* Tasks */}
-  <div className=" space-y-3 bg-white rounded-[28px] border border-slate-200 p-8 shadow-sm mt-5">
+          <div
+        className="
+          rounded-3xl
+          bg-white
+          p-6
+          border
+          border-slate-100
+          shadow-sm
+          space-y-2
+          transition-all
+          duration-500
+          ease-out
+
+          hover:-translate-y-2
+          hover:scale-[1.02]
+          hover:bg-[#9FD7FF]
+          hover:shadow-xl
+
+          cursor-pointer
+        "
+      >
 
     {/* Task 1 */}
     <div className="flex items-center gap-3">
@@ -251,7 +271,27 @@ const handleSendMessage = (
 
       <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
-  <div className="bg-white rounded-3xl p-6 shadow-sm">
+        <div
+        className="
+          rounded-3xl
+          bg-white
+          p-6
+          border
+          border-slate-100
+          shadow-sm
+
+          transition-all
+          duration-500
+          ease-out
+
+          hover:-translate-y-2
+          hover:scale-[1.02]
+          hover:bg-[#9FD7FF]
+          hover:shadow-xl
+
+          cursor-pointer
+        "
+      >
     <h3 className="font-semibold text-slate-900">
       Recent Documents
     </h3>
@@ -261,7 +301,27 @@ const handleSendMessage = (
     </p>
   </div>
 
-  <div className="bg-white rounded-3xl p-6 shadow-sm">
+          <div
+        className="
+          rounded-3xl
+          bg-white
+          p-6
+          border
+          border-slate-100
+          shadow-sm
+
+          transition-all
+          duration-500
+          ease-out
+
+          hover:-translate-y-2
+          hover:scale-[1.02]
+          hover:bg-[#9FD7FF]
+          hover:shadow-xl
+
+          cursor-pointer
+        "
+      >
     <h3 className="font-semibold text-slate-900">
       Pending Tasks
     </h3>
@@ -271,7 +331,27 @@ const handleSendMessage = (
     </p>
   </div>
 
-  <div className="bg-white rounded-3xl p-6 shadow-sm">
+          <div
+        className="
+          rounded-3xl
+          bg-white
+          p-6
+          border
+          border-slate-100
+          shadow-sm
+
+          transition-all
+          duration-500
+          ease-out
+
+          hover:-translate-y-2
+          hover:scale-[1.02]
+          hover:bg-[#9FD7FF]
+          hover:shadow-xl
+
+          cursor-pointer
+        "
+      >
     <h3 className="font-semibold text-slate-900">
       Knowledge Base
     </h3>
