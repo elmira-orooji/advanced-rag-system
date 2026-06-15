@@ -1,7 +1,5 @@
 import { useState } from "react";
 import {
-  Plus,
-  X,
   AtSign,
   Link,
   Globe,
@@ -24,8 +22,6 @@ export default function ChatInput({
   const [value, setValue] =
     useState("");
 
-  const [showActions, setShowActions] = useState(false);
-
   const handleSend = () => {
     if (
       !value.trim() ||
@@ -41,108 +37,7 @@ export default function ChatInput({
   return (
     <div className="flex items-center bg-white rounded-full border border-slate-200 px-4 py-3 shadow-sm">
 
-    <AnimatePresence>
-
-  {showActions && (
-
-    <motion.div
-      initial={{
-        width: 0,
-        opacity: 0,
-      }}
-
-      animate={{
-        width: "auto",
-        opacity: 1,
-      }}
-
-      exit={{
-        width: 0,
-        opacity: 0,
-      }}
-
-      transition={{
-        duration: 0.7,
-        ease: [0.16, 1, 0.3, 1],
-      }}
-
-      className="
-        flex
-        items-center
-        gap-1
-        overflow-hidden
-        ml-4
-      "
-    >
-
-      <motion.div
-        initial={{
-          opacity: 0,
-          x: -10,
-        }}
-
-        animate={{
-          opacity: 1,
-          x: 0,
-        }}
-
-        transition={{
-          delay: 0.15,
-          duration: 0.3,
-        }}
-
-        className="
-          flex
-          items-center
-          gap-2
-          whitespace-nowrap
-        "
-      >
-
-      </motion.div>
-
-      <motion.div
-        initial={{
-          opacity: 0,
-          x: -10,
-        }}
-
-        animate={{
-          opacity: 1,
-          x: 0,
-        }}
-
-        transition={{
-          delay: 0.25,
-          duration: 0.3,
-        }}
-
-        className="
-          flex
-          items-center
-          gap-2
-          whitespace-nowrap
-        "
-      >
-        <Link
-          size={18}
-          className="text-slate-400"
-        />
-
-        <span className="font-medium">
-          Upload Files
-        </span>
-      </motion.div>
-
-    </motion.div>
-
-  )}
-
-</AnimatePresence>
-
-{/* Divider */}
-<div className="w-px h-6 bg-slate-200 mx-6" />
-
+    
 {/* Input */}
 <input
   type="text"
