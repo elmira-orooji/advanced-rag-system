@@ -134,23 +134,36 @@ export default function UploadFilesPage() {
     </div>
   </div>
 
-  {/* Table Header */}
-  <div className="flex items-center px-6 pb-5 text-xs font-semibold uppercase tracking-wider text-slate-400">
-  <div className="flex-[2]">
+ {/* Table Header */}
+<div
+  className="
+    grid
+    grid-cols-[4fr_2fr_2fr_1fr]
+    items-center
+    px-6
+    pb-5
+    text-xs
+    font-semibold
+    uppercase
+    tracking-wider
+    text-slate-400
+  "
+>
+  <div className="pl-[10px]">
     File Name
   </div>
 
-  <div className="flex-1 text-center">
+  <div className=" flex justify-center">
     Status
   </div>
 
-  <div className="flex-1 text-center">
+  <div className="flex justify-center">
     Added
   </div>
 
-  <div className="flex-1 text-right">
-    Size
-  </div>
+  <div className="flex justify-end whitespace-nowrap">
+  Size
+</div>
 </div>
 
   {/* Files */}
@@ -170,22 +183,28 @@ export default function UploadFilesPage() {
       <div
         key={file.name}
         className="
-          flex
-          items-center
-          px-6
-          py-5
-          rounded-3xl
-          border
-          border-slate-100
-          bg-white
-          hover:shadow-md
-          hover:-translate-y-1
-          transition-all
-          duration-300
-        "
+  grid
+  grid-cols-[4fr_2fr_2fr_1fr]
+  items-center
+
+  px-6
+  py-5
+
+  rounded-3xl
+  border
+  border-slate-100
+
+  bg-white
+
+  hover:shadow-md
+  hover:-translate-y-1
+
+  transition-all
+  duration-300
+"
       >
         {/* File */}
-        <div className="flex-[2] flex items-center gap-4 min-w-0">
+        <div className="flex items-center gap-4 min-w-0">
 <div
   className="
     w-10
@@ -219,7 +238,7 @@ export default function UploadFilesPage() {
         </div>
 
         {/* Status */}
-        <div className="flex-1 flex justify-center">
+        <div className="flex justify-center">
           <span
             className={`
               px-2
@@ -238,15 +257,24 @@ export default function UploadFilesPage() {
           </span>
         </div>
 
-        {/* Added */}
-        <div className="flex-1 text-center text-slate-500">
-          {file.added}
-        </div>
+{/* Added */}
+<div className="flex justify-center text-slate-500">
+  {file.added}
+</div>
 
-        {/* Size */}
-        <div className="flex-1 text-right text-slate-500">
-          {file.size}
-        </div>
+{/* Size */}
+<div
+  className="
+    flex
+    justify-end
+
+    text-slate-500
+
+    whitespace-nowrap
+  "
+>
+  {file.size}
+</div>
       </div>
     ))}
   </div>
