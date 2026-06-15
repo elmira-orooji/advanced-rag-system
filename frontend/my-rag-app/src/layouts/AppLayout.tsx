@@ -13,7 +13,6 @@ export default function AppLayout({
     sessions,
     activeSessionId,
     setActiveSessionId,
-    createNewChat,
   } = useChatHistory();
 
   return (
@@ -22,7 +21,7 @@ export default function AppLayout({
         sessions={sessions}
         activeSessionId={activeSessionId}
         onSelectChat={setActiveSessionId}
-        onNewChat={createNewChat}
+    
       />
 
       <main className="flex-1 overflow-hidden">

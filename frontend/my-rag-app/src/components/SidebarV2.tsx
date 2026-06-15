@@ -1,6 +1,5 @@
 import {
   Home,
-  Sparkles,
   CheckSquare,
   Settings,
   LogOut,
@@ -14,11 +13,9 @@ interface SidebarV2Props {
   sessions: ChatSession[];
   activeSessionId: string | null;
   onSelectChat: (id: string) => void;
-  onNewChat: () => void;
 }
 
 export default function SidebarV2({
-  onNewChat,
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
 
@@ -160,12 +157,10 @@ export default function SidebarV2({
             icon: Icon,
             label,
             active,
-            onClick,
           }) => (
             <button
               key={label}
               title={label}
-              onClick={onClick}
               className={`
                 w-full
 
