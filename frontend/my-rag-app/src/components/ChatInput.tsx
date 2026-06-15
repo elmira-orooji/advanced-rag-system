@@ -40,22 +40,6 @@ export default function ChatInput({
 
   return (
     <div className="flex items-center bg-white rounded-full border border-slate-200 px-4 py-3 shadow-sm">
-    <button
-      onClick={() => setShowActions(!showActions)}
-      className="
-        w-10 h-10
-        flex items-center justify-center
-        text-purple-500
-        transition-all duration-300
-        cursor-pointer
-      "
-    >
-      {showActions ? (
-        <X size={22} />
-      ) : (
-        <Plus size={22} />
-      )}
-    </button>
 
     <AnimatePresence>
 
