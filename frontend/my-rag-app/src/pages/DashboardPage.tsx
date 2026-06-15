@@ -5,7 +5,7 @@ import {
   useChatHistory,
 } from "../hooks/useChatHistory";
 import ChatWindow from "../components/ChatWindow";
-import { Search,ArrowRight} from "lucide-react";
+import { Search,ArrowRight,ListTodo} from "lucide-react";
 
 
 export default function DasboardPage() {
@@ -125,10 +125,17 @@ const handleSendMessage = (
 
   <div className="flex items-center gap-5">
 
-    <h2 className="text-2xl font-semibold flex items-center">
-      My Tasks
+    <h2 className="text-2xl font-semibold flex items-center gap-2">
+      <ListTodo
+        size={20}
+        className="text-slate-400"
+      />
 
-      <span className="ml-2 text-slate-400 font-normal text-xl">
+      <span>
+        My Tasks
+      </span>
+
+      <span className="text-slate-400 font-normal text-xl">
         13
       </span>
     </h2>
