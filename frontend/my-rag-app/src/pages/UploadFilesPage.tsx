@@ -30,7 +30,18 @@ export default function UploadFilesPage() {
       <div className="grid grid-cols-5 gap-6 h-full">
 
         {/* Left Side */}
-        <div className="col-span-2 flex flex-col gap-6">
+            <div
+            className="
+                col-span-2
+
+                flex
+                flex-col
+
+                gap-6
+
+                h-[calc(100vh-100px)]
+            "
+            >
 
           {/* Header */}
           <div>
@@ -53,7 +64,7 @@ export default function UploadFilesPage() {
               border-slate-300
 
               h-[240px]
-
+              shrink-0
               flex
               flex-col
               items-center
@@ -88,234 +99,187 @@ export default function UploadFilesPage() {
             </p>
           </div>
 
-          {/* Knowledge Base */}
-          <div
-            className="
-              flex-1
+{/* Knowledge Base */}
+<div
+  className="
+    bg-white
+    rounded-3xl
+    border border-slate-200
+    p-6
 
-              bg-white
-              rounded-3xl
+    flex
+    flex-col
 
-              border
-              border-slate-200
-
-              p-6
-
-              overflow-hidden
-
-              flex
-              flex-col
-            "
-          >
-            {/* Header */}
-            <div
-              className="
-                flex
-                items-center
-                justify-between
-
-                mb-6
-              "
-            >
-              <div>
-                <h2
-                  className="
-                    text-2xl
-                    font-semibold
-                  "
-                >
-                  Knowledge Base
-                </h2>
-
-                <p className="text-slate-400">
-                  {files.length} documents
-                </p>
-              </div>
-
-              <button
-                className="
-                  rounded-xl
-
-                  bg-blue-600
-                  text-white
-
-                  px-4
-                  py-2
-
-                  text-sm
-
-                  hover:bg-blue-700
-
-                  transition
-                "
-              >
-                Add New
-              </button>
-            </div>
-
-            {/* Table Header */}
-            <div
-            className="
-                flex
-                items-center
-                px-6
-                pb-5
-                text-xs
-                font-semibold
-                uppercase
-                tracking-wider
-                text-slate-400
-            "
-            >
-            <div className="flex-1">
-            File Name
-            </div>
-
-            <div className="w-[110px] text-center">
-            Status
-            </div>
-
-            <div className="w-[90px] text-center">
-            Added
-            </div>
-
-            <div className="w-[70px] text-right">
-            Size
-            </div>
-            </div>
-
-            {/* Files */}
-            <div
-              className="
-                flex-1
-                overflow-y-auto
-
-                mt-4
-
-                space-y-3
-              "
-            >
-              {files.map((file) => (
+    flex-1
+    min-h-0
+  "
+>
+  {/* Header */}
   <div
-    key={file.name}
     className="
       flex
       items-center
-
-      px-6
-      py-5
-
-      rounded-3xl
-
-      border
-      border-slate-100
-
-      bg-white
-
-      mb-4
-
-      hover:shadow-md
-      hover:-translate-y-1
-
-      transition-all
-      duration-300
+      justify-between
+      mb-6
     "
   >
-    {/* File */}
-    <div className="flex-1 flex items-center gap-4 min-w-0">
-      <div
-        className="
-          w-12
-          h-12
+    <div>
+      <h2 className="text-2xl font-semibold">
+        Knowledge Base
+      </h2>
 
-          rounded-2xl
-
-          bg-slate-50
-
-          flex
-          items-center
-          justify-center
-
-          shrink-0
-        "
-      >
-        <FileText
-          size={22}
-          className="
-            text-blue-600
-          "
-        />
-      </div>
-        <span
-        title={file.name}
-        className="
-            flex-1
-            min-w-0
-
-            font-medium
-            text-slate-800
-
-            truncate
-        "
-        >
-        {file.name}
-      </span>
+      <p className="text-slate-400">
+        {files.length} documents
+      </p>
     </div>
 
-    {/* Status */}
-    <div className="w-[110px] flex justify-center">
-      <span
-        className={`
-          px-4
-          py-2
-
-          rounded-full
-
-          text-sm
-          font-medium
-
-          ${
-            file.status === "Indexed"
-              ? "bg-green-100 text-green-600"
-              : "bg-yellow-100 text-yellow-600"
-          }
-        `}
-      >
-        {file.status}
-      </span>
-    </div>
-
-    {/* Added */}
-    <div
+    <button
       className="
-        w-[90px]
-
-        text-center
-
-        text-slate-500
+        rounded-xl
+        bg-blue-600
+        text-white
+        px-5
+        py-3
+        text-sm
+        hover:bg-blue-700
+        transition
       "
     >
-      {file.added}
+      Add New
+    </button>
+  </div>
+
+  {/* Table Header */}
+  <div
+    className="
+      flex
+      items-center
+      px-6
+      pb-5
+      text-xs
+      font-semibold
+      uppercase
+      tracking-wider
+      text-slate-400
+    "
+  >
+    <div className="flex-1">
+      File Name
     </div>
 
-    {/* Size */}
-    <div
-      className="
-        w-[70px]
+    <div className="w-[110px] text-center">
+      Status
+    </div>
 
-        text-right
+    <div className="w-[90px] text-center">
+      Added
+    </div>
 
-        text-slate-500
-      "
-    >
-      {file.size}
+    <div className="w-[70px] text-right">
+      Size
     </div>
   </div>
-))}
-              
-            </div>
+
+
+  {/* Files */}
+<div
+  className="
+    flex-1
+    min-h-0
+
+    overflow-y-auto
+
+    space-y-4
+
+    pr-2
+  "
+>
+    {files.map((file) => (
+      <div
+        key={file.name}
+        className="
+          flex
+          items-center
+          px-6
+          py-5
+          rounded-3xl
+          border
+          border-slate-100
+          bg-white
+          hover:shadow-md
+          hover:-translate-y-1
+          transition-all
+          duration-300
+        "
+      >
+        {/* File */}
+        <div className="flex-1 flex items-center gap-4 min-w-0">
+          <div
+            className="
+              w-12
+              h-12
+              rounded-2xl
+              bg-slate-50
+              flex
+              items-center
+              justify-center
+              shrink-0
+            "
+          >
+            <FileText
+              size={22}
+              className="text-blue-600"
+            />
           </div>
+
+          <span
+            title={file.name}
+            className="
+              flex-1
+              min-w-0
+              font-medium
+              text-slate-800
+              truncate
+            "
+          >
+            {file.name}
+          </span>
         </div>
+
+        {/* Status */}
+        <div className="w-[110px] flex justify-center">
+          <span
+            className={`
+              px-4
+              py-2
+              rounded-full
+              text-sm
+              font-medium
+              ${
+                file.status === "Indexed"
+                  ? "bg-green-100 text-green-600"
+                  : "bg-yellow-100 text-yellow-600"
+              }
+            `}
+          >
+            {file.status}
+          </span>
+        </div>
+
+        {/* Added */}
+        <div className="w-[90px] text-center text-slate-500">
+          {file.added}
+        </div>
+
+        {/* Size */}
+        <div className="w-[70px] text-right text-slate-500">
+          {file.size}
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+</div>
 
         {/* Right Side - Chat */}
         <div className="col-span-3 h-full">
@@ -333,7 +297,6 @@ export default function UploadFilesPage() {
               flex
               flex-col
 
-              overflow-hidden
             "
           >
             {/* Header */}
