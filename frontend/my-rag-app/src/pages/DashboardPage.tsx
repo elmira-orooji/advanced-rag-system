@@ -356,10 +356,12 @@ const handleSendMessage = (
       />
 
       <div className="mt-auto sticky bottom-0 pb-4">
-      <ChatInput
-        disabled={isThinking}
-        onSend={handleSendMessage}
-      />
+      <div className="mt-16">
+        <ChatInput
+          disabled={isThinking}
+          onSend={handleSendMessage}
+        />
+      </div>
     </div>
 
     </main>
