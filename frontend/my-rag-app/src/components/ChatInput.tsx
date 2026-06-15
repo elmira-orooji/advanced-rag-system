@@ -232,6 +232,20 @@ export default function ChatInput({
   "
 />
 
+{/* Send */}
+  <button
+    onClick={handleSend}
+    className="
+      w-12 h-12
+      rounded-full
+      bg-slate-100
+      flex items-center justify-center
+      hover:bg-slate-200
+      transition
+    "
+  >
+    <ArrowRight size={20} />
+  </button>
 </div>
 );
 }
