@@ -15,17 +15,18 @@ export default function AppLayout() {
     setActiveSessionId,
   } = useChatHistory();
 
-  const [activePage, setActivePage] = useState("dashboard");
+  const [activePage, setActivePage] =
+  useState<"home" | "tasks" | "upload">("home");
   
   return (
     <div className="flex h-screen bg-[#F6F8FC]">
-      <SidebarV2
-        sessions={sessions}
-        activeSessionId={activeSessionId}
-        onSelectChat={setActiveSessionId}
-        setActivePage={setActivePage}
-        activePage={activePage}
-      />
+    <SidebarV2
+      sessions={sessions}
+      activeSessionId={activeSessionId}
+      onSelectChat={setActiveSessionId}
+      activePage={activePage}
+      setActivePage={setActivePage}
+    />
 
       <main className="flex-1 min-h-0 overflow-hidden">
 

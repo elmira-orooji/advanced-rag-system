@@ -16,9 +16,12 @@ interface SidebarV2Props {
 
   onSelectChat: (id: string) => void;
 
-  setActivePage: (page: string) => void;
-
   activePage: string;
+
+    setActivePage: (
+        page: "home" | "tasks" | "upload"
+                        ) => void;
+
 }
 
 export default function SidebarV2({
@@ -149,13 +152,16 @@ export default function SidebarV2({
           {
           icon: Home,
           label: "Home",
-          active: activePage === "dashboard",
+          active: activePage === "home",
           onClick: () =>
-          setActivePage("dashboard"),
+          setActivePage("home"),
           },
           {
             icon: CheckSquare,
             label: "My Tasks",
+            active: activePage === "tasks",
+            onClick: () =>
+            setActivePage("tasks"),
           },
           {
             icon: Upload,
