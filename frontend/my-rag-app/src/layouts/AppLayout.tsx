@@ -4,6 +4,7 @@ import { useChatHistory } from "../hooks/useChatHistory";
 import { useState } from "react";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import DashboardPage from "../pages/DashboardPage";
+import TasksPage from "../pages/TasksPage";
 interface AppLayoutProps {
   children: ReactNode;
 }
@@ -34,6 +35,10 @@ export default function AppLayout() {
           <DashboardPage />
         )}
 
+          {activePage === "tasks" && (
+            <TasksPage />
+          )}
+          
         {activePage === "upload" && (
           <UploadFilesPage />
         )}
