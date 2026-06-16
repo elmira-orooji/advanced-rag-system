@@ -13,17 +13,22 @@ import { Search,ArrowRight,ListTodo} from "lucide-react";
 export default function DasboardPage() {
   
 
-  const [isThinking,setIsThinking, ] = useState(false);
+const [isThinking,setIsThinking, ] = useState(false);
   
-  const {
+const {
   sessions,
   activeSession,
   activeSessionId,
   createNewChat,
-
   addMessage,
- } = useChatHistory();
+} = useChatHistory();
 
+
+
+const hasMessages =
+  (activeSession?.messages.length ?? 0) > 0;
+
+  console.log("messages:", activeSession?.messages);
   useEffect(() => {
   if (sessions.length === 0) {
     createNewChat();
@@ -35,7 +40,7 @@ const handleSendMessage = (
 ) => {
   if (!activeSessionId)
     return;
-
+console.log(activeSession?.messages);
   const userMessage = {
     id: crypto.randomUUID(),
 
@@ -93,25 +98,25 @@ const handleSendMessage = (
 
   return (
   <>
-  return (
-  <motion.div
-    initial={{
-      opacity: 0,
-      y: 20,
-      filter: "blur(8px)",
-    }}
-    animate={{
-      opacity: 1,
-      y: 0,
-      filter: "blur(0px)",
-    }}
-    transition={{
-      duration: 0.55,
-      ease: [0.22, 1, 0.36, 1],
-    }}
-    className="flex-1 p-8"
-  >
-    <main className="flex-1 p-8 flex flex-col gap-8">
+
+<motion.div
+  initial={{
+    opacity: 0,
+    y: 20,
+    filter: "blur(8px)",
+  }}
+  animate={{
+    opacity: 1,
+    y: 0,
+    filter: "blur(0px)",
+  }}
+  transition={{
+    duration: 0.55,
+    ease: [0.22, 1, 0.36, 1],
+  }}
+  className="flex flex-1 flex-col h-full overflow-hidden"
+>
+  <main className="flex-1 p-8 flex flex-col">
 
        {/* Header */}
     <div className="mb-12">
@@ -124,19 +129,13 @@ const handleSendMessage = (
       </p>
     </div>
 
-      <ChatWindow
-        messages={activeSession?.messages ?? []}
-        isThinking={isThinking}
-      />
-
-      <div className="mt-auto sticky bottom-0 pb-4">
-      <div className="mt-16">
+<div className="flex-1" />
+      <div className="pt-8">
         <ChatInput
           disabled={isThinking}
           onSend={handleSendMessage}
         />
       </div>
-    </div>
 
     </main>
     </motion.div>
