@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useEffect } from "react";
 import ChatInput from "../components/ChatInput";
 import TasksPage from "../pages/TasksPage";
+import { motion } from "framer-motion";
 import {
   useChatHistory,
 } from "../hooks/useChatHistory";
@@ -92,7 +93,24 @@ const handleSendMessage = (
 
   return (
   <>
-  <div className="h-full flex flex-col">
+  return (
+  <motion.div
+    initial={{
+      opacity: 0,
+      y: 20,
+      filter: "blur(8px)",
+    }}
+    animate={{
+      opacity: 1,
+      y: 0,
+      filter: "blur(0px)",
+    }}
+    transition={{
+      duration: 0.55,
+      ease: [0.22, 1, 0.36, 1],
+    }}
+    className="flex-1 p-8"
+  >
     <main className="flex-1 p-8 flex flex-col gap-8">
 
        {/* Header */}
@@ -121,6 +139,6 @@ const handleSendMessage = (
     </div>
 
     </main>
-    </div>
+    </motion.div>
   </>
 )}
