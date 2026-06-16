@@ -39,24 +39,22 @@ export default function UploadFilesPage() {
           transition={{
             duration: 0.5,
           }}
-          className="flex-1 p-8 overflow-hidden"
+          className="flex-1 overflow-hidden"
         >
-      <div className="grid grid-cols-12 gap-6 h-full">
+      <div className="grid grid-cols-12 h-full">
 
         {/* Left Side */}
             <div
-            className="
-                col-span-5
-
-                flex
-                flex-col
-
-                gap-6
-
-                h-[calc(100vh-100px)]
-            "
-            >
-
+className="
+  col-span-5
+  flex
+  flex-col
+  gap-8
+  px-8
+  py-8
+  bg-[#F8FAFC]
+"
+>
           {/* Header */}
           <div>
             <h1 className="text-4xl font-bold text-slate-900">
@@ -72,7 +70,7 @@ export default function UploadFilesPage() {
           <div
             className="
               bg-white
-              rounded-3xl
+              rounded-2xl
               border-2
               border-dashed
               border-slate-300
@@ -116,15 +114,14 @@ export default function UploadFilesPage() {
 {/* Knowledge Base */}
 <div
   className="
-    bg-white
-    rounded-3xl
-    border border-slate-200
-    p-6
-
     flex
     flex-col
 
-    h-[260px]
+    h-[320px]
+
+    pt-2
+
+    min-h-0
   "
 >
   {/* Header */}
@@ -187,9 +184,9 @@ export default function UploadFilesPage() {
 
     overflow-y-auto
 
-    space-y-4
+    space-y-2
 
-    pr-2
+    pr-1
   "
 >
     {files.map((file) => (
@@ -201,13 +198,12 @@ export default function UploadFilesPage() {
   items-center
 
   px-6
-  py-5
+  py-1
 
-  rounded-3xl
-  border
-  border-slate-100
-
-  bg-white
+rounded-2xl
+bg-white
+border
+border-slate-100
 
   hover:shadow-md
   hover:-translate-y-1
@@ -295,27 +291,23 @@ export default function UploadFilesPage() {
 </div>
 
         {/* Right Side - Chat */}
-        <div className="col-span-7 h-[620px]">
+        <div className="col-span-7 h-screen">
           <div
-            className="
-              bg-white
+className="
+  bg-white
+  border-l
+  border-slate-200
 
-              rounded-3xl
+  h-full
 
-              border
-              border-slate-200
-
-              h-full
-
-              flex
-              flex-col
-
-            "
+  flex
+  flex-col
+"
           >
             {/* Header */}
             <div
               className="
-                px-6
+                px-8
                 py-5
 
                 border-b
@@ -368,7 +360,7 @@ export default function UploadFilesPage() {
             </div>
 
                     {/* Existing Chat */}
-                    <div className="flex-1 overflow-hidden">
+                    <div className="flex-1 overflow-y-auto px-8 py-6">
                     <ChatWindow
                         messages={[]}
                         isThinking={false}
@@ -376,7 +368,7 @@ export default function UploadFilesPage() {
                     </div>
 
                     {/* Existing Input */}
-                <div className="px-6 pb-6 pt-2">
+                <div className="px-8 py-6 border-t border-slate-200">
                 <ChatInput
                     disabled={false}
                     onSend={() => {}}
