@@ -1,178 +1,468 @@
+// src/pages/TasksPage.tsx
+
+import { useState } from "react";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   ListTodo,
   Search,
+  MessageSquare,
 } from "lucide-react";
 
+import ChatWindow from "../components/ChatWindow";
+import ChatInput from "../components/ChatInput";
+
+import type {
+  ChatMessage,
+} from "../types/chat";
+
+const initialMessages: ChatMessage[] = [
+  {
+    id: "1",
+    role: "assistant",
+    content:
+      "Hello! I can help you organize and prioritize your tasks. Select a task or ask me anything.",
+    createdAt: new Date().toISOString(),
+  },
+];
+
 export default function TasksPage() {
+  const [messages, setMessages] =
+    useState<ChatMessage[]>(
+      initialMessages
+    );
+
+  const [isThinking, setIsThinking] =
+    useState(false);
+
+  const handleSend = (
+    message: string
+  ) => {
+    const userMessage: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content: message,
+      createdAt:
+        new Date().toISOString(),
+    };
+
+    setMessages((prev) => [
+      ...prev,
+      userMessage,
+    ]);
+
+    setIsThinking(true);
+
+    setTimeout(() => {
+      const assistantMessage: ChatMessage =
+        {
+          id: crypto.randomUUID(),
+
+          role: "assistant",
+
+          content: `I understand. Regarding "${message}", here's my recommendation:\n\n• Break the task into smaller steps.\n• Prioritize based on urgency and impact.\n• Set realistic deadlines.\n• Track progress regularly.`,
+
+          createdAt:
+            new Date().toISOString(),
+        };
+
+      setMessages((prev) => [
+        ...prev,
+        assistantMessage,
+      ]);
+
+      setIsThinking(false);
+    }, 1200);
+  };
+
   return (
-    <div className="p-8 h-full overflow-y-auto">
+    <motion.div
+      initial={{
+        opacity: 0,
+        y: 20,
+        filter: "blur(8px)",
+      }}
+      animate={{
+        opacity: 1,
+        y: 0,
+        filter: "blur(0px)",
+      }}
+      transition={{
+        duration: 0.5,
+      }}
+      className="flex-1 p-8 overflow-hidden"
+    >
+      <div className="grid grid-cols-5 gap-6 h-full">
 
-      <div
-        className="
-          rounded-3xl
-          bg-white
-          p-6
-          border
-          border-slate-100
-          shadow-sm
-          space-y-3
-        "
-      >
+        {/* Left Side */}
+        <div
+          className="
+            col-span-2
+            flex
+            flex-col
+            h-[calc(100vh-100px)]
+          "
+        >
+          <div
+            className="
+              bg-white
+              rounded-3xl
+              border
+              border-slate-200
+              p-6
 
-        {/* Task Header */}
-        <div className="flex items-center justify-between mb-6">
+              flex
+              flex-col
 
-          <div className="flex items-center gap-5">
-
-            <h2 className="text-2xl font-semibold flex items-center gap-2">
-              <ListTodo
-                size={20}
-                className="text-slate-400"
-              />
-
-              <span>
-                My Tasks
-              </span>
-
-              <span className="text-slate-400 font-normal text-xl">
-                13
-              </span>
-            </h2>
-
-            <div className="relative w-[190px]">
-
-              <Search
-                size={16}
+              flex-1
+              min-h-0
+            "
+          >
+            {/* Header */}
+            <div
+              className="
+                flex
+                items-center
+                justify-between
+                mb-6
+              "
+            >
+              <div
                 className="
-                  absolute
-                  left-4
-                  top-1/2
-                  -translate-y-1/2
-                  text-slate-400
+                  flex
+                  items-center
+                  gap-5
                 "
-              />
+              >
+                <h2
+                  className="
+                    text-2xl
+                    font-semibold
+                    flex
+                    items-center
+                    gap-2
+                  "
+                >
+                  <ListTodo
+                    size={20}
+                    className="text-slate-400"
+                  />
 
-              <input
-                placeholder="Search ..."
+                  <span>
+                    My Tasks
+                  </span>
+
+                  <span
+                    className="
+                      text-slate-400
+                      font-normal
+                      text-xl
+                    "
+                  >
+                    4
+                  </span>
+                </h2>
+
+                <div className="relative w-[190px]">
+                  <Search
+                    size={16}
+                    className="
+                      absolute
+                      left-4
+                      top-1/2
+                      -translate-y-1/2
+                      text-slate-400
+                    "
+                  />
+
+                  <input
+                    placeholder="Search ..."
+                    className="
+                      w-full
+                      h-10
+                      rounded-full
+                      border
+                      border-slate-200
+                      bg-white
+                      pl-10
+                      pr-10
+                      text-sm
+                      outline-none
+                    "
+                  />
+
+                  <button
+                    className="
+                      absolute
+                      right-2
+                      top-1/2
+                      -translate-y-1/2
+
+                      w-8
+                      h-8
+
+                      rounded-full
+                      bg-slate-100
+
+                      flex
+                      items-center
+                      justify-center
+
+                      hover:bg-slate-200
+                      transition
+                    "
+                  >
+                    <ArrowRight
+                      size={16}
+                      className="text-slate-500"
+                    />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Tasks */}
+            <div
+              className="
+                flex-1
+                overflow-y-auto
+                space-y-4
+                pr-2
+              "
+            >
+              {[
+                {
+                  title:
+                    "Design Meeting",
+                  badge1: "2 pm",
+                  badge2:
+                    "Join now",
+                  color:
+                    "bg-orange-500",
+                },
+
+                {
+                  title:
+                    "Refine UI components based on user feedback",
+
+                  badge1:
+                    "Urgent",
+
+                  badge2:
+                    "By today",
+
+                  color:
+                    "bg-red-500",
+                },
+
+                {
+                  title:
+                    "Prepare a prototype for usability testing",
+
+                  badge1:
+                    "In progress",
+
+                  badge2:
+                    "By tomorrow",
+
+                  color:
+                    "bg-blue-500",
+                },
+
+                {
+                  title:
+                    "Collaborate with developers on implementation detail",
+
+                  badge1:
+                    "To do",
+
+                  badge2:
+                    "By tomorrow",
+
+                  color:
+                    "bg-cyan-500",
+                },
+              ].map(
+                (
+                  task,
+                  index
+                ) => (
+                  <div
+                    key={index}
+                    className="
+                      rounded-2xl
+                      border
+                      border-slate-100
+                      p-5
+
+                      hover:shadow-md
+                      hover:-translate-y-1
+
+                      transition-all
+                      duration-300
+
+                      cursor-pointer
+                    "
+                  >
+                    <div
+                      className="
+                        flex
+                        items-center
+                        gap-3
+                      "
+                    >
+                      <div
+                        className={`
+                          w-2
+                          h-2
+                          rounded-full
+                          ${task.color}
+                        `}
+                      />
+
+                      <span className="flex-1">
+                        {task.title}
+                      </span>
+
+                      <span
+                        className="
+                          rounded-full
+                          bg-slate-100
+                          px-3
+                          py-1
+                          text-sm
+                        "
+                      >
+                        {task.badge1}
+                      </span>
+
+                      <span
+                        className="
+                          rounded-full
+                          bg-blue-100
+                          text-blue-600
+                          px-3
+                          py-1
+                          text-sm
+                        "
+                      >
+                        {task.badge2}
+                      </span>
+                    </div>
+                  </div>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side */}
+        <div className="col-span-3 h-full">
+          <div
+            className="
+              bg-white
+              rounded-3xl
+              border
+              border-slate-200
+
+              h-full
+
+              flex
+              flex-col
+            "
+          >
+            {/* Header */}
+            <div
+              className="
+                px-6
+                py-5
+
+                border-b
+                border-slate-200
+
+                flex
+                items-center
+                gap-4
+              "
+            >
+              <div
                 className="
-                  w-full
-                  h-10
-                  rounded-full
-                  border border-slate-200
-                  bg-white
-                  pl-10
-                  pr-10
-                  text-sm
-                  placeholder:text-slate-400
-                  outline-none
-                  focus:ring-2
-                  focus:ring-slate-100
-                "
-              />
+                  w-12
+                  h-12
 
-              <button
-                className="
-                  absolute
-                  right-2
-                  top-1/2
-                  -translate-y-1/2
+                  rounded-2xl
 
-                  w-8
-                  h-8
-
-                  rounded-full
-                  bg-slate-100
+                  bg-blue-100
 
                   flex
                   items-center
                   justify-center
-
-                  hover:bg-slate-200
-                  transition-all
-                  duration-300
                 "
               >
-                <ArrowRight
-                  size={16}
-                  className="text-slate-500"
+                <MessageSquare
+                  size={22}
+                  className="text-blue-600"
                 />
-              </button>
+              </div>
 
+              <div>
+                <h2
+                  className="
+                    font-semibold
+                    text-lg
+                  "
+                >
+                  AI Assistant
+                </h2>
+
+                <p
+                  className="
+                    text-green-500
+                    text-sm
+                  "
+                >
+                  ● Task Assistant Active
+                </p>
+              </div>
             </div>
 
+            {/* Chat */}
+            <div
+              className="
+                flex-1
+                overflow-hidden
+                p-6
+              "
+            >
+              <ChatWindow
+                messages={
+                  messages
+                }
+                isThinking={
+                  isThinking
+                }
+              />
+            </div>
+
+            {/* Input */}
+            <div
+              className="
+                px-6
+                pb-6
+              "
+            >
+              <ChatInput
+                disabled={
+                  isThinking
+                }
+                onSend={
+                  handleSend
+                }
+              />
+            </div>
           </div>
-
         </div>
-
-        {/* Task 1 */}
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-orange-500" />
-
-          <span>Design Meeting</span>
-
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-sm">
-            2 pm
-          </span>
-
-          <span className="rounded-full bg-purple-100 text-purple-600 px-3 py-1 text-sm">
-            Join now
-          </span>
-        </div>
-
-        {/* Task 2 */}
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-red-500" />
-
-          <span>
-            Refine UI components based on user feedback
-          </span>
-
-          <span className="rounded-full bg-red-100 text-red-600 px-3 py-1 text-sm">
-            Urgent
-          </span>
-
-          <span className="rounded-full bg-red-50 text-red-500 px-3 py-1 text-sm">
-            By today
-          </span>
-        </div>
-
-        {/* Task 3 */}
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-blue-500" />
-
-          <span>
-            Prepare a prototype for usability testing
-          </span>
-
-          <span className="rounded-full bg-blue-100 text-blue-600 px-3 py-1 text-sm">
-            In progress
-          </span>
-
-          <span className="rounded-full bg-cyan-100 text-cyan-600 px-3 py-1 text-sm">
-            By tomorrow
-          </span>
-        </div>
-
-        {/* Task 4 */}
-        <div className="flex items-center gap-3">
-          <div className="w-2 h-2 rounded-full bg-blue-500" />
-
-          <span>
-            Collaborate with developers on implementation detail
-          </span>
-
-          <span className="rounded-full bg-slate-100 text-slate-600 px-3 py-1 text-sm">
-            To do
-          </span>
-
-          <span className="rounded-full bg-cyan-100 text-cyan-600 px-3 py-1 text-sm">
-            By tomorrow
-          </span>
-        </div>
-
       </div>
-
-    </div>
+    </motion.div>
   );
 }
