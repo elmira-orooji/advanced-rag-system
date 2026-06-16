@@ -1,5 +1,4 @@
-// src/pages/UploadFilesPage.tsx
-
+import { motion } from "framer-motion";
 import {
   UploadCloud,
   FileText,
@@ -25,8 +24,23 @@ export default function UploadFilesPage() {
     },
   ];
 
-  return (
-    <div className="flex-1 p-8 overflow-hidden">
+      return (
+        <motion.div
+          initial={{
+            opacity: 0,
+            y: 20,
+            filter: "blur(8px)",
+          }}
+          animate={{
+            opacity: 1,
+            y: 0,
+            filter: "blur(0px)",
+          }}
+          transition={{
+            duration: 0.5,
+          }}
+          className="flex-1 p-8 overflow-hidden"
+        >
       <div className="grid grid-cols-12 gap-6 h-full">
 
         {/* Left Side */}
@@ -371,6 +385,6 @@ export default function UploadFilesPage() {
           </div>
         </div>
       </div>
-    </div>
+     </motion.div>
   );
 }
