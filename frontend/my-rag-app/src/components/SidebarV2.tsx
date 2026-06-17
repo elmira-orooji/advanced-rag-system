@@ -260,7 +260,7 @@ export default function SidebarV2({
       {!collapsed && (
         <div className="mt-8 flex-1 overflow-y-auto">
           <p className="px-6 text-sm text-slate-400 mb-4">
-            Today
+             {t("today")}
           </p>
 
           <div className="space-y-4 px-6">
@@ -270,7 +270,7 @@ export default function SidebarV2({
           </div>
 
           <p className="px-6 text-sm text-slate-400 mt-8 mb-4">
-            Yesterday
+            {t("yesterday")}
           </p>
 
           <div className="px-6">

@@ -4,7 +4,7 @@ import { initReactI18next } from "react-i18next";
 i18n
   .use(initReactI18next)
   .init({
-    lng: "en",
+    lng: localStorage.getItem("lang") || "en",
     fallbackLng: "en",
 
     resources: {
@@ -18,7 +18,8 @@ i18n
 
           language: "Language",
           theme: "Theme",
-
+          today: "Today",
+          yesterday: "Yesterday",
           light: "Light",
           dark: "Dark",
 
@@ -33,7 +34,8 @@ i18n
           upload: "آپلود فایل",
           settings: "تنظیمات",
           logout: "خروج",
-
+          today: "امروز",
+          yesterday: "دیروز",
           language: "زبان",
           theme: "تم",
 

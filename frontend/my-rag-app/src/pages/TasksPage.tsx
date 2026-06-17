@@ -1,4 +1,3 @@
-// src/pages/TasksPage.tsx
 
 import { useState } from "react";
 import { motion } from "framer-motion";
@@ -31,6 +30,7 @@ export default function TasksPage() {
     useState<ChatMessage[]>(
       initialMessages
     );
+
 
   const [isThinking, setIsThinking] =
     useState(false);
