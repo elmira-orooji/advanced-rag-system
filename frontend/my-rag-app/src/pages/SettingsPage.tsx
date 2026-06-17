@@ -69,7 +69,41 @@ import {
   <p className="mt-1 text-slate-500 text-xl">
     Product Manager
   </p>
+
+  <div className="w-full max-w-sm mt-10">
+  <p className="text-slate-500 mb-3 px-3">
+    Language
+  </p>
+
+  <div className="flex rounded-2xl border border-slate-200 p-1">
+    <button
+      className="
+        flex-1
+        h-11
+        rounded-xl
+        bg-blue-50
+        text-blue-600
+        font-medium
+      "
+    >
+      English
+    </button>
+
+    <button
+      className="
+        flex-1
+        h-11
+        rounded-xl
+      "
+    >
+      فارسی
+    </button>
+  </div>
 </div>
+</div>
+
+
+
 
 
          {/* Right Side - Chat */}
