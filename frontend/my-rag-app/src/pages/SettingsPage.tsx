@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
       
  export default function SettingsPage() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   return (
 
     <motion.div
@@ -70,12 +70,12 @@ import {
   </h2>
 
   <p className="mt-1 text-slate-500 text-xl">
-    Product Manager
+    {t("productManager")}
   </p>
 
   <div className="w-full max-w-sm mt-10">
   <p className="text-slate-500 mb-3 px-3">
-    Language
+    {t("language")}
   </p>
 
   <div className="flex rounded-2xl border border-slate-200 p-1">
