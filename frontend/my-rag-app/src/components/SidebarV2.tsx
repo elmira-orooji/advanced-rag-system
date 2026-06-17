@@ -19,7 +19,7 @@ interface SidebarV2Props {
   activePage: string;
 
     setActivePage: (
-        page: "home" | "tasks" | "upload"
+        page: "home" | "tasks" | "upload" | "settings"
                         ) => void;
 
 }

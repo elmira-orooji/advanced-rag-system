@@ -4,20 +4,80 @@ import { motion } from "framer-motion";
 import {
   UploadCloud,
   FileText,
+  Pencil,
   MessageSquare,
 } from "lucide-react";
       
-      
-      
-      
-      
-      
-      {/* Right Side - Chat */}
+ export default function SettingsPage() {
+  return (
+
+    <motion.div
+  className="
+    h-full
+    overflow-hidden
+    bg-[#F6F8FC]
+  "
+>
+  <div className="grid grid-cols-12 h-full">
+<div
+  className="
+    col-span-5
+    flex
+    flex-col
+    items-center
+    pt-12
+  "
+>
+  <div className="relative">
+    <img
+      src="https://i.pravatar.cc/200"
+      alt="Profile"
+      className="
+        w-28
+        h-28
+        rounded-full
+        object-cover
+        border-2
+        border-white
+      "
+    />
+
+    <button
+      className="
+        absolute
+        bottom-0
+        right-2
+        w-8
+        h-8
+        rounded-full
+        bg-blue-600
+        text-white
+        flex
+        items-center
+        justify-center
+        shadow-lg
+      "
+    >
+      <Pencil size={16} />
+    </button>
+  </div>
+
+  <h2 className="mt-3 text-2xl font-bold">
+    Sam Smith
+  </h2>
+
+  <p className="mt-1 text-slate-500 text-xl">
+    Product Manager
+  </p>
+</div>
+
+
+         {/* Right Side - Chat */}
         <div className="col-span-7 h-screen">
           <div
 className="
   bg-white
-  border-l
+  border-1
   border-slate-200
 
   h-full
@@ -29,7 +89,7 @@ className="
             {/* Header */}
             <div
               className="
-                px-8
+                px-6
                 py-5
 
                 border-b
@@ -98,3 +158,12 @@ className="
                 </div>
           </div>
         </div>
+    </div>
+       </motion.div>
+  );
+}
+    
+      
+      
+      
+     

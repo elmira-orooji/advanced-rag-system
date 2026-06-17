@@ -18,8 +18,13 @@ export default function AppLayout() {
     setActiveSessionId,
   } = useChatHistory();
 
-  const [activePage, setActivePage] =
-  useState<"home" | "tasks" | "upload" | "settings ">("home");
+const [activePage, setActivePage] =
+  useState<
+    "home" |
+    "tasks" |
+    "upload" |
+    "settings"
+  >("home");
   
   return (
     <div className="flex h-screen bg-[#F6F8FC]">
