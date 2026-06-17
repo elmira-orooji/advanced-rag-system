@@ -80,22 +80,28 @@ import {
 
   <div className="flex rounded-2xl border border-slate-200 p-1">
     <button
-      onClick={() => {
-        i18n.changeLanguage("en");
-        document.documentElement.dir = "ltr";
-      }}
+      onClick={() => i18n.changeLanguage("en")}
+      className="
+        flex-1
+        h-11
+        rounded-xl
+        bg-blue-50
+        text-blue-600
+        font-medium
+      "
     >
       English
     </button>
-
-    <button
-      onClick={() => {
-        i18n.changeLanguage("fa");
-        document.documentElement.dir = "rtl";
-      }}
-    >
-      فارسی
-    </button>
+<button
+  onClick={() => i18n.changeLanguage("fa")}
+  className="
+    flex-1
+    h-11
+    rounded-xl
+  "
+>
+  فارسی
+</button>
   </div>
 </div>
 
