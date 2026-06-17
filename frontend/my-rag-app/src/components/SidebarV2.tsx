@@ -172,6 +172,8 @@ export default function SidebarV2({
           {
             icon: Settings,
             label: "Settings",
+            active: activePage === "settings",
+            onClick: () => setActivePage("settings"),
           },
         ].map(
           ({
