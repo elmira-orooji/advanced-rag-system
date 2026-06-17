@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import type { ChatSession } from "../types/chat";
 import { useState } from "react";
-
+import { useTranslation } from "react-i18next";
 interface SidebarV2Props {
   sessions: ChatSession[];
 
@@ -33,6 +33,7 @@ export default function SidebarV2({
   activePage,
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
+  const { t } = useTranslation();
   return (
     <aside
       className={`
@@ -151,27 +152,27 @@ export default function SidebarV2({
         {[
           {
           icon: Home,
-          label: "Home",
+          label: t("home"),
           active: activePage === "home",
           onClick: () =>
           setActivePage("home"),
           },
           {
             icon: CheckSquare,
-            label: "My Tasks",
+            label: t("tasks"),
             active: activePage === "tasks",
             onClick: () =>
             setActivePage("tasks"),
           },
           {
             icon: Upload,
-            label: "Upload Files",
+            label: t("upload"),
             active: activePage === "upload",
             onClick: () => setActivePage("upload"),
           },
           {
             icon: Settings,
-            label: "Settings",
+            label: t("settings"),
             active: activePage === "settings",
             onClick: () => setActivePage("settings"),
           },
@@ -321,7 +322,7 @@ export default function SidebarV2({
               }
             `}
           >
-            Logout
+            {t("logout")}
           </span>
         </button>
       </div>
