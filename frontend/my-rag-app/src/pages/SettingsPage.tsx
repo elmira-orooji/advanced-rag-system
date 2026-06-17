@@ -1,6 +1,8 @@
 import ChatWindow from "../components/ChatWindow";
 import ChatInput from "../components/ChatInput";     
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+const { i18n } = useTranslation();
 import {
   UploadCloud,
   FileText,
@@ -77,24 +79,19 @@ import {
 
   <div className="flex rounded-2xl border border-slate-200 p-1">
     <button
-      className="
-        flex-1
-        h-11
-        rounded-xl
-        bg-blue-50
-        text-blue-600
-        font-medium
-      "
+      onClick={() => {
+        i18n.changeLanguage("en");
+        document.documentElement.dir = "ltr";
+      }}
     >
       English
     </button>
 
     <button
-      className="
-        flex-1
-        h-11
-        rounded-xl
-      "
+      onClick={() => {
+        i18n.changeLanguage("fa");
+        document.documentElement.dir = "rtl";
+      }}
     >
       فارسی
     </button>

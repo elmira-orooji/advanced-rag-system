@@ -24,6 +24,10 @@ interface SidebarV2Props {
 
 }
 
+import { useTranslation } from "react-i18next";
+
+const { t } = useTranslation();
+
 export default function SidebarV2({
   sessions,
   activeSessionId,
