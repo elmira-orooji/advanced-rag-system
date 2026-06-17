@@ -2,9 +2,11 @@ import type { ReactNode } from "react";
 import SidebarV2 from "../components/SidebarV2";
 import { useChatHistory } from "../hooks/useChatHistory";
 import { useState } from "react";
+import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import DashboardPage from "../pages/DashboardPage";
 import TasksPage from "../pages/TasksPage";
+
 interface AppLayoutProps {
   children: ReactNode;
 }
@@ -17,7 +19,7 @@ export default function AppLayout() {
   } = useChatHistory();
 
   const [activePage, setActivePage] =
-  useState<"home" | "tasks" | "upload" | "Settings ">("home");
+  useState<"home" | "tasks" | "upload" | "settings ">("home");
   
   return (
     <div className="flex h-screen bg-[#F6F8FC]">
@@ -41,6 +43,10 @@ export default function AppLayout() {
           
         {activePage === "upload" && (
           <UploadFilesPage />
+        )}
+
+        {activePage === "settings" && (
+          <SettingsPage />
         )}
 
       </main>
