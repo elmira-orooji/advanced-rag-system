@@ -15,7 +15,7 @@ export default function ChatWindow({
   isThinking,
 }: ChatWindowProps) {
   return (
-    <div className="flex flex-1 flex-col gap-6 overflow-y-auto">
+    <div className=" flex flex-1 flex-col gap-6 overflow-y-auto">
       {messages.map((message) => (
         <div
           key={message.id}

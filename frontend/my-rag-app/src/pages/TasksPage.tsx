@@ -90,33 +90,29 @@ export default function TasksPage() {
       transition={{
         duration: 0.5,
       }}
-      className="flex-1 p-8 overflow-hidden"
+      className="h-full px-8 pb-8 overflow-hidden bg-white"
     >
-      <div className="grid grid-cols-5 gap-6 h-full">
+       <div className="grid grid-cols-12 gap-6 h-screen">
 
         {/* Left Side */}
-        <div
-          className="
-            col-span-2
-            flex
-            flex-col
-            h-[calc(100vh-100px)]
-          "
-        >
+<div
+className="
+  col-span-5
+  flex
+  flex-col
+  h-full
+  pt-8
+"
+>
           <div
             className="
-              bg-white
-              rounded-3xl
-              border
-              border-slate-200
-              p-6
+  flex
+  flex-col
 
-              flex
-              flex-col
+  flex-1
 
-              flex-1
-              min-h-0
-            "
+  min-h-0
+"
           >
             {/* Header */}
             <div
@@ -125,6 +121,10 @@ export default function TasksPage() {
                 items-center
                 justify-between
                 mb-6
+                shrink-0
+                border-b
+                border-slate-200
+                pb-6
               "
             >
               <div
@@ -222,14 +222,15 @@ export default function TasksPage() {
             </div>
 
             {/* Tasks */}
-            <div
-              className="
-                flex-1
-                overflow-y-auto
-                space-y-4
-                pr-2
-              "
-            >
+<div
+  className="
+    flex-1
+    min-h-0
+    overflow-y-auto
+    space-y-1
+    pr-2
+  "
+>
               {[
                 {
                   title:
@@ -290,10 +291,14 @@ export default function TasksPage() {
                   <div
                     key={index}
                     className="
-                      rounded-2xl
-                      border
-                      border-slate-100
-                      p-5
+rounded-2xl
+border
+border-slate-100
+
+bg-white
+
+px-5
+py-4
 
                       hover:shadow-md
                       hover:-translate-y-1
@@ -356,25 +361,25 @@ export default function TasksPage() {
           </div>
         </div>
 
-        {/* Right Side */}
-        <div className="col-span-3 h-full">
+
+        {/* Right Side - Chat */}
+        <div className="col-span-7 h-screen">
           <div
-            className="
-              bg-white
-              rounded-3xl
-              border
-              border-slate-200
+className="
+  bg-white
+  border-l
+  border-slate-200
 
-              h-full
+  h-full
 
-              flex
-              flex-col
-            "
+  flex
+  flex-col
+"
           >
             {/* Header */}
             <div
               className="
-                px-6
+                px-8
                 py-5
 
                 border-b
@@ -421,45 +426,31 @@ export default function TasksPage() {
                     text-sm
                   "
                 >
-                  ● Task Assistant Active
+                  ● RAG Active
                 </p>
               </div>
             </div>
 
-            {/* Chat */}
-            <div
-              className="
-                flex-1
-                overflow-hidden
-                p-6
-              "
-            >
-              <ChatWindow
-                messages={
-                  messages
-                }
-                isThinking={
-                  isThinking
-                }
-              />
-            </div>
+                    {/* Existing Chat */}
+                    <div className="     flex-1
+    min-h-0
+    overflow-hidden
 
-            {/* Input */}
-            <div
-              className="
-                px-6
-                pb-6
-              "
-            >
-              <ChatInput
-                disabled={
-                  isThinking
-                }
-                onSend={
-                  handleSend
-                }
-              />
-            </div>
+    border-b
+    border-slate-200">
+                    <ChatWindow
+                        messages={[]}
+                        isThinking={false}
+                    />
+                    </div>
+
+                    {/* Existing Input */}
+                <div className="px-8 py-8 pt-4 shrink-0">
+                <ChatInput
+                    disabled={false}
+                    onSend={() => {}}
+                />
+                </div>
           </div>
         </div>
       </div>
