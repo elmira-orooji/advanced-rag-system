@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+
 import SidebarV2 from "../components/SidebarV2";
 import { useChatHistory } from "../hooks/useChatHistory";
 import { useState } from "react";
@@ -6,10 +6,6 @@ import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import DashboardPage from "../pages/DashboardPage";
 import TasksPage from "../pages/TasksPage";
-
-interface AppLayoutProps {
-  children: ReactNode;
-}
 
 export default function AppLayout() {
   const {

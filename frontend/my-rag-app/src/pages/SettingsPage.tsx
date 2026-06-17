@@ -2,7 +2,7 @@ import ChatWindow from "../components/ChatWindow";
 import ChatInput from "../components/ChatInput";     
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-const { i18n } = useTranslation();
+
 import {
   UploadCloud,
   FileText,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
       
  export default function SettingsPage() {
+  const { i18n } = useTranslation();
   return (
 
     <motion.div
