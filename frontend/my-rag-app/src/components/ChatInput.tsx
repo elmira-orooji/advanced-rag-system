@@ -35,7 +35,8 @@ export default function ChatInput({
   };
 
   return (
-    <div className="flex items-center bg-white rounded-full border border-slate-200 px-4 py-3 shadow-sm">
+    <div className="flex items-center bg-white
+              dark:bg-[#1D263B] rounded-full border border-slate-200 dark:border-[#2A3550] px-4 py-3 shadow-sm">
 
     
 {/* Input */}

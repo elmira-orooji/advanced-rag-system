@@ -9,16 +9,32 @@ import {
   Pencil,
   MessageSquare,
 } from "lucide-react";
-      
- export default function SettingsPage() {
+
+interface SettingsPageProps {
+  theme: "light" | "dark";
+
+  setTheme: (
+    theme: "light" | "dark"
+  ) => void;
+}
+
+
+ export default function SettingsPage({
+  theme,
+  setTheme,
+}: SettingsPageProps) {
   const { t, i18n } = useTranslation();
+  
   return (
 
     <motion.div
   className="
     h-full
     overflow-hidden
+
+    
     bg-[#F6F8FC]
+    dark:bg-[#151B2D]
   "
 >
   <div className="grid grid-cols-12 h-full">
@@ -69,16 +85,16 @@ import {
     Sam Smith
   </h2>
 
-  <p className="mt-1 text-slate-500 text-xl">
+  <p className="mt-1 text-slate-500 dark:text-slate-400 text-xl">
     {t("productManager")}
   </p>
 
   <div className="w-full max-w-sm mt-10">
-  <p className="text-slate-500 mb-3 px-3">
+  <p className="text-slate-500 dark:text-slate-400 mb-3 px-3">
     {t("language")}
   </p>
 
-  <div className="flex rounded-2xl border border-slate-200 p-1">
+  <div className="flex rounded-2xl border border-slate-200 dark:border-[#2A3550] p-1">
 <button
   onClick={() => {
     i18n.changeLanguage("en");
@@ -112,33 +128,46 @@ import {
 </div>
 
 <div className="w-full max-w-sm mt-6">
-  <p className="text-slate-500 mb-3 px-3">
+  <p className="text-slate-500 dark:text-slate-400 mb-3 px-3">
     Theme
   </p>
 
-  <div className="flex rounded-2xl border border-slate-200 p-1">
-    <button
-      className="
-        flex-1
-        h-11
-        rounded-xl
-        bg-blue-50
-        text-blue-600
-        font-medium
-      "
-    >
-      Light
-    </button>
+  <div className="flex rounded-2xl border border-slate-200 dark:border-[#2A3550] p-1">
+      <button
+        onClick={() => setTheme("light")}
+        className={`
+          flex-1
+          h-11
+          rounded-xl
+          transition-all
 
-    <button
-      className="
-        flex-1
-        h-11
-        rounded-xl
-      "
-    >
-      Dark
-    </button>
+          ${
+            theme === "light"
+              ? "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-cyan-300 font-medium"
+              : ""
+          }
+        `}
+      >
+        Light
+      </button>
+
+  <button
+    onClick={() => setTheme("dark")}
+    className={`
+      flex-1
+      h-11
+      rounded-xl
+      transition-all
+
+      ${
+        theme === "dark"
+          ? "bg-blue-50 text-blue-600  dark:bg-blue-500/15 dark:text-cyan-300 font-medium"
+          : ""
+      }
+    `}
+  >
+    Dark
+  </button>
   </div>
 </div>
 </div>
@@ -152,8 +181,10 @@ import {
           <div
 className="
   bg-white
+  dark:bg-[#1D263B]
   border-1
   border-slate-200
+  dark:border-[#2A3550]
 
   h-full
 
@@ -169,6 +200,7 @@ className="
 
                 border-b
                 border-slate-200
+                dark:border-[#2A3550]
 
                 flex
                 items-center
@@ -183,7 +215,7 @@ className="
                   rounded-2xl
 
                   bg-blue-100
-
+                  dark:bg-blue-500/15
                   flex
                   items-center
                   justify-center

@@ -57,11 +57,11 @@ className="
 >
           {/* Header */}
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">
+            <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100">
               Upload Knowledge
             </h1>
 
-            <p className="text-slate-500 mt-2">
+            <p className="text-slate-500 dark:text-slate-400 mt-2">
               Upload documents to build your knowledge base.
             </p>
           </div>
@@ -70,6 +70,7 @@ className="
           <div
             className="
               bg-white
+              dark:bg-[#1D263B]
               rounded-2xl
               border-2
               border-dashed
@@ -202,9 +203,10 @@ className="
 
 rounded-2xl
 bg-white
+dark:bg-[#1D263B]
 border
 border-slate-100
-
+dark:border-[#2A3550]
   hover:shadow-md
   hover:-translate-y-1
 
@@ -267,7 +269,7 @@ border-slate-100
         </div>
 
 {/* Added */}
-<div className="flex justify-center text-slate-500">
+<div className="flex justify-center text-slate-500 dark:text-slate-400">
   {file.added}
 </div>
 
@@ -278,6 +280,7 @@ border-slate-100
     justify-end
 
     text-slate-500
+    dark:text-slate-400
 
     whitespace-nowrap
   "
@@ -295,8 +298,10 @@ border-slate-100
           <div
 className="
   bg-white
+  dark:bg-[#1D263B]
   border-l
   border-slate-200
+  dark:border-[#2A3550]
 
   h-full
 
@@ -310,8 +315,7 @@ className="
                 px-8
                 py-5
 
-                border-b
-                border-slate-200
+               border-b border-slate-200 dark:border-[#2A3550]
 
                 flex
                 items-center
@@ -326,7 +330,7 @@ className="
                   rounded-2xl
 
                   bg-blue-100
-
+                  dark:bg-blue-500/15
                   flex
                   items-center
                   justify-center
@@ -368,7 +372,7 @@ className="
                     </div>
 
                     {/* Existing Input */}
-                <div className="px-8 py-6 border-t border-slate-200">
+                <div className="px-8 py-6 border-t border-slate-200 dark:border-[#2A3550]">
                 <ChatInput
                     disabled={false}
                     onSend={() => {}}

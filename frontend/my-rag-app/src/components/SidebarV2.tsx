@@ -45,7 +45,9 @@ export default function SidebarV2({
 
         h-screen
         bg-white
+        dark:bg-[#1D263B]
         border-r border-slate-200
+        dark:border-[#2A3550]
 
         flex flex-col
 
@@ -206,8 +208,8 @@ export default function SidebarV2({
 
                 ${
                   active
-                    ? "bg-slate-100 text-slate-900"
-                    : "hover:bg-slate-50 text-slate-500"
+                    ? "bg-slate-100 text-slate-900 dark:text-slate-100"
+                    : "hover:bg-slate-50 text-slate-500 dark:text-slate-400"
                 }
               `}
             >
@@ -280,7 +282,7 @@ export default function SidebarV2({
       )}
 
       {/* Logout */}
-      <div className="mt-auto px-6 py-6 border-t border-slate-200">
+      <div className="mt-auto px-6 py-6 border-t border-slate-200 dark:border-[#2A3550]">
         <button
           title="Logout"
           className={`
@@ -297,6 +299,7 @@ export default function SidebarV2({
             gap-3
 
             text-slate-500
+            dark:text-slate-400
             hover:text-red-500
 
             transition-colors

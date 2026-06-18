@@ -122,8 +122,7 @@ className="
                 justify-between
                 mb-6
                 shrink-0
-                border-b
-                border-slate-200
+                border-b border-slate-200 dark:border-[#2A3550]
                 pb-6
               "
             >
@@ -183,7 +182,9 @@ className="
                       rounded-full
                       border
                       border-slate-200
+                      dark:border-[#2A3550]
                       bg-white
+                      dark:bg-[#1D263B]
                       pl-10
                       pr-10
                       text-sm
@@ -214,7 +215,7 @@ className="
                   >
                     <ArrowRight
                       size={16}
-                      className="text-slate-500"
+                      className="text-slate-500 dark:text-slate-400"
                     />
                   </button>
                 </div>
@@ -296,7 +297,8 @@ border
 border-slate-100
 
 bg-white
-
+dark:bg-[#1D263B]
+dark:border-[#2A3550]
 px-5
 py-4
 
@@ -345,6 +347,7 @@ py-4
                         className="
                           rounded-full
                           bg-blue-100
+                          dark:bg-blue-500/15
                           text-blue-600
                           px-3
                           py-1
@@ -367,8 +370,10 @@ py-4
           <div
 className="
   bg-white
+  dark:bg-[#1D263B]
   border-l
   border-slate-200
+  dark:border-[#2A3550]
 
   h-full
 
@@ -384,7 +389,7 @@ className="
 
                 border-b
                 border-slate-200
-
+                dark:border-[#2A3550]
                 flex
                 items-center
                 gap-4
@@ -398,7 +403,7 @@ className="
                   rounded-2xl
 
                   bg-blue-100
-
+                  dark:bg-blue-500/15
                   flex
                   items-center
                   justify-center
@@ -437,7 +442,8 @@ className="
     overflow-hidden
 
     border-b
-    border-slate-200">
+    border-slate-200
+    dark:border-[#2A3550]">
                     <ChatWindow
                         messages={[]}
                         isThinking={false}

@@ -165,7 +165,7 @@ export default function Sidebar({
               activeSessionId === chat.id
                 ? darkMode
                   ? "bg-blue-600 text-white"
-                  : "bg-blue-100"
+                  : "bg-blue-100 dark:bg-blue-500/15"
                 : darkMode
                 ? "hover:bg-slate-800"
                 : "hover:bg-slate-100"

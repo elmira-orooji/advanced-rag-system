@@ -1,11 +1,12 @@
 
 import SidebarV2 from "../components/SidebarV2";
 import { useChatHistory } from "../hooks/useChatHistory";
-import { useState } from "react";
 import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import DashboardPage from "../pages/DashboardPage";
 import TasksPage from "../pages/TasksPage";
+import { useEffect, useState } from "react";
+
 
 export default function AppLayout() {
   const {
@@ -13,6 +14,14 @@ export default function AppLayout() {
     activeSessionId,
     setActiveSessionId,
   } = useChatHistory();
+
+  const [theme, setTheme] =
+  useState<"light" | "dark">(
+    () =>
+      (localStorage.getItem("theme") as
+        | "light"
+        | "dark") || "light"
+  );
 
 const [activePage, setActivePage] =
   useState<
@@ -22,6 +31,24 @@ const [activePage, setActivePage] =
     "settings"
   >("home");
   
+useEffect(() => {
+  if (theme === "dark") {
+    document.documentElement.classList.add(
+      "dark"
+    );
+  } else {
+    document.documentElement.classList.remove(
+      "dark"
+    );
+  }
+
+  localStorage.setItem(
+    "theme",
+    theme
+  );
+}, [theme]);
+
+
   return (
     <div className="flex h-screen bg-[#F6F8FC]">
     <SidebarV2
@@ -46,9 +73,12 @@ const [activePage, setActivePage] =
           <UploadFilesPage />
         )}
 
-        {activePage === "settings" && (
-          <SettingsPage />
-        )}
+          {activePage === "settings" && (
+            <SettingsPage
+              theme={theme}
+              setTheme={setTheme}
+            />
+          )}
 
       </main>
     </div>
