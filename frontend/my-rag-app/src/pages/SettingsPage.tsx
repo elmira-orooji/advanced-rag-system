@@ -105,14 +105,25 @@ interface SettingsPageProps {
     i18n.changeLanguage("en");
     localStorage.setItem("lang", "en");
   }}
-  className="
+  className={`
     flex-1
     h-11
     rounded-xl
-    bg-blue-50
-    text-blue-600
-    font-medium
-  "
+    transition-all
+
+    ${
+      i18n.language === "en"
+        ? `
+          bg-[#24304A]
+          text-cyan-300
+          font-semibold
+        `
+        : `
+          text-slate-600
+          dark:text-slate-300
+        `
+    }
+  `}
 >
   English
 </button>
@@ -121,11 +132,25 @@ interface SettingsPageProps {
     i18n.changeLanguage("fa");
     localStorage.setItem("lang", "fa");
   }}
-  className="
+  className={`
     flex-1
     h-11
     rounded-xl
-  "
+    transition-all
+
+    ${
+      i18n.language === "fa"
+        ? `
+          bg-[#24304A]
+          text-cyan-300
+          font-semibold
+        `
+        : `
+          text-slate-600
+          dark:text-slate-300
+        `
+    }
+  `}
 >
   فارسی
 </button>
@@ -145,7 +170,7 @@ interface SettingsPageProps {
           h-11
           rounded-xl
           transition-all
-
+          dark:text-slate-300
           ${
             theme === "light"
               ? "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-cyan-300 font-medium"
