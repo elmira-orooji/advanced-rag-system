@@ -99,7 +99,7 @@ export default function SidebarV2({
             className={`
               whitespace-nowrap
               overflow-hidden
-
+              dark:text-slate-300
               transition-all
               duration-300
 
@@ -265,7 +265,7 @@ export default function SidebarV2({
              {t("today")}
           </p>
 
-          <div className="space-y-4 px-6">
+          <div className="space-y-4 px-6 dark:text-slate-300">
             <p>Research Assistance Request</p>
             <p>Summarizing Last Meeting</p>
             <p>Prioritizing Tasks Request</p>
@@ -275,7 +275,7 @@ export default function SidebarV2({
             {t("yesterday")}
           </p>
 
-          <div className="px-6">
+          <div className="px-6 dark:text-slate-300">
             <p>Document Summary Request</p>
           </div>
         </div>
