@@ -116,7 +116,7 @@ console.log(activeSession?.messages);
   }}
   className="flex flex-1 flex-col h-full overflow-hidden"
 >
-  <main className="flex-1 p-8 flex flex-col">
+  <main className=" dark:bg-[#151B2D] flex-1 p-8 flex flex-col">
 
        {/* Header */}
     <div className="mb-12">

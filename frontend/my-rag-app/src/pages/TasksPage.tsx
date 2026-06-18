@@ -90,7 +90,7 @@ export default function TasksPage() {
       transition={{
         duration: 0.5,
       }}
-      className="h-full px-8 pb-8 overflow-hidden bg-[#F8FAFC]"
+      className="dark:bg-[#151B2D] h-full px-8 pb-8 overflow-hidden bg-[#F8FAFC]"
     >
        <div className="grid grid-cols-12 gap-6 h-screen">
 
@@ -102,6 +102,7 @@ className="
   flex-col
   h-full
   pt-8
+  dark:bg-[#151B2D]
 "
 >
           <div

@@ -53,6 +53,7 @@ className="
   px-8
   py-8
   bg-[#F8FAFC]
+  dark:bg-[#151B2D]
 "
 >
           {/* Header */}
