@@ -103,6 +103,7 @@ className="
                 mt-6
                 text-lg
                 font-semibold
+                dark:text-slate-400
               "
             >
               Click to upload or drag and drop
@@ -122,7 +123,7 @@ className="
     h-[320px]
 
     pt-2
-
+    dark:text-slate-400
     min-h-0
   "
 >
@@ -187,7 +188,7 @@ className="
     overflow-y-auto
 
     space-y-2
-
+    
     pr-1
   "
 >
@@ -216,7 +217,7 @@ dark:border-[#2A3550]
 "
       >
         {/* File */}
-        <div className="flex items-center gap-4 min-w-0">
+        <div className="flex items-center gap-4 min-w-0 ">
 <div
   className="
     w-10
@@ -227,11 +228,13 @@ dark:border-[#2A3550]
     items-center
     justify-center
     shrink-0
+    dark:bg-[#1D263B]
+    dark:border-[#2A3550]
   "
 >
             <FileText
               size={18}
-              className="text-blue-600"
+              className="text-blue-600 "
             />
           </div>
 
@@ -243,6 +246,7 @@ dark:border-[#2A3550]
               font-medium
               text-slate-800
               truncate
+              dark:text-slate-400
             "
           >
             {file.name}
@@ -348,6 +352,7 @@ className="
                   className="
                     font-semibold
                     text-lg
+                    dark:text-slate-300
                   "
                 >
                   AI Assistant
