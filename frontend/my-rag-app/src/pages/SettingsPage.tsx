@@ -81,7 +81,12 @@ interface SettingsPageProps {
     </button>
   </div>
 
-  <h2 className="mt-3 text-2xl font-bold">
+  <h2 className="mt-3
+    text-2xl
+    font-bold
+    text-slate-900
+    dark:text-slate-100">
+
     Sam Smith
   </h2>
 
@@ -90,11 +95,11 @@ interface SettingsPageProps {
   </p>
 
   <div className="w-full max-w-sm mt-10">
-  <p className="text-slate-500 dark:text-slate-400 mb-3 px-3">
+  <p className="text-slate-500 dark:text-slate-300 mb-3 px-3">
     {t("language")}
   </p>
 
-  <div className="flex rounded-2xl border border-slate-200 dark:border-[#2A3550] p-1">
+  <div className="flex rounded-2xl border border-slate-200 dark:border-[#334155] p-1">
 <button
   onClick={() => {
     i18n.changeLanguage("en");
@@ -128,11 +133,11 @@ interface SettingsPageProps {
 </div>
 
 <div className="w-full max-w-sm mt-6">
-  <p className="text-slate-500 dark:text-slate-400 mb-3 px-3">
+  <p className="text-slate-500 dark:text-slate-300 mb-3 px-3">
     Theme
   </p>
 
-  <div className="flex rounded-2xl border border-slate-200 dark:border-[#2A3550] p-1">
+  <div className="flex rounded-2xl border border-slate-200 dark:border-[#334155] p-1">
       <button
         onClick={() => setTheme("light")}
         className={`
@@ -161,8 +166,8 @@ interface SettingsPageProps {
 
       ${
         theme === "dark"
-          ? "bg-blue-50 text-blue-600  dark:bg-blue-500/15 dark:text-cyan-300 font-medium"
-          : ""
+          ? "bg-[#24304A] text-cyan-300  dark:bg-blue-500/15 dark:text-cyan-300 font-medium"
+          : "bg-blue-50 text-blue-600"
       }
     `}
   >
@@ -184,7 +189,7 @@ className="
   dark:bg-[#1D263B]
   border-1
   border-slate-200
-  dark:border-[#2A3550]
+ dark:border-[#334155]
 
   h-full
 
@@ -200,7 +205,7 @@ className="
 
                 border-b
                 border-slate-200
-                dark:border-[#2A3550]
+                dark:border-[#334155]
 
                 flex
                 items-center
@@ -215,7 +220,8 @@ className="
                   rounded-2xl
 
                   bg-blue-100
-                  dark:bg-blue-500/15
+                  dark:bg-[#24304A]
+                  dark:text-cyan-300
                   flex
                   items-center
                   justify-center
@@ -239,7 +245,7 @@ className="
 
                 <p
                   className="
-                    text-green-500
+                    text-green-400
                     text-sm
                   "
                 >
@@ -257,7 +263,7 @@ className="
                     </div>
 
                     {/* Existing Input */}
-                <div className="px-8 py-6 border-t border-slate-200">
+                <div className="px-8 py-6 border-t border-slate-200 ">
                 <ChatInput
                     disabled={false}
                     onSend={() => {}}
