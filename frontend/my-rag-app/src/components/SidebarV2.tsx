@@ -208,7 +208,7 @@ export default function SidebarV2({
 
                 ${
                   active
-                    ? "bg-slate-100 text-slate-900 dark:text-slate-100"
+                    ? "dark:bg-blue-500/15 text-slate-900 dark:text-slate-100"
                     : "hover:bg-slate-50 text-slate-500 dark:text-slate-400"
                 }
               `}
