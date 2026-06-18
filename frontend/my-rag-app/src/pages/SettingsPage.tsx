@@ -258,6 +258,7 @@ className="
 
                   bg-blue-100
                   dark:bg-[#24304A]
+                  dark:border-[#334155]
                   dark:text-cyan-300
                   flex
                   items-center
@@ -266,7 +267,7 @@ className="
               >
                 <MessageSquare
                   size={22}
-                  className="text-blue-600"
+                  className="text-blue-600 "
                 />
               </div>
 
@@ -275,6 +276,7 @@ className="
                   className="
                     font-semibold
                     text-lg
+                    dark:text-slate-300
                   "
                 >
                   AI Assistant
@@ -292,7 +294,7 @@ className="
             </div>
 
                     {/* Existing Chat */}
-                    <div className="flex-1 overflow-y-auto px-8 py-6">
+                    <div className="flex-1 overflow-y-auto px-8 py-6 ">
                     <ChatWindow
                         messages={[]}
                         isThinking={false}
@@ -300,7 +302,7 @@ className="
                     </div>
 
                     {/* Existing Input */}
-                <div className="px-8 py-6 border-t border-slate-200 ">
+                <div className="px-8 py-6 border-t border-slate-200 dark:border-[#334155]">
                 <ChatInput
                     disabled={false}
                     onSend={() => {}}

@@ -36,13 +36,13 @@ export default function ChatInput({
 
   return (
     <div className="flex items-center bg-white
-              dark:bg-[#1D263B] rounded-full border border-slate-200 dark:border-[#2A3550] px-4 py-3 shadow-sm">
+              dark:bg-[#151F35] rounded-full border border-slate-200 dark:border-[#283756] px-4 py-3 shadow-sm">
 
     
 {/* Input */}
 <input
   type="text"
-  placeholder="     Ask or search for anything. Use @ to tag a file or collection."
+  placeholder="     Ask anything"
   value={value}
   onChange={(e) => setValue(e.target.value)}
   className="
@@ -51,6 +51,7 @@ export default function ChatInput({
     bg-transparent
     text-slate-700
     placeholder:text-slate-400
+    
   "
 />
 
