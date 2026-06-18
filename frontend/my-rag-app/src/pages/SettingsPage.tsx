@@ -114,13 +114,11 @@ interface SettingsPageProps {
     ${
       i18n.language === "en"
         ? `
-          bg-[#24304A]
-          text-cyan-300
+          bg-blue-50
+          text-blue-600
           font-semibold
         `
         : `
-          text-slate-600
-          dark:text-slate-300
         `
     }
   `}
@@ -141,8 +139,8 @@ interface SettingsPageProps {
     ${
       i18n.language === "fa"
         ? `
-          bg-[#24304A]
-          text-cyan-300
+          bg-blue-50
+          text-blue-600
           font-semibold
         `
         : `
@@ -163,41 +161,55 @@ interface SettingsPageProps {
   </p>
 
   <div className="flex rounded-2xl border border-slate-200 dark:border-[#334155] p-1">
-      <button
-        onClick={() => setTheme("light")}
-        className={`
-          flex-1
-          h-11
-          rounded-xl
-          transition-all
+<button
+  onClick={() => setTheme("light")}
+  className={`
+    flex-1
+    h-11
+    rounded-xl
+    transition-all
+
+    ${
+      theme === "light"
+        ? `
+          bg-blue-50
+          text-blue-600
+          font-semibold
+        `
+        : `
+          text-slate-600
           dark:text-slate-300
-          ${
-            theme === "light"
-              ? "bg-blue-50 text-blue-600 dark:bg-blue-500/15 dark:text-cyan-300 font-medium"
-              : ""
-          }
-        `}
-      >
-        Light
-      </button>
+        `
+    }
+  `}
+>
+  Light
+</button>
 
-  <button
-    onClick={() => setTheme("dark")}
-    className={`
-      flex-1
-      h-11
-      rounded-xl
-      transition-all
+<button
+  onClick={() => setTheme("dark")}
+  className={`
+    flex-1
+    h-11
+    rounded-xl
+    transition-all
 
-      ${
-        theme === "dark"
-          ? "bg-[#24304A] text-cyan-300  dark:bg-blue-500/15 dark:text-cyan-300 font-medium"
-          : "bg-blue-50 text-blue-600"
-      }
-    `}
-  >
-    Dark
-  </button>
+    ${
+      theme === "dark"
+        ? `
+          bg-blue-50
+          text-blue-600
+          font-semibold
+        `
+        : `
+          text-slate-600
+          dark:text-slate-300
+        `
+    }
+  `}
+>
+  Dark
+</button>
   </div>
 </div>
 </div>
