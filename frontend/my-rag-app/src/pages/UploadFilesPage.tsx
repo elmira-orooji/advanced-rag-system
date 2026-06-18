@@ -166,15 +166,12 @@ className="
     File Name
   </div>
 
-  <div className=" flex justify-center">
-    Status
-  </div>
 
   <div className="flex justify-center">
     Added
   </div>
 
-  <div className="flex justify-end whitespace-nowrap">
+  <div className="flex justify-end ">
   Size
 </div>
 </div>
@@ -196,8 +193,8 @@ className="
       <div
         key={file.name}
         className="
-  grid
-  grid-cols-[4fr_2fr_2fr_1fr]
+grid
+    grid-cols-[4fr_2fr_2fr_1fr]
   items-center
 
   px-6
@@ -234,7 +231,7 @@ dark:border-[#2A3550]
 >
             <FileText
               size={18}
-              className="text-blue-600 "
+              className="text-blue-600  "
             />
           </div>
 
@@ -253,26 +250,7 @@ dark:border-[#2A3550]
           </span>
         </div>
 
-        {/* Status */}
-        <div className="flex justify-center">
-          <span
-            className={`
-              px-2
-              py-2
-              rounded-full
-              text-sm
-              font-medium
-              ${
-                file.status === "Indexed"
-                  ? "bg-green-100 text-green-600"
-                  : "bg-yellow-100 text-yellow-600"
-              }
-            `}
-          >
-            {file.status}
-          </span>
-        </div>
-
+       
 {/* Added */}
 <div className="flex justify-center text-slate-500 dark:text-slate-400">
   {file.added}
