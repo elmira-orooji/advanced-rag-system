@@ -90,9 +90,16 @@ export default function TasksPage() {
       transition={{
         duration: 0.5,
       }}
-      className="dark:bg-[#151B2D] h-full px-8 pb-8 overflow-hidden bg-[#F8FAFC]"
-    >
-       <div className="grid grid-cols-12 gap-6 h-screen">
+  className="
+    h-full
+    overflow-hidden
+
+    
+    bg-[#F6F8FC]
+    dark:bg-[#151B2D]
+  "
+>
+  <div className="grid grid-cols-12 h-full">
 
         {/* Left Side */}
 <div
@@ -120,11 +127,11 @@ className="
               className="
                 flex
                 items-center
-                justify-between
+                justify-center
                 mb-6
                 shrink-0
                 border-b border-slate-200 dark:border-[#2A3550]
-                pb-6
+                pb-4
               "
             >
               <div
@@ -141,29 +148,21 @@ className="
                     flex
                     items-center
                     gap-2
+                    dark:text-slate-200
                   "
                 >
                   <ListTodo
-                    size={20}
-                    className="text-slate-400"
+                    size={25}
+                    className="text-slate-400 "
                   />
 
                   <span>
                     My Tasks
                   </span>
 
-                  <span
-                    className="
-                      text-slate-400
-                      font-normal
-                      text-xl
-                    "
-                  >
-                    4
-                  </span>
                 </h2>
 
-                <div className="relative w-[190px]">
+                <div className="relative w-[200px] dark:text-slate-300">
                   <Search
                     size={16}
                     className="
@@ -190,6 +189,7 @@ className="
                       pr-10
                       text-sm
                       outline-none
+                      
                     "
                   />
 
@@ -199,7 +199,7 @@ className="
                       right-2
                       top-1/2
                       -translate-y-1/2
-
+                      cursor-pointer
                       w-8
                       h-8
 
@@ -230,16 +230,17 @@ className="
     min-h-0
     overflow-y-auto
     space-y-1
-    pr-2
+    pr-5
+    pl-5
   "
 >
               {[
                 {
                   title:
                     "Design Meeting",
-                  badge1: "2 pm",
+                  badge1: "Done",
                   badge2:
-                    "Join now",
+                    "🗑️",
                   color:
                     "bg-orange-500",
                 },
@@ -308,7 +309,7 @@ py-4
 
                       transition-all
                       duration-300
-
+                    
                       cursor-pointer
                     "
                   >
@@ -317,6 +318,7 @@ py-4
                         flex
                         items-center
                         gap-3
+                        
                       "
                     >
                       <div
@@ -324,11 +326,12 @@ py-4
                           w-2
                           h-2
                           rounded-full
+                          
                           ${task.color}
                         `}
                       />
 
-                      <span className="flex-1">
+                      <span className="flex-1 dark:text-slate-100">
                         {task.title}
                       </span>
 
@@ -339,6 +342,7 @@ py-4
                           px-3
                           py-1
                           text-sm
+                          
                         "
                       >
                         {task.badge1}
@@ -420,6 +424,7 @@ className="
                 <h2
                   className="
                     font-semibold
+                    dark:text-slate-200
                     text-lg
                   "
                 >
