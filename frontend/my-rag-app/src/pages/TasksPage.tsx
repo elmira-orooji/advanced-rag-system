@@ -6,6 +6,8 @@ import {
   ListTodo,
   Search,
   MessageSquare,
+  Check,
+  X,
 } from "lucide-react";
 
 import ChatWindow from "../components/ChatWindow";
@@ -238,9 +240,9 @@ className="
                 {
                   title:
                     "Design Meeting",
-                  badge1: "Done",
+                  badge1: "✔️",
                   badge2:
-                    "🗑️",
+                    "✖️",
                   color:
                     "bg-orange-500",
                 },
@@ -335,32 +337,43 @@ py-4
                         {task.title}
                       </span>
 
-                      <span
-                        className="
-                          rounded-full
-                          bg-slate-100
-                          px-3
-                          py-1
-                          text-sm
-                          
-                        "
-                      >
-                        {task.badge1}
-                      </span>
+<button
+  className="
+    w-12
+    h-10
+    rounded-full
+    bg-green
 
-                      <span
-                        className="
-                          rounded-full
-                          bg-blue-100
-                          dark:bg-blue-500/15
-                          text-blue-600
-                          px-3
-                          py-1
-                          text-sm
-                        "
-                      >
-                        {task.badge2}
-                      </span>
+    flex
+    items-center
+    justify-center
+  "
+>
+  <Check
+    size={20}
+    strokeWidth={3}
+    className="text-green-500"
+  />
+</button>
+
+ <button
+  className="
+    w-12
+    h-10
+    rounded-full
+    bg-red
+
+    flex
+    items-center
+    justify-center
+  "
+>
+  <X
+    size={20}
+    strokeWidth={3}
+    className="text-red-400"
+  />
+</button>
                     </div>
                   </div>
                 )
