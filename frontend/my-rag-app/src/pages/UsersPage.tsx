@@ -66,3 +66,50 @@ import {
   <span>JOB TITLE</span>
   <span>ACTIONS</span>
 </div>
+<div className="space-y-4 px-6">
+
+  {users.map((user) => (
+    <div
+      key={user.id}
+      className="
+        h-16
+
+        rounded-3xl
+
+        bg-white
+        dark:bg-[#1E2A44]
+
+        border
+        border-slate-200
+        dark:border-slate-700
+
+        px-6
+
+        grid
+        grid-cols-4
+
+        items-center
+      "
+    >
+      <span>{user.firstName}</span>
+
+      <span>{user.lastName}</span>
+
+      <span>{user.jobTitle}</span>
+
+      <div className="flex gap-2">
+        <button>
+          <Pencil size={18} />
+        </button>
+
+        <button>
+          <Trash2
+            size={18}
+            className="text-red-400"
+          />
+        </button>
+      </div>
+    </div>
+  ))}
+
+</div>
