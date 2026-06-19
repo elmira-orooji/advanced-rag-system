@@ -15,6 +15,7 @@ export default function UsersPage() {
     firstName: "Ali",
     lastName: "Ahmadi",
     jobTitle: "Product Manager",
+    
   },
   {
     id: 2,
@@ -61,10 +62,11 @@ return(
     py-2
 
     rounded-xl
-
-    bg-cyan-400
+    transition-all
+    bg-blue-900
+    
     text-slate-900
-
+    hover:bg-cyan-300
     font-semibold
   "
 >
@@ -79,14 +81,15 @@ return(
 <div
   className="
     grid
-    grid-cols-4
-
+    grid-cols-[1fr_1fr_1fr_auto]
+    
+    dark:text-slate-400
     px-8
-    py-4
+    py-8
 
     text-sm
     font-semibold
-
+truncate
     text-slate-400
   "
 >
@@ -95,13 +98,13 @@ return(
   <span>JOB TITLE</span>
   <span>ACTIONS</span>
 </div>
-<div className="space-y-4 px-6">
+<div className="space-y-4 px-6 ">
 
   {users.map((user) => (
     <div
       key={user.id}
       className="
-        h-16
+        h-20
 
         rounded-3xl
 
@@ -111,31 +114,59 @@ return(
         border
         border-slate-200
         dark:border-slate-700
-
+        hover:bg-[#24304A]
+        hover:border-cyan-400/30
+        transition-all
+        duration-200
         px-6
 
         grid
-        grid-cols-4
-
+        grid-cols-[1fr_1fr_1.2fr_auto]
+        
         items-center
       "
     >
-      <span>{user.firstName}</span>
+      <span className="text-slate-300 font-medium">
+        {user.firstName}
+        </span>
 
-      <span>{user.lastName}</span>
+            <span className="text-slate-300 font-medium">
+            {user.lastName}
+            </span>
 
-      <span>{user.jobTitle}</span>
+            <span className="
+  text-slate-300
+  font-medium
+  whitespace-nowrap
+  overflow-hidden
+  text-ellipsis
+" >
+            {user.jobTitle}
+            </span>
 
       <div className="flex gap-2">
         <button>
-          <Pencil size={18} />
+          <Pencil
+  size={18}
+  className="
+    text-slate-400
+    hover:text-cyan-300
+    transition-colors
+    cursor-pointer
+  "
+/>
         </button>
 
         <button>
-          <Trash2
+            <Trash2
             size={18}
-            className="text-red-400"
-          />
+            className="
+                text-red-400
+                hover:text-red-300
+                transition-colors
+                cursor-pointer
+            "
+            />
         </button>
       </div>
     </div>
