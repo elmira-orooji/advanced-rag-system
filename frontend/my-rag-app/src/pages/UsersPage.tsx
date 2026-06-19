@@ -4,6 +4,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import ChatWindow from "../components/ChatWindow";
+import ChatInput from "../components/ChatInput";
 
 <motion.div
   initial={{ opacity: 0, y: 10 }}
