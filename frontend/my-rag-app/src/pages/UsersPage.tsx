@@ -113,3 +113,97 @@ import {
   ))}
 
 </div>
+
+
+         {/* Right Side - Chat */}
+        <div className="col-span-7 h-screen">
+          <div
+className="
+  bg-white
+  dark:bg-[#1D263B]
+  border-1
+  border-slate-200
+ dark:border-[#334155]
+
+  h-full
+
+  flex
+  flex-col
+"
+          >
+            {/* Header */}
+            <div
+              className="
+                px-6
+                py-5
+
+                border-b
+                border-slate-200
+                dark:border-[#334155]
+
+                flex
+                items-center
+                gap-4
+              "
+            >
+              <div
+                className="
+                  w-12
+                  h-12
+
+                  rounded-2xl
+
+                  bg-blue-100
+                  dark:bg-[#24304A]
+                  dark:border-[#334155]
+                  dark:text-cyan-300
+                  flex
+                  items-center
+                  justify-center
+                "
+              >
+                <MessageSquare
+                  size={22}
+                  className="text-blue-600 "
+                />
+              </div>
+
+              <div>
+                <h2
+                  className="
+                    font-semibold
+                    text-lg
+                    dark:text-slate-300
+                  "
+                >
+                  AI Assistant
+                </h2>
+
+                <p
+                  className="
+                    text-green-400
+                    text-sm
+                  "
+                >
+                  ● RAG Active
+                </p>
+              </div>
+            </div>
+
+                    {/* Existing Chat */}
+                    <div className="flex-1 overflow-y-auto px-8 py-6 ">
+                    <ChatWindow
+                        messages={[]}
+                        isThinking={false}
+                    />
+                    </div>
+
+                    {/* Existing Input */}
+                <div className="px-8 py-6 border-t border-slate-200 dark:border-[#334155]">
+                <ChatInput
+                    disabled={false}
+                    onSend={() => {}}
+                />
+                </div>
+          </div>
+        </div>
