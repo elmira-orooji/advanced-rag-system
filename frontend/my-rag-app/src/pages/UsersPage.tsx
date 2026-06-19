@@ -2,48 +2,75 @@ import {
   UserPlus,
   Pencil,
   Trash2,
+  MessageSquare,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import ChatWindow from "../components/ChatWindow";
 import ChatInput from "../components/ChatInput";
 
+export default function UsersPage() {
+    const users = [
+  {
+    id: 1,
+    firstName: "Ali",
+    lastName: "Ahmadi",
+    jobTitle: "Product Manager",
+  },
+  {
+    id: 2,
+    firstName: "Sara",
+    lastName: "Mohammadi",
+    jobTitle: "AI Engineer",
+  },
+];
+return(
 <motion.div
   initial={{ opacity: 0, y: 10 }}
   animate={{ opacity: 1, y: 0 }}
   transition={{ duration: 0.25 }}
-  className="grid grid-cols-12 h-full"
+  className="grid grid-cols-12 h-full "
 >
-<div className="col-span-5 border-r border-slate-200 dark:border-slate-700">
-    <div className="px-8 py-6 border-b border-slate-200 dark:border-slate-700">
+<div className="col-span-5 border-r border-slate-900  dark:bg-[#151B2D]">
+    <div className="px-8 py-6 border-b border-slate-700 bg-[#F6F8FC] dark:bg-[#151B2D]">
 
-  <div className="flex items-center justify-between">
+  <div className="flex items-center justify-between bg-[#F6F8FC] dark:bg-[#151B2D]">
 
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3 ">
       <UserPlus
         size={22}
         className="text-blue-500"
       />
-
-      <h1 className="text-3xl font-bold">
-        Users
-      </h1>
+<h1
+  className="
+    text-3xl
+    font-bold
+    dark:text-slate-100
+  "
+>
+  Users
+</h1>
     </div>
 
-    <button
-      className="
-        px-4
-        py-2
+<button
+  className="
+    flex
+    items-center
+    gap-2
 
-        rounded-xl
+    px-4
+    py-2
 
-        bg-cyan-400
-        text-slate-900
+    rounded-xl
 
-        font-semibold
-      "
-    >
-      Add User
-    </button>
+    bg-cyan-400
+    text-slate-900
+
+    font-semibold
+  "
+>
+  <UserPlus size={18} />
+  Add User
+</button>
 
   </div>
 
@@ -113,9 +140,9 @@ import ChatInput from "../components/ChatInput";
       </div>
     </div>
   ))}
-
 </div>
 
+</div>
 
          {/* Right Side - Chat */}
         <div className="col-span-7 h-screen">
@@ -209,7 +236,7 @@ className="
                 </div>
           </div>
         </div>
-        </div>
+        
        </motion.div>
   );
 }
