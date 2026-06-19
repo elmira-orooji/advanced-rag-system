@@ -5,6 +5,7 @@ import {
   LogOut,
   Upload,
   ChevronsLeft,
+  UserPlus,
 } from "lucide-react";
 import type { ChatSession } from "../types/chat";
 import { useState } from "react";
@@ -18,9 +19,14 @@ interface SidebarV2Props {
 
   activePage: string;
 
-    setActivePage: (
-        page: "home" | "tasks" | "upload" | "settings"
-                        ) => void;
+setActivePage: (
+  page:
+    | "home"
+    | "tasks"
+    | "upload"
+    | "users"
+    | "settings"
+) => void;
 
 }
 
@@ -171,6 +177,12 @@ export default function SidebarV2({
             label: t("upload"),
             active: activePage === "upload",
             onClick: () => setActivePage("upload"),
+          },
+          {
+            icon: UserPlus,
+            label: "Users",
+            active: activePage === "users",
+            onClick: () => setActivePage("users"),
           },
           {
             icon: Settings,
