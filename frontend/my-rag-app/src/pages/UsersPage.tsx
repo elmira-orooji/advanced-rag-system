@@ -46,3 +46,23 @@ import {
   </div>
 
 </div>
+
+<div
+  className="
+    grid
+    grid-cols-4
+
+    px-8
+    py-4
+
+    text-sm
+    font-semibold
+
+    text-slate-400
+  "
+>
+  <span>FIRST NAME</span>
+  <span>LAST NAME</span>
+  <span>JOB TITLE</span>
+  <span>ACTIONS</span>
+</div>
