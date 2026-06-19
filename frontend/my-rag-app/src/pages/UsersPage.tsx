@@ -3,7 +3,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-
+import { motion } from "framer-motion";
 
 <motion.div
   initial={{ opacity: 0, y: 10 }}
@@ -207,3 +207,7 @@ className="
                 </div>
           </div>
         </div>
+        </div>
+       </motion.div>
+  );
+}
