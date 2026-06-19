@@ -5,6 +5,7 @@ import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import DashboardPage from "../pages/DashboardPage";
 import TasksPage from "../pages/TasksPage";
+import UsersPage from "../pages/UsersPage";
 import { useEffect, useState } from "react";
 
 
@@ -25,10 +26,11 @@ export default function AppLayout() {
 
 const [activePage, setActivePage] =
   useState<
-    "home" |
-    "tasks" |
-    "upload" |
-    "settings"
+    | "home"
+    | "tasks"
+    | "upload"
+    | "users"
+    | "settings"
   >("home");
   
 useEffect(() => {
@@ -72,6 +74,10 @@ useEffect(() => {
         {activePage === "upload" && (
           <UploadFilesPage />
         )}
+        
+        {activePage === "users" && (
+            <UsersPage />
+          )}
 
           {activePage === "settings" && (
             <SettingsPage

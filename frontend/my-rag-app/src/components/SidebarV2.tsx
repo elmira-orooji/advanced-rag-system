@@ -180,7 +180,7 @@ export default function SidebarV2({
           },
           {
             icon: UserPlus,
-            label: "Users",
+            label: t("users"),
             active: activePage === "users",
             onClick: () => setActivePage("users"),
           },

@@ -15,7 +15,7 @@ i18n
           upload: "Upload Files",
           settings: "Settings",
           logout: "Logout",
-
+          users: "Users",
           language: "Language",
           theme: "Theme",
           today: "Today",
@@ -38,7 +38,7 @@ i18n
           yesterday: "دیروز",
           language: "زبان",
           theme: "تم",
-
+          users: "کاربران",
           light: "روشن",
           dark: "تیره",
 
