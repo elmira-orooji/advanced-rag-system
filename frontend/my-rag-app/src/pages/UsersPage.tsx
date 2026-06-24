@@ -122,7 +122,8 @@ truncate
         transition-all
         duration-200
         px-5
-
+        hover:border-blue-400
+              hover:bg-blue-50
         grid
         grid-cols-[1fr_1fr_1.2fr_auto]
         
