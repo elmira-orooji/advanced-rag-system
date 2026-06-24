@@ -291,6 +291,7 @@ className="
                     font-semibold
                     text-lg
                     dark:text-slate-300
+                    text-stone-700
                   "
                 >
                   AI Assistant

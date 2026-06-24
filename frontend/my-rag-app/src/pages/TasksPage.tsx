@@ -151,6 +151,7 @@ className="
                     items-center
                     gap-2
                     dark:text-slate-200
+                    text-stone-700
                   "
                 >
                   <ListTodo
@@ -439,6 +440,7 @@ className="
                     font-semibold
                     dark:text-slate-200
                     text-lg
+                    text-stone-700
                   "
                 >
                   AI Assistant
