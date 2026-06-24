@@ -31,8 +31,8 @@ return(
   transition={{ duration: 0.25 }}
   className="grid grid-cols-12 h-full "
 >
-<div className="col-span-5 border-r border-slate-900  dark:bg-[#151B2D]">
-    <div className="px-8 py-6 border-b border-slate-700 bg-[#F6F8FC] dark:bg-[#151B2D]">
+<div className="col-span-5 border-r border-slate-100  dark:bg-[#151B2D]">
+    <div className="px-8 py-5 border-b border-slate-200 bg-[#F6F8FC] dark:bg-[#151B2D]">
 
   <div className="flex items-center justify-between bg-[#F6F8FC] dark:bg-[#151B2D]">
 
@@ -45,6 +45,7 @@ return(
   className="
     text-3xl
     font-bold
+    text-stone-700
     dark:text-slate-100
   "
 >
@@ -87,8 +88,8 @@ duration-300
     
     dark:text-slate-400
     px-8
-    py-8
-
+    py-6
+text-stone-700
     text-sm
     font-semibold
 truncate
@@ -100,13 +101,13 @@ truncate
   <span>JOB TITLE</span>
   <span>ACTIONS</span>
 </div>
-<div className="space-y-4 px-6 ">
+<div className="space-y-2 px-6 ">
 
   {users.map((user) => (
     <div
       key={user.id}
       className="
-        h-20
+        h-12
 
         rounded-3xl
 
@@ -120,7 +121,7 @@ truncate
         hover:border-cyan-400/30
         transition-all
         duration-200
-        px-6
+        px-5
 
         grid
         grid-cols-[1fr_1fr_1.2fr_auto]
@@ -128,16 +129,17 @@ truncate
         items-center
       "
     >
-      <span className="text-slate-300 font-medium">
+      <span className=" text-stone-700 dark:text-slate-300 font-medium">
         {user.firstName}
         </span>
 
-            <span className="text-slate-300 font-medium">
+            <span className=" text-stone-700 dark:text-slate-300 font-medium">
             {user.lastName}
             </span>
 
             <span className="
-  text-slate-300
+            text-stone-700
+  dark:text-slate-300
   font-medium
   whitespace-nowrap
   overflow-hidden
@@ -151,7 +153,8 @@ truncate
           <Pencil
   size={18}
   className="
-    text-slate-400
+    dark:text-slate-400
+    text-stone-700
     hover:text-cyan-300
     transition-colors
     cursor-pointer
