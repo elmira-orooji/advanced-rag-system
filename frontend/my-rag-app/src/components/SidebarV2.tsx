@@ -106,8 +106,10 @@ export default function SidebarV2({
               whitespace-nowrap
               overflow-hidden
               dark:text-slate-300
+              text-stone-600
               transition-all
               duration-300
+              font-medium
 
               ${
                 collapsed
