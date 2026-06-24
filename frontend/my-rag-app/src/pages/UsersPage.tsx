@@ -53,22 +53,29 @@ return(
     </div>
 
 <button
-  className="
-    flex
-    items-center
-    gap-2
+className="
+flex
+items-center
+gap-2
 
-    px-4
-    py-2
+px-5
+py-3
 
-    rounded-xl
-    transition-all
-    bg-blue-900
-    
-    text-slate-900
-    hover:bg-cyan-300
-    font-semibold
-  "
+rounded-2xl
+
+bg-[#2A4B8D]
+hover:bg-[#3562B8]
+
+text-slate-100
+
+font-semibold
+
+transition-all
+duration-300
+
+shadow-lg
+shadow-blue-900/20
+"
 >
   <UserPlus size={18} />
   Add User
