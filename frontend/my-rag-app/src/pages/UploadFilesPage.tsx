@@ -58,7 +58,7 @@ className="
 >
           {/* Header */}
           <div>
-            <h1 className="text-4xl font-bold text-slate-900 dark:text-slate-100">
+            <h1 className="text-4xl font-bold text-stone-700 dark:text-slate-100">
               Upload Knowledge
             </h1>
 
@@ -103,6 +103,7 @@ className="
                 mt-6
                 text-lg
                 font-semibold
+                text-stone-600
                 dark:text-slate-400
               "
             >
@@ -137,7 +138,7 @@ className="
     "
   >
     <div>
-      <h2 className="text-2xl font-semibold">
+      <h2 className="text-stone-600 text-2xl font-semibold">
         Knowledge Base
       </h2>
 
