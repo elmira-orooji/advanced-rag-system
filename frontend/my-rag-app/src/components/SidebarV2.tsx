@@ -272,7 +272,21 @@ export default function SidebarV2({
 
       {/* Recent Chats */}
       {!collapsed && (
-        <div className="mt-8 flex-1 overflow-y-auto">
+        <div
+  className="
+    mt-8
+    flex-1
+    overflow-y-auto
+
+    scrollbar
+    scrollbar-thin
+
+    scrollbar-thumb-[#3B4A69]
+    scrollbar-track-transparent
+
+    hover:scrollbar-thumb-[#5A6D94]
+  "
+>
           <p className="px-6 text-sm text-slate-400 mb-4">
              {t("today")}
           </p>
