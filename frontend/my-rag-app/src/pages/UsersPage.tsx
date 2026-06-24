@@ -57,24 +57,19 @@ className="
 flex
 items-center
 gap-2
-
 px-5
 py-3
-
 rounded-2xl
-
-bg-[#2A4B8D]
-hover:bg-[#3562B8]
-
+dark:bg-[#2A4B8D]
+dark:hover:bg-[#3562B8]
+bg-[#3B82F6]
+hover:bg-[#2563EB]
+text-white
 text-slate-100
-
 font-semibold
-
 transition-all
 duration-300
 
-shadow-lg
-shadow-blue-900/20
 "
 >
   <UserPlus size={18} />
