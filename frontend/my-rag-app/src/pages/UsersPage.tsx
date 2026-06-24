@@ -89,7 +89,7 @@ duration-300
     dark:text-slate-400
     px-8
     py-6
-text-stone-700
+
     text-sm
     font-semibold
 truncate
