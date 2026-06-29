@@ -31,8 +31,8 @@ return(
   transition={{ duration: 0.25 }}
   className="grid grid-cols-12 h-full "
 >
-<div className="col-span-5 border-r border-slate-100  dark:bg-[#151B2D]">
-    <div className="px-8 py-5 border-b border-slate-200 bg-[#F6F8FC] dark:bg-[#151B2D]">
+<div className="col-span-5 border-r border-slate-100 dark:border-slate-900 dark:bg-[#151B2D]">
+    <div className="px-8 py-5 border-b border-slate-200 bg-[#F6F8FC] dark:border-slate-700 dark:bg-[#151B2D]">
 
   <div className="flex items-center justify-between bg-[#F6F8FC] dark:bg-[#151B2D]">
 
