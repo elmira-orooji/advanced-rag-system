@@ -7,6 +7,7 @@ import {
 import { motion } from "framer-motion";
 import ChatWindow from "../components/ChatWindow";
 import ChatInput from "../components/ChatInput";
+import { useState } from "react";
 
 export default function UsersPage() {
     const users = [
@@ -24,6 +25,8 @@ export default function UsersPage() {
     jobTitle: "AI Engineer",
   },
 ];
+
+const [showAddUser, setShowAddUser] = useState(false);
 return(
 <motion.div
   initial={{ opacity: 0, y: 10 }}
@@ -54,6 +57,7 @@ return(
     </div>
 
 <button
+ onClick={() => setShowAddUser(true)}
 className="
 flex
 items-center
@@ -80,7 +84,7 @@ duration-300
   </div>
 
 </div>
-
+{!showAddUser && (
 <div
   className="
     grid
@@ -101,7 +105,11 @@ truncate
   <span>JOB TITLE</span>
   <span>ACTIONS</span>
 </div>
-<div className="space-y-2 px-6 ">
+)}
+
+{!showAddUser ? (
+
+<div className="space-y-2 px-6">
 
   {users.map((user) => (
     <div
@@ -117,69 +125,240 @@ truncate
         border
         border-slate-200
         dark:border-slate-700
-        hover:bg-[#24304A]
-        hover:border-cyan-400/30
+
+        hover:bg-blue-50
+        dark:hover:bg-[#24304A]
+
+        hover:border-blue-400
+        dark:hover:border-cyan-400/30
+
         transition-all
         duration-200
+
         px-5
-        hover:border-blue-400
-              hover:bg-blue-50
+
         grid
         grid-cols-[1fr_1fr_1.2fr_auto]
-        
+
         items-center
       "
     >
-      <span className=" text-stone-700 dark:text-slate-300 font-medium">
+      <span className="text-stone-700 dark:text-slate-300 font-medium">
         {user.firstName}
-        </span>
+      </span>
 
-            <span className=" text-stone-700 dark:text-slate-300 font-medium">
-            {user.lastName}
-            </span>
+      <span className="text-stone-700 dark:text-slate-300 font-medium">
+        {user.lastName}
+      </span>
 
-            <span className="
-            text-stone-700
-  dark:text-slate-300
-  font-medium
-  whitespace-nowrap
-  overflow-hidden
-  text-ellipsis
-" >
-            {user.jobTitle}
-            </span>
+      <span
+        className="
+          text-stone-700
+          dark:text-slate-300
+
+          font-medium
+
+          whitespace-nowrap
+          overflow-hidden
+          text-ellipsis
+        "
+      >
+        {user.jobTitle}
+      </span>
 
       <div className="flex gap-2">
+
         <button>
           <Pencil
-  size={18}
-  className="
-    dark:text-slate-400
-    text-stone-700
-    hover:text-cyan-300
-    transition-colors
-    cursor-pointer
-  "
-/>
+            size={18}
+            className="
+              text-stone-700
+              dark:text-slate-400
+
+              hover:text-cyan-300
+
+              transition-colors
+            "
+          />
         </button>
 
         <button>
-            <Trash2
+          <Trash2
             size={18}
             className="
-                text-red-400
-                hover:text-red-300
-                transition-colors
-                cursor-pointer
+              text-red-400
+
+              hover:text-red-300
+
+              transition-colors
             "
-            />
+          />
         </button>
+
       </div>
+
     </div>
   ))}
-</div>
 
 </div>
+
+) : (
+
+<div className="px-8 py-8">
+
+  <h2
+    className="
+      text-2xl
+      font-bold
+
+      text-slate-900
+      dark:text-slate-100
+
+      mb-8
+    "
+  >
+    Add New User
+  </h2>
+
+  <div className="space-y-6 ">
+
+    <input
+      placeholder="First Name"
+      className="
+        w-full
+        h-12
+        
+        placeholder:text-slate-500
+        dark:placeholder:text-slate-500
+        rounded-2xl
+        
+        px-4
+
+        bg-white
+        dark:bg-[#1E2A44]
+
+        border
+        border-slate-200
+        dark:border-[#334155]
+      "
+    />
+
+    <input
+      placeholder="Last Name"
+      className="
+        w-full
+        h-12
+
+        rounded-2xl
+
+        px-4
+        placeholder:text-slate-500
+        dark:placeholder:text-slate-500
+
+        bg-white
+        dark:bg-[#1E2A44]
+
+        border
+        border-slate-200
+        dark:border-[#334155]
+      "
+    />
+
+    <input
+      placeholder="Job Title"
+      className="
+        w-full
+        h-12
+        placeholder:text-slate-500
+        dark:placeholder:text-slate-500
+        rounded-2xl
+
+        px-4
+
+        bg-white
+        dark:bg-[#1E2A44]
+
+        border
+        border-slate-200
+        dark:border-[#334155]
+      "
+    />
+
+    <input
+      type="date"
+      className="
+        w-full
+        h-12
+        placeholder:text-slate-500
+        dark:placeholder:text-slate-500
+
+        rounded-2xl
+
+        px-4
+
+        bg-white
+        dark:bg-[#1E2A44]
+
+        border
+        border-slate-200
+        dark:border-[#334155]
+      "
+    />
+
+  </div>
+
+  <div className="flex justify-center gap-4 mt-10">
+
+    <button
+      onClick={() => setShowAddUser(false)}
+      className="
+        px-6
+        py-3
+
+        rounded-2xl
+
+        border
+        border-slate-300
+        dark:border-[#334155]
+        hover:bg-[#D0342C]
+        cursor-pointer
+        dark:text-slate-300
+      "
+    >
+      Cancel
+    </button>
+
+    <button
+      className="
+        px-6
+        py-3
+
+        rounded-2xl
+
+        bg-[#3B82F6]
+        hover:bg-[#2563EB]
+
+        dark:bg-[#2A4B8D]
+        dark:hover:bg-[#3562B8]
+
+        text-white
+
+        font-semibold
+        cursor-pointer
+        transition-all
+      "
+    >
+      Save User
+    </button>
+
+  </div>
+
+</div>
+
+)}
+ 
+</div>
+
 
          {/* Right Side - Chat */}
         <div className="col-span-7 h-screen">
