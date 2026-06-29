@@ -4,7 +4,6 @@ import { useChatHistory } from "../hooks/useChatHistory";
 import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import DashboardPage from "../pages/DashboardPage";
-import TasksPage from "../pages/TasksPage";
 import UsersPage from "../pages/UsersPage";
 import { useEffect, useState } from "react";
 
@@ -27,7 +26,6 @@ export default function AppLayout() {
 const [activePage, setActivePage] =
   useState<
     | "home"
-    | "tasks"
     | "upload"
     | "users"
     | "settings"
@@ -67,9 +65,6 @@ useEffect(() => {
           <DashboardPage />
         )}
 
-          {activePage === "tasks" && (
-            <TasksPage />
-          )}
           
         {activePage === "upload" && (
           <UploadFilesPage />

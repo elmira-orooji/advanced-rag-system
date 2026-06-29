@@ -22,7 +22,6 @@ interface SidebarV2Props {
 setActivePage: (
   page:
     | "home"
-    | "tasks"
     | "upload"
     | "users"
     | "settings"
@@ -166,13 +165,6 @@ export default function SidebarV2({
           active: activePage === "home",
           onClick: () =>
           setActivePage("home"),
-          },
-          {
-            icon: CheckSquare,
-            label: t("tasks"),
-            active: activePage === "tasks",
-            onClick: () =>
-            setActivePage("tasks"),
           },
           {
             icon: Upload,
