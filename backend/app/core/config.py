@@ -13,5 +13,7 @@ QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "rag_chunks")
 QDRANT_EMBEDDING_MODEL = os.getenv(
     "QDRANT_EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
 )
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 UPLOAD_DIR = BASE_DIR / "storage" / "documents"
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
