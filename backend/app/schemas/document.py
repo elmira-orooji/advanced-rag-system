@@ -36,6 +36,12 @@ class IngestResponse(DocumentResponse):
     chunks_count: int
 
 
+class DeleteDocumentResponse(BaseModel):
+    id: uuid.UUID
+    status: str
+    storage_removed: bool
+
+
 class ChunkResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

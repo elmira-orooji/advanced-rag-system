@@ -1,6 +1,7 @@
 from app.schemas.document import (
     ChunkingRequest,
     ChunkResponse,
+    DeleteDocumentResponse,
     DocumentCreate,
     DocumentDetail,
     DocumentResponse,
@@ -10,6 +11,7 @@ from app.schemas.document import (
 __all__ = [
     "ChunkingRequest",
     "ChunkResponse",
+    "DeleteDocumentResponse",
     "DocumentCreate",
     "DocumentDetail",
     "DocumentResponse",

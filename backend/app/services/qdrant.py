@@ -65,18 +65,8 @@ class QdrantClient:
         filename: str,
         chunks: list[dict[str, Any]],
     ) -> None:
+        self.delete_document(document_id)
         collection = quote(self.collection, safe="")
-        self._request(
-            "POST",
-            f"/collections/{collection}/points/delete?wait=true",
-            {
-                "filter": {
-                    "must": [
-                        {"key": "document_id", "match": {"value": document_id}}
-                    ]
-                }
-            },
-        )
 
         for start in range(0, len(chunks), 32):
             batch = chunks[start : start + 32]
@@ -104,6 +94,20 @@ class QdrantClient:
                 f"/collections/{collection}/points?wait=true",
                 {"points": points},
             )
+
+    def delete_document(self, document_id: str) -> None:
+        collection = quote(self.collection, safe="")
+        self._request(
+            "POST",
+            f"/collections/{collection}/points/delete?wait=true",
+            {
+                "filter": {
+                    "must": [
+                        {"key": "document_id", "match": {"value": document_id}}
+                    ]
+                }
+            },
+        )
 
     def search(
         self,

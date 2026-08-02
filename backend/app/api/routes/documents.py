@@ -13,6 +13,7 @@ from app.models.chunk import Chunk
 from app.models.document import Document
 from app.schemas.document import (
     ChunkingRequest,
+    DeleteDocumentResponse,
     DocumentCreate,
     DocumentDetail,
     DocumentResponse,
@@ -280,6 +281,59 @@ def index_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(document)
     return document
+
+
+@router.delete("/{document_id}", response_model=DeleteDocumentResponse)
+def delete_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    document_dir = _get_document_directory(document)
+    try:
+        qdrant = QdrantClient()
+        qdrant.ensure_collection()
+        qdrant.delete_document(str(document.id))
+    except QdrantError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    try:
+        db.delete(document)
+        db.commit()
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not delete document") from exc
+
+    storage_removed = True
+    if document_dir is not None and document_dir.exists():
+        try:
+            shutil.rmtree(document_dir)
+        except OSError:
+            storage_removed = False
+
+    return DeleteDocumentResponse(
+        id=document_id,
+        status="deleted",
+        storage_removed=storage_removed,
+    )
+
+
+def _get_document_directory(document: Document) -> Path | None:
+    if not document.storage_path:
+        return None
+
+    storage_root = UPLOAD_DIR.resolve()
+    document_dir = (BASE_DIR / document.storage_path).resolve().parent
+    expected_dir = storage_root / str(document.id)
+    if document_dir != expected_dir:
+        raise HTTPException(
+            status_code=409,
+            detail="Document storage path failed safety validation",
+        )
+    return document_dir
 
 
 @router.get("/{document_id}", response_model=DocumentDetail)
