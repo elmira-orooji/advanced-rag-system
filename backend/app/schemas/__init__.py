@@ -1,3 +1,15 @@
-from app.schemas.document import ChunkResponse, DocumentCreate, DocumentDetail, DocumentResponse
+from app.schemas.document import (
+    ChunkingRequest,
+    ChunkResponse,
+    DocumentCreate,
+    DocumentDetail,
+    DocumentResponse,
+)
 
-__all__ = ["ChunkResponse", "DocumentCreate", "DocumentDetail", "DocumentResponse"]
+__all__ = [
+    "ChunkingRequest",
+    "ChunkResponse",
+    "DocumentCreate",
+    "DocumentDetail",
+    "DocumentResponse",
+]

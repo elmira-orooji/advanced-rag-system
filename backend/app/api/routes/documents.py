@@ -1,5 +1,5 @@
-import uuid
 import shutil
+import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -9,9 +9,16 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import BASE_DIR, MAX_UPLOAD_SIZE, UPLOAD_DIR
 from app.db.database import get_db
+from app.models.chunk import Chunk
 from app.models.document import Document
-from app.schemas.document import DocumentCreate, DocumentDetail, DocumentResponse
+from app.schemas.document import (
+    ChunkingRequest,
+    DocumentCreate,
+    DocumentDetail,
+    DocumentResponse,
+)
 from app.services.document_extractor import ExtractionError, extract_text
+from app.services.text_chunker import chunk_text
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 ALLOWED_FILE_TYPES = {
@@ -122,6 +129,52 @@ async def _save_upload(file: UploadFile, destination: Path) -> int:
                 )
             output.write(chunk)
     return total_size
+
+
+@router.post("/{document_id}/chunks", response_model=DocumentDetail)
+def create_document_chunks(
+    document_id: uuid.UUID,
+    payload: ChunkingRequest,
+    db: Session = Depends(get_db),
+):
+    statement = (
+        select(Document)
+        .options(selectinload(Document.chunks))
+        .where(Document.id == document_id)
+    )
+    document = db.scalar(statement)
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not document.extracted_text_path:
+        raise HTTPException(status_code=409, detail="Document text has not been extracted")
+
+    extracted_path = (BASE_DIR / document.extracted_text_path).resolve()
+    storage_root = UPLOAD_DIR.resolve()
+    if storage_root not in extracted_path.parents or not extracted_path.is_file():
+        raise HTTPException(status_code=409, detail="Extracted text file is unavailable")
+
+    text = extracted_path.read_text(encoding="utf-8")
+    contents = chunk_text(text, payload.chunk_size, payload.overlap)
+    if not contents:
+        raise HTTPException(status_code=422, detail="Document contains no text to chunk")
+
+    try:
+        for existing_chunk in list(document.chunks):
+            db.delete(existing_chunk)
+        db.flush()
+        document.chunks.clear()
+        document.chunks.extend(
+            Chunk(chunk_index=index, content=content)
+            for index, content in enumerate(contents)
+        )
+        document.status = "chunked"
+        db.commit()
+        db.refresh(document)
+        return document
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not save document chunks") from exc
 
 
 @router.get("/{document_id}", response_model=DocumentDetail)

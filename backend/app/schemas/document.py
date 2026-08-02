@@ -1,12 +1,23 @@
 import uuid
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class DocumentCreate(BaseModel):
     filename: str = Field(min_length=1, max_length=255)
     content_type: str | None = Field(default=None, max_length=100)
+
+
+class ChunkingRequest(BaseModel):
+    chunk_size: int = Field(default=1000, ge=200, le=4000)
+    overlap: int = Field(default=200, ge=0, le=1000)
+
+    @model_validator(mode="after")
+    def validate_overlap(self):
+        if self.overlap >= self.chunk_size:
+            raise ValueError("overlap must be smaller than chunk_size")
+        return self
 
 
 class DocumentResponse(BaseModel):
