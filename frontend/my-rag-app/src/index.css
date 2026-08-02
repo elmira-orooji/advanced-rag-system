@@ -18,8 +18,119 @@
 
 body {
   font-family: "Inter", sans-serif;
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: #f4f7fb;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
 }
 
 html[dir="rtl"] body {
   font-family: "Vazirmatn", sans-serif;
+}
+
+.knowledge-motion {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 43%, rgba(37, 99, 235, 0.24), transparent 30%),
+    linear-gradient(145deg, #030a16 0%, #071a34 56%, #0b2d58 100%);
+}
+
+.knowledge-grid {
+  position: absolute;
+  inset: -28% -25%;
+  opacity: 0.16;
+  transform: perspective(700px) rotateX(58deg) translateY(35%);
+  background-image: linear-gradient(rgba(125, 177, 255, 0.32) 1px, transparent 1px), linear-gradient(90deg, rgba(125, 177, 255, 0.32) 1px, transparent 1px);
+  background-size: 46px 46px;
+  animation: knowledge-grid-drift 12s linear infinite;
+}
+
+.knowledge-glow { position: absolute; width: 25rem; height: 25rem; border-radius: 999px; filter: blur(80px); opacity: 0.22; animation: knowledge-glow 7s ease-in-out infinite alternate; }
+.knowledge-glow-one { top: -10rem; right: -8rem; background: #38bdf8; }
+.knowledge-glow-two { bottom: -12rem; left: -9rem; background: #7c3aed; animation-delay: -3s; }
+.knowledge-connections { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.68; }
+.knowledge-connections path { fill: none; stroke: rgba(96, 165, 250, 0.78); stroke-width: 1.5; stroke-dasharray: 0.08 0.05; animation: knowledge-flow 4.5s linear infinite; }
+
+.knowledge-core {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  width: 9.5rem;
+  height: 9.5rem;
+  place-content: center;
+  justify-items: center;
+  gap: 0.2rem;
+  transform: translate(-50%, -50%);
+  border: 1px solid rgba(147, 197, 253, 0.42);
+  border-radius: 2.5rem;
+  color: white;
+  background: linear-gradient(145deg, rgba(30, 64, 175, 0.72), rgba(8, 19, 39, 0.92));
+  box-shadow: 0 0 70px rgba(37, 99, 235, 0.36), inset 0 1px rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(16px);
+  animation: knowledge-core-float 6s ease-in-out infinite;
+}
+.knowledge-core-icon { display: grid; width: 3rem; height: 3rem; place-items: center; margin-bottom: 0.25rem; border-radius: 1rem; color: #bfdbfe; background: rgba(255, 255, 255, 0.1); }
+.knowledge-core strong { font-size: 1rem; letter-spacing: 0.06em; }
+.knowledge-core small { color: #9ec5fa; font-size: 0.67rem; }
+.knowledge-core-pulse { position: absolute; inset: -1.2rem; border: 1px solid rgba(96, 165, 250, 0.35); border-radius: 3.25rem; animation: knowledge-pulse 2.8s ease-out infinite; }
+
+.knowledge-node {
+  --node-delay: 0s;
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgba(147, 197, 253, 0.24);
+  border-radius: 1rem;
+  color: #dbeafe;
+  background: rgba(9, 23, 47, 0.76);
+  box-shadow: 0 15px 45px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+  animation: knowledge-node-float 5s ease-in-out var(--node-delay) infinite;
+}
+.knowledge-node span { display: grid; width: 2rem; height: 2rem; place-items: center; border-radius: 0.7rem; color: #93c5fd; background: rgba(59, 130, 246, 0.17); }
+.knowledge-node small { font-size: 0.72rem; white-space: nowrap; }
+.knowledge-node.is-document { top: 16%; left: 7%; }
+.knowledge-node.is-search { top: 16%; right: 6%; }
+.knowledge-node.is-database { top: 57%; left: 6%; }
+.knowledge-node.is-answer { top: 57%; right: 5%; }
+
+.knowledge-chip { position: absolute; z-index: 1; padding: 0.42rem 0.7rem; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 999px; color: rgba(219, 234, 254, 0.68); background: rgba(15, 36, 69, 0.52); font-size: 0.61rem; letter-spacing: 0.03em; animation: knowledge-chip 7s ease-in-out infinite; }
+.chip-one { top: 33%; left: 10%; }
+.chip-two { top: 35%; right: 7%; animation-delay: -2s; }
+.chip-three { top: 70%; left: 43%; animation-delay: -4s; }
+
+@keyframes knowledge-flow { to { stroke-dashoffset: -0.65; } }
+@keyframes knowledge-grid-drift { to { background-position: 0 46px, 46px 0; } }
+@keyframes knowledge-glow { to { transform: translate3d(2.5rem, 1.5rem, 0) scale(1.12); opacity: 0.34; } }
+@keyframes knowledge-core-float { 50% { transform: translate(-50%, calc(-50% - 8px)) rotate(1deg); } }
+@keyframes knowledge-node-float { 50% { transform: translateY(-9px); border-color: rgba(147, 197, 253, 0.48); } }
+@keyframes knowledge-chip { 50% { transform: translateY(-7px); opacity: 0.6; } }
+@keyframes knowledge-pulse { 0% { transform: scale(0.88); opacity: 0; } 35% { opacity: 0.65; } 100% { transform: scale(1.22); opacity: 0; } }
+
+@media (max-width: 1180px) {
+  .knowledge-node small { display: none; }
+  .knowledge-node { padding: 0.65rem; }
+  .knowledge-chip { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .knowledge-motion *, .knowledge-motion *::before, .knowledge-motion *::after { animation: none !important; }
 }
