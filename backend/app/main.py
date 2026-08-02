@@ -1,12 +1,11 @@
 from fastapi import FastAPI
+from app.db.database import engine
 
-app = FastAPI(
-    title="RAG Backend",
-    version="1.0.0"
-)
+app = FastAPI()
+
 
 @app.get("/")
 def root():
     return {
-        "message": "Backend is running"
+        "status": "Connected Successfully"
     }
