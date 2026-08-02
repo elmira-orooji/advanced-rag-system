@@ -16,6 +16,7 @@ from app.schemas.document import (
     DocumentCreate,
     DocumentDetail,
     DocumentResponse,
+    IngestResponse,
 )
 from app.services.document_extractor import ExtractionError, extract_text
 from app.services.qdrant import QdrantClient, QdrantError
@@ -118,6 +119,69 @@ async def upload_document(
         await file.close()
 
 
+@router.post(
+    "/ingest",
+    response_model=IngestResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+async def ingest_document(
+    file: UploadFile = File(...),
+    chunk_size: int = Query(default=1000, ge=200, le=4000),
+    overlap: int = Query(default=200, ge=0, le=1000),
+    db: Session = Depends(get_db),
+):
+    try:
+        chunking = ChunkingRequest(chunk_size=chunk_size, overlap=overlap)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    document: Document | None = None
+    try:
+        document = await upload_document(file=file, db=db)
+        document = create_document_chunks(
+            document_id=document.id,
+            payload=chunking,
+            db=db,
+        )
+        document = index_document(document_id=document.id, db=db)
+        document.processing_error = None
+        db.commit()
+        db.refresh(document)
+        return IngestResponse(
+            **DocumentResponse.model_validate(document).model_dump(),
+            chunks_count=len(document.chunks),
+        )
+    except HTTPException as exc:
+        if document is not None:
+            error_message = _format_error_detail(exc.detail)
+            _mark_document_failed(db, document.id, error_message)
+            raise HTTPException(
+                status_code=exc.status_code,
+                detail={
+                    "message": error_message,
+                    "document_id": str(document.id),
+                    "status": "failed",
+                },
+            ) from exc
+        raise
+
+
+def _format_error_detail(detail: object) -> str:
+    if isinstance(detail, str):
+        return detail[:500]
+    return str(detail)[:500]
+
+
+def _mark_document_failed(db: Session, document_id: uuid.UUID, message: str) -> None:
+    db.rollback()
+    document = db.get(Document, document_id)
+    if document is None:
+        return
+    document.status = "failed"
+    document.processing_error = message
+    db.commit()
+
+
 async def _save_upload(file: UploadFile, destination: Path) -> int:
     total_size = 0
     with destination.open("wb") as output:
@@ -170,6 +234,7 @@ def create_document_chunks(
             for index, content in enumerate(contents)
         )
         document.status = "chunked"
+        document.processing_error = None
         db.commit()
         db.refresh(document)
         return document
@@ -211,6 +276,7 @@ def index_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
         ) from exc
 
     document.status = "indexed"
+    document.processing_error = None
     db.commit()
     db.refresh(document)
     return document

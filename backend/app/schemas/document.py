@@ -27,8 +27,13 @@ class DocumentResponse(BaseModel):
     filename: str
     content_type: str | None
     status: str
+    processing_error: str | None
     created_at: datetime
     updated_at: datetime
+
+
+class IngestResponse(DocumentResponse):
+    chunks_count: int
 
 
 class ChunkResponse(BaseModel):

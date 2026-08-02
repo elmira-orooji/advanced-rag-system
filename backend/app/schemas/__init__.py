@@ -4,6 +4,7 @@ from app.schemas.document import (
     DocumentCreate,
     DocumentDetail,
     DocumentResponse,
+    IngestResponse,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "DocumentCreate",
     "DocumentDetail",
     "DocumentResponse",
+    "IngestResponse",
 ]
