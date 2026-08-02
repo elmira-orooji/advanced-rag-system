@@ -19,7 +19,12 @@ class OpenRouterClient:
         self.api_key = OPENROUTER_API_KEY
         self.model = OPENROUTER_MODEL
 
-    def answer(self, question: str, contexts: list[dict[str, Any]]) -> str:
+    def answer(
+        self,
+        question: str,
+        contexts: list[dict[str, Any]],
+        history: list[dict[str, str]] | None = None,
+    ) -> str:
         context_text = "\n\n".join(
             f"[Source {index}]\n{item['content']}"
             for index, item in enumerate(contexts, start=1)
@@ -33,19 +38,22 @@ class OpenRouterClient:
             f"<sources>\n{context_text}\n</sources>\n\n"
             f"<question>\n{question}\n</question>"
         )
+        messages: list[dict[str, str]] = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a retrieval-augmented assistant. Be concise, factual, "
+                    "and grounded exclusively in the supplied sources."
+                ),
+            }
+        ]
+        messages.extend((history or [])[-10:])
+        messages.append({"role": "user", "content": prompt})
+
         response = self._request(
             {
                 "model": self.model,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": (
-                            "You are a retrieval-augmented assistant. Be concise, factual, "
-                            "and grounded exclusively in the supplied sources."
-                        ),
-                    },
-                    {"role": "user", "content": prompt},
-                ],
+                "messages": messages,
                 "temperature": 0.2,
                 "max_tokens": 800,
             }
