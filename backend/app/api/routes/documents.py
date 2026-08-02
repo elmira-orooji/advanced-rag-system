@@ -18,6 +18,7 @@ from app.schemas.document import (
     DocumentResponse,
 )
 from app.services.document_extractor import ExtractionError, extract_text
+from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import chunk_text
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -175,6 +176,44 @@ def create_document_chunks(
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not save document chunks") from exc
+
+
+@router.post("/{document_id}/index", response_model=DocumentDetail)
+def index_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
+    statement = (
+        select(Document)
+        .options(selectinload(Document.chunks))
+        .where(Document.id == document_id)
+    )
+    document = db.scalar(statement)
+
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if not document.chunks:
+        raise HTTPException(status_code=409, detail="Document has no chunks to index")
+
+    chunks = [
+        {
+            "id": str(chunk.id),
+            "chunk_index": chunk.chunk_index,
+            "content": chunk.content,
+        }
+        for chunk in document.chunks
+    ]
+    try:
+        client = QdrantClient()
+        client.ensure_collection()
+        client.replace_document_chunks(str(document.id), document.filename, chunks)
+    except QdrantError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=str(exc),
+        ) from exc
+
+    document.status = "indexed"
+    db.commit()
+    db.refresh(document)
+    return document
 
 
 @router.get("/{document_id}", response_model=DocumentDetail)
