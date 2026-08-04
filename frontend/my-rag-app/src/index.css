@@ -24,6 +24,7 @@ body {
   background: #f4f7fb;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow: hidden;
 }
 
 button,
@@ -33,6 +34,30 @@ input {
 
 button {
   cursor: pointer;
+}
+
+::selection {
+  color: white;
+  background: #2563eb;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(59, 130, 246, 0.3);
+  outline-offset: 3px;
+}
+
+input[aria-invalid="true"] {
+  border-color: #f43f5e;
+  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.1);
+}
+
+.login-glow-button {
+  box-shadow: 0 12px 40px rgba(254, 40, 162, 0.24), 0 0 28px rgba(254, 40, 162, 0.14);
+}
+
+.login-glow-button:hover {
+  box-shadow: 0 16px 48px rgba(254, 40, 162, 0.34), 0 0 36px rgba(254, 40, 162, 0.2);
 }
 
 html[dir="rtl"] body {
@@ -61,6 +86,13 @@ html[dir="rtl"] body {
 .knowledge-glow { position: absolute; width: 25rem; height: 25rem; border-radius: 999px; filter: blur(80px); opacity: 0.22; animation: knowledge-glow 7s ease-in-out infinite alternate; }
 .knowledge-glow-one { top: -10rem; right: -8rem; background: #38bdf8; }
 .knowledge-glow-two { bottom: -12rem; left: -9rem; background: #7c3aed; animation-delay: -3s; }
+.knowledge-stage {
+  position: absolute;
+  inset: 7% 0 auto;
+  height: 58%;
+  transform: scale(0.94);
+  transform-origin: 50% 20%;
+}
 .knowledge-connections { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0.68; }
 .knowledge-connections path { fill: none; stroke: rgba(96, 165, 250, 0.78); stroke-width: 1.5; stroke-dasharray: 0.08 0.05; animation: knowledge-flow 4.5s linear infinite; }
 
@@ -126,6 +158,7 @@ html[dir="rtl"] body {
 @keyframes knowledge-pulse { 0% { transform: scale(0.88); opacity: 0; } 35% { opacity: 0.65; } 100% { transform: scale(1.22); opacity: 0; } }
 
 @media (max-width: 1180px) {
+  .knowledge-stage { inset-inline: 2%; }
   .knowledge-node small { display: none; }
   .knowledge-node { padding: 0.65rem; }
   .knowledge-chip { display: none; }
