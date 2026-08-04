@@ -67,7 +67,7 @@ export default function LoginPage() {
       className="login-cinematic h-[100dvh] max-h-[100dvh] overflow-hidden bg-[#030303] text-white lg:grid lg:grid-cols-[1.12fr_.88fr]"
     >
       <aside className="relative hidden h-full min-h-0 overflow-hidden lg:block" aria-label="KnowledgeFlow visual">
-        <img src={loginHero} alt="" className="absolute inset-0 size-full object-cover [object-position:center_40%]" />
+        <img src={loginHero} alt="" className="absolute inset-0 size-full object-cover object-center" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.12),rgba(0,0,0,.04)_58%,#030303_100%)]" />
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,.18),transparent_44%,rgba(0,0,0,.72)_100%)]" />
       </aside>
