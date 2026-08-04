@@ -19,7 +19,7 @@ import {
   UserRound,
 } from "lucide-react";
 
-import loginHero from "../assets/login-android-hero.png";
+import loginHero from "../assets/login-android-hero-purple.png";
 import { translations } from "../constants/translations";
 import { useLanguage } from "../hooks/useLanguage";
 import { loginSchema } from "../schemas/loginSchema";
@@ -75,7 +75,7 @@ export default function LoginPage() {
       </aside>
 
       <main dir={isRtl ? "rtl" : "ltr"} className="relative flex h-full min-h-0 items-center justify-center overflow-hidden px-5 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_52%,rgba(254,40,162,.10),transparent_36%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_52%,rgba(50,18,122,.16),transparent_36%)]" />
 
         <button
           type="button"
@@ -93,10 +93,10 @@ export default function LoginPage() {
           transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
           className="relative w-full max-w-[430px]"
         >
-          <div className="mb-8 grid size-11 place-items-center rounded-xl border border-[#FE28A2]/30 bg-[#FE28A2]/10 text-[#FE28A2] shadow-[0_0_30px_rgba(254,40,162,.16)]">
+          <div className="mb-8 grid size-11 place-items-center rounded-xl border border-[#32127A]/40 bg-[#32127A]/20 text-[#8f78d8] shadow-[0_0_30px_rgba(50,18,122,.24)]">
             <Sparkles size={21} />
           </div>
-          <span className="mb-3 block text-xs font-bold uppercase tracking-[.2em] text-[#FE28A2]">{t.eyebrow}</span>
+          <span className="mb-3 block text-xs font-bold uppercase tracking-[.2em] text-[#8f78d8]">{t.eyebrow}</span>
           <h2 className="text-3xl font-semibold tracking-[-.04em] sm:text-[40px]">{t.title}</h2>
           <p className="mt-3 max-w-sm text-sm leading-6 text-white/45">{t.subtitle}</p>
 
@@ -111,7 +111,7 @@ export default function LoginPage() {
                 aria-describedby={errors.username ? "username-error" : undefined}
                 {...register("username")}
                 placeholder={t.usernamePlaceholder}
-                className="h-14 w-full rounded-xl border border-white/10 bg-white/[.045] px-12 text-[15px] text-white outline-none ring-4 ring-transparent transition placeholder:text-white/25 hover:border-white/20 focus:border-[#FE28A2]/60 focus:bg-white/[.06] focus:ring-[#FE28A2]/10"
+                className="h-14 w-full rounded-xl border border-white/10 bg-white/[.045] px-12 text-[15px] text-white outline-none ring-4 ring-transparent transition placeholder:text-white/25 hover:border-white/20 focus:border-[#32127A] focus:bg-white/[.06] focus:ring-[#32127A]/20"
               />
             </Field>
 
@@ -140,19 +140,19 @@ export default function LoginPage() {
                 aria-describedby={errors.password ? "password-error" : undefined}
                 {...register("password")}
                 placeholder={t.passwordPlaceholder}
-                className="h-14 w-full rounded-xl border border-white/10 bg-white/[.045] px-12 text-[15px] text-white outline-none ring-4 ring-transparent transition placeholder:text-white/25 hover:border-white/20 focus:border-[#FE28A2]/60 focus:bg-white/[.06] focus:ring-[#FE28A2]/10"
+                className="h-14 w-full rounded-xl border border-white/10 bg-white/[.045] px-12 text-[15px] text-white outline-none ring-4 ring-transparent transition placeholder:text-white/25 hover:border-white/20 focus:border-[#32127A] focus:bg-white/[.06] focus:ring-[#32127A]/20"
               />
             </Field>
 
             <div className="flex items-center justify-between gap-4 pt-1">
               <label className="group flex cursor-pointer items-center gap-2.5 text-sm text-white/50">
                 <input type="checkbox" {...register("rememberMe")} className="peer sr-only" />
-                <span className="grid size-[18px] place-items-center rounded-[5px] border border-white/20 bg-white/[.04] transition peer-checked:border-[#FE28A2] peer-checked:bg-[#FE28A2] peer-focus-visible:ring-4 peer-focus-visible:ring-[#FE28A2]/20 [&>svg]:opacity-0 peer-checked:[&>svg]:opacity-100">
+                <span className="grid size-[18px] place-items-center rounded-[5px] border border-white/20 bg-white/[.04] transition peer-checked:border-[#32127A] peer-checked:bg-[#32127A] peer-focus-visible:ring-4 peer-focus-visible:ring-[#32127A]/30 [&>svg]:opacity-0 peer-checked:[&>svg]:opacity-100">
                   <Check size={12} strokeWidth={3} className="text-white transition" />
                 </span>
                 {t.remember}
               </label>
-              <button type="button" className="text-sm font-medium text-[#FE28A2] transition hover:text-[#ff6bc1]">
+              <button type="button" className="text-sm font-medium text-[#8f78d8] transition hover:text-[#aa98e6]">
                 {t.forgot}
               </button>
             </div>
@@ -160,7 +160,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="login-glow-button group relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#FE28A2] px-5 font-semibold text-[#16000d] transition hover:-translate-y-0.5 hover:bg-[#ff54b6] active:translate-y-0 disabled:pointer-events-none disabled:opacity-60"
+              className="login-glow-button group relative flex h-14 w-full items-center justify-center gap-2 overflow-hidden rounded-xl bg-[#32127A] px-5 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-[#43208F] active:translate-y-0 disabled:pointer-events-none disabled:opacity-60"
             >
               <span className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/80 to-transparent" />
               {isLoading ? <LoaderCircle size={19} className="animate-spin" /> : null}

@@ -53,11 +53,11 @@ input[aria-invalid="true"] {
 }
 
 .login-glow-button {
-  box-shadow: 0 12px 40px rgba(254, 40, 162, 0.24), 0 0 28px rgba(254, 40, 162, 0.14);
+  box-shadow: 0 12px 40px rgba(50, 18, 122, 0.32), 0 0 28px rgba(50, 18, 122, 0.2);
 }
 
 .login-glow-button:hover {
-  box-shadow: 0 16px 48px rgba(254, 40, 162, 0.34), 0 0 36px rgba(254, 40, 162, 0.2);
+  box-shadow: 0 16px 48px rgba(50, 18, 122, 0.44), 0 0 36px rgba(50, 18, 122, 0.28);
 }
 
 html[dir="rtl"] body {
