@@ -1,15 +1,74 @@
 import type { LoginSchemaType } from "../schemas/loginSchema";
+import type { AuthSession, AuthUser, LoginResponse } from "../types/auth";
+
+const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
+const SESSION_KEY = "knowledgeflow.auth";
+
+function parseError(payload: unknown, fallback: string) {
+  if (payload && typeof payload === "object" && "detail" in payload) {
+    const detail = (payload as { detail?: unknown }).detail;
+    if (typeof detail === "string") return detail;
+  }
+  return fallback;
+}
+
+function saveSession(session: AuthSession, rememberMe: boolean) {
+  localStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_KEY);
+  const storage = rememberMe ? localStorage : sessionStorage;
+  storage.setItem(SESSION_KEY, JSON.stringify(session));
+}
 
 export const authService = {
-  async login(data: LoginSchemaType) {
-    await new Promise((resolve) =>
-      setTimeout(resolve, 1500)
-    );
-
-    console.log("Login data:", data);
-
-    return {
-      success: true,
+  async login(data: LoginSchemaType): Promise<AuthSession> {
+    const response = await fetch(`${API_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: data.username.trim(),
+        password: data.password,
+        remember_me: data.rememberMe,
+      }),
+    });
+    const payload = (await response.json().catch(() => null)) as LoginResponse | null;
+    if (!response.ok || payload === null) {
+      throw new Error(parseError(payload, "Unable to sign in. Please try again."));
+    }
+    const session: AuthSession = {
+      accessToken: payload.access_token,
+      expiresAt: Date.now() + payload.expires_in * 1000,
+      user: payload.user,
     };
+    saveSession(session, data.rememberMe);
+    return session;
+  },
+
+  getSession(): AuthSession | null {
+    const raw = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    try {
+      const session = JSON.parse(raw) as AuthSession;
+      if (!session.accessToken || !session.user || session.expiresAt <= Date.now()) {
+        this.logout();
+        return null;
+      }
+      return session;
+    } catch {
+      this.logout();
+      return null;
+    }
+  },
+
+  getUser(): AuthUser | null {
+    return this.getSession()?.user ?? null;
+  },
+
+  isAuthenticated() {
+    return this.getSession() !== null;
+  },
+
+  logout() {
+    localStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
   },
 };

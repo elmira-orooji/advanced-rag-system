@@ -1,22 +1,17 @@
 import {
   Home,
-  CheckSquare,
   Settings,
   LogOut,
   Upload,
   ChevronsLeft,
   UserPlus,
 } from "lucide-react";
-import type { ChatSession } from "../types/chat";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { AuthUser } from "../types/auth";
 interface SidebarV2Props {
-  sessions: ChatSession[];
-
-  activeSessionId: string | null;
-
-  onSelectChat: (id: string) => void;
-
+  currentUser: AuthUser | null;
+  onLogout: () => void;
   activePage: string;
 
 setActivePage: (
@@ -31,11 +26,10 @@ setActivePage: (
 
 
 export default function SidebarV2({
-  sessions,
-  activeSessionId,
-  onSelectChat,
   setActivePage,
   activePage,
+  currentUser,
+  onLogout,
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useTranslation();
@@ -117,7 +111,7 @@ export default function SidebarV2({
               }
             `}
           >
-            Sam Smith
+            {currentUser?.username ?? "User"}
           </span>
         </div>
 
@@ -177,6 +171,7 @@ export default function SidebarV2({
             label: t("users"),
             active: activePage === "users",
             onClick: () => setActivePage("users"),
+            adminOnly: true,
           },
           {
             icon: Settings,
@@ -184,7 +179,7 @@ export default function SidebarV2({
             active: activePage === "settings",
             onClick: () => setActivePage("settings"),
           },
-        ].map(
+        ].filter((item) => !item.adminOnly || currentUser?.role === "admin").map(
           ({
             icon: Icon,
             label,
@@ -305,6 +300,7 @@ export default function SidebarV2({
       <div className="mt-auto px-6 py-6 border-t border-slate-200 dark:border-[#2A3550]">
         <button
           title="Logout"
+          onClick={onLogout}
           className={`
             w-full
             flex

@@ -24,6 +24,7 @@ import { translations } from "../constants/translations";
 import { useLanguage } from "../hooks/useLanguage";
 import { loginSchema } from "../schemas/loginSchema";
 import type { LoginSchemaType } from "../schemas/loginSchema";
+import { authService } from "../services/authService";
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -52,10 +53,11 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginSchemaType) => {
     try {
       setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 900));
-      void data;
+      const session = await authService.login(data);
       toast.success(t.success);
-      navigate("/home");
+      navigate("/home", { replace: true, state: { role: session.user.role } });
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unable to sign in");
     } finally {
       setIsLoading(false);
     }

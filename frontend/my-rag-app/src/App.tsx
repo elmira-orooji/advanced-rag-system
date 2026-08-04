@@ -6,6 +6,7 @@ import {
 
 import LoginPage from "./pages/LoginPage";
 import AppLayout from "./layouts/AppLayout";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -31,7 +32,7 @@ export default function App() {
 
         <Route
           path="/home"
-          element={<AppLayout />}
+          element={<ProtectedRoute><AppLayout /></ProtectedRoute>}
         />
       </Routes>
     </BrowserRouter>

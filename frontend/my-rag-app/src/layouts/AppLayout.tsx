@@ -1,20 +1,17 @@
 
 import SidebarV2 from "../components/SidebarV2";
-import { useChatHistory } from "../hooks/useChatHistory";
 import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import DashboardPage from "../pages/DashboardPage";
 import UsersPage from "../pages/UsersPage";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { authService } from "../services/authService";
 
 
 export default function AppLayout() {
-  const {
-    sessions,
-    activeSessionId,
-    setActiveSessionId,
-  } = useChatHistory();
-
+  const navigate = useNavigate();
+  const currentUser = authService.getUser();
   const [theme, setTheme] =
   useState<"light" | "dark">(
     () =>
@@ -30,6 +27,11 @@ const [activePage, setActivePage] =
     | "users"
     | "settings"
   >("home");
+
+  const handleLogout = () => {
+    authService.logout();
+    navigate("/", { replace: true });
+  };
   
 useEffect(() => {
   if (theme === "dark") {
@@ -52,11 +54,10 @@ useEffect(() => {
   return (
     <div className="flex h-screen bg-[#F6F8FC]">
     <SidebarV2
-      sessions={sessions}
-      activeSessionId={activeSessionId}
-      onSelectChat={setActiveSessionId}
       activePage={activePage}
       setActivePage={setActivePage}
+      currentUser={currentUser}
+      onLogout={handleLogout}
     />
 
       <main className="flex-1 min-h-0 overflow-hidden">
@@ -70,7 +71,7 @@ useEffect(() => {
           <UploadFilesPage />
         )}
         
-        {activePage === "users" && (
+        {activePage === "users" && currentUser?.role === "admin" && (
             <UsersPage />
           )}
 
