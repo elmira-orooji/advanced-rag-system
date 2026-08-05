@@ -1,350 +1,136 @@
-import {
-  Home,
-  Settings,
-  LogOut,
-  Upload,
-  ChevronsLeft,
-  UserPlus,
-} from "lucide-react";
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import {
+  ChevronLeft,
+  FileUp,
+  Home,
+  LogOut,
+  MessageSquareText,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+  Sparkles,
+  UserCog,
+  X,
+} from "lucide-react";
 import type { AuthUser } from "../types/auth";
+import type { AppPage } from "../layouts/AppLayout";
+
 interface SidebarV2Props {
   currentUser: AuthUser | null;
+  activePage: AppPage;
+  mobileOpen: boolean;
+  setActivePage: (page: AppPage) => void;
+  onCloseMobile: () => void;
   onLogout: () => void;
-  activePage: string;
-
-setActivePage: (
-  page:
-    | "home"
-    | "upload"
-    | "users"
-    | "settings"
-) => void;
-
 }
 
+const recentChats = ["Quarterly report insights", "Product research summary", "Onboarding policy review"];
 
 export default function SidebarV2({
-  setActivePage,
   activePage,
   currentUser,
+  mobileOpen,
+  onCloseMobile,
   onLogout,
+  setActivePage,
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
-  const { t } = useTranslation();
+  const navigation = [
+    { id: "home" as const, label: "Workspace", icon: Home },
+    { id: "upload" as const, label: "Knowledge base", icon: FileUp },
+    ...(currentUser?.role === "admin" ? [{ id: "users" as const, label: "Team members", icon: UserCog }] : []),
+    { id: "settings" as const, label: "Settings", icon: Settings },
+  ];
+
   return (
-    <aside
-      className={`
-        ${
-          collapsed
-            ? "w-[100px]"
-            : "w-[280px]"
-        }
-
-        h-screen
-        bg-white
-        dark:bg-[#1D263B]
-        border-r border-slate-200
-        dark:border-[#2A3550]
-
-        flex flex-col
-
-        transition-all
-        duration-500
-        ease-[cubic-bezier(0.22,1,0.36,1)]
-      `}
-    >
-      {/* Profile */}
-              <div
-                className={`
-                  relative
-                  flex
-                  items-center
-
-                  ${
-                    collapsed
-                      ? "justify-center px-4"
-                      : "justify-between px-6"
-                  }
-
-                  py-6
-                `}
-              >
-            <div
-                className={`
-                  flex
-                  items-center
-
-                  ${
-                    collapsed
-                      ? "justify-center"
-                      : "gap-3"
-                  }
-                `}
-              >
-          <img
-            src="https://i.pravatar.cc/40"
-            alt="User"
-            className="
-              w-12
-              h-12
-              rounded-full
-              object-cover
-              shrink-0
-            "
-          />
-          <span
-            className={`
-              whitespace-nowrap
-              overflow-hidden
-              dark:text-slate-300
-              text-stone-600
-              transition-all
-              duration-300
-              font-medium
-
-              ${
-                collapsed
-                  ? "w-0 opacity-0"
-                  : "w-auto opacity-100"
-              }
-            `}
-          >
-            {currentUser?.username ?? "User"}
-          </span>
+    <>
+      <button
+        type="button"
+        aria-label="Close navigation"
+        onClick={onCloseMobile}
+        className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity md:hidden ${mobileOpen ? "visible opacity-100" : "invisible opacity-0"}`}
+      />
+      <aside
+        className={`app-sidebar fixed inset-y-0 left-0 z-50 flex h-[100dvh] flex-col border-r border-white/[.09] transition-[width,transform] duration-300 md:relative md:z-30 ${collapsed ? "md:w-[88px]" : "md:w-[272px]"} w-[286px] ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+      >
+        <div className={`flex h-20 shrink-0 items-center ${collapsed ? "md:justify-center md:px-3" : "justify-between px-5"}`}>
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#8f78d8]/30 bg-[#32127A] shadow-[0_0_28px_rgba(50,18,122,.4)]">
+              <Sparkles size={19} />
+            </span>
+            <div className={`${collapsed ? "md:hidden" : "block"} min-w-0`}>
+              <p className="truncate text-sm font-semibold tracking-[-.02em]">KnowledgeFlow</p>
+              <p className="mt-0.5 text-[10px] uppercase tracking-[.16em] text-white/35">RAG Workspace</p>
+            </div>
+          </div>
+          <button type="button" onClick={onCloseMobile} className="app-icon-button grid size-9 place-items-center rounded-lg md:hidden" aria-label="Close navigation">
+            <X size={18} />
+          </button>
         </div>
 
-<button
-  onClick={() => setCollapsed(!collapsed)}
-  className={`
-    absolute
-    top-1/2
-    -translate-y-1/2
+        <div className="px-3">
+          <button
+            type="button"
+            onClick={() => setActivePage("home")}
+            className={`flex h-12 w-full items-center rounded-xl bg-[#32127A] text-sm font-semibold shadow-[0_12px_32px_rgba(50,18,122,.3)] transition hover:bg-[#43208F] ${collapsed ? "md:justify-center md:px-0" : "gap-3 px-4"}`}
+          >
+            <MessageSquareText size={18} />
+            <span className={collapsed ? "md:hidden" : "block"}>New conversation</span>
+          </button>
+        </div>
 
-    ${
-      collapsed
-        ? "left-[78px]"
-        : "right-6"
-    }
-
-    transition-all
-    duration-300
-  `}
->
-          <ChevronsLeft
-            size={18}
-            className={`
-              text-slate-300
-
-              transition-transform
-              duration-500
-
-              ${
-                collapsed
-                  ? "rotate-180"
-                  : ""
-              }
-            `}
-          />
-        </button>
-      </div>
-
-      {/* Menu */}
-      <div className="px-4 space-y-2">
-        {[
-          {
-          icon: Home,
-          label: t("home"),
-          active: activePage === "home",
-          onClick: () =>
-          setActivePage("home"),
-          },
-          {
-            icon: Upload,
-            label: t("upload"),
-            active: activePage === "upload",
-            onClick: () => setActivePage("upload"),
-          },
-          {
-            icon: UserPlus,
-            label: t("users"),
-            active: activePage === "users",
-            onClick: () => setActivePage("users"),
-            adminOnly: true,
-          },
-          {
-            icon: Settings,
-            label: t("settings"),
-            active: activePage === "settings",
-            onClick: () => setActivePage("settings"),
-          },
-        ].filter((item) => !item.adminOnly || currentUser?.role === "admin").map(
-          ({
-            icon: Icon,
-            label,
-            active,
-            onClick,
-          }) => (
+        <nav className="mt-6 space-y-1.5 px-3" aria-label="Primary navigation">
+          {navigation.map(({ id, icon: Icon, label }) => (
             <button
-              key={label}
-              title={label}
-              onClick={onClick}
-              className={`
-                w-full
-
-                flex
-                items-center
-
-                ${
-                  collapsed
-                    ? "justify-center px-0"
-                    : "justify-start px-4"
-                }
-
-                py-3
-
-                rounded-2xl
-                transition-all
-
-                ${
-                  active
-                    ? "dark:bg-blue-500/15 text-slate-900 dark:text-slate-100"
-                    : "hover:bg-slate-50 text-slate-500 dark:text-slate-400"
-                }
-              `}
+              key={id}
+              type="button"
+              title={collapsed ? label : undefined}
+              onClick={() => setActivePage(id)}
+              className={`group flex h-11 w-full items-center rounded-xl text-sm transition ${collapsed ? "md:justify-center md:px-0" : "gap-3 px-4"} ${activePage === id ? "border border-white/[.1] bg-white/[.09] text-white shadow-[inset_0_1px_rgba(255,255,255,.07)]" : "border border-transparent text-white/45 hover:bg-white/[.05] hover:text-white/85"}`}
             >
-              <div
-  className={`
-    flex
-    items-center
-    overflow-hidden
-    w-full
-
-    ${
-      collapsed
-        ? "justify-center"
-        : "gap-3"
-    }
-  `}
->
-                <Icon
-                  size={collapsed ? 24 : 18}
-                  className={`
-                    shrink-0
-                    transition-all
-                    duration-300
-                  `}
-                />
-                <span
-                  className={`
-                    whitespace-nowrap
-                    overflow-hidden
-
-                    transition-all
-                    duration-300
-
-                    ${
-                      collapsed
-                        ? "w-0 opacity-0"
-                        : "w-auto opacity-100"
-                    }
-                  `}
-                >
-                  {label}
-                </span>
-              </div>
+              <Icon size={18} className={activePage === id ? "text-[#a995eb]" : "transition group-hover:text-[#a995eb]"} />
+              <span className={collapsed ? "md:hidden" : "block"}>{label}</span>
             </button>
-          )
-        )}
-      </div>
+          ))}
+        </nav>
 
-      {/* Recent Chats */}
-      {!collapsed && (
-        <div
-  className="
-    mt-8
-    flex-1
-    overflow-y-auto
-
-    scrollbar
-    scrollbar-thin
-
-    scrollbar-thumb-[#3B4A69]
-    scrollbar-track-transparent
-
-    hover:scrollbar-thumb-[#5A6D94]
-  "
->
-          <p className="px-6 text-sm text-slate-400 mb-4">
-             {t("today")}
-          </p>
-
-          <div className="space-y-4 px-6 dark:text-slate-300">
-            <p>Research Assistance Request</p>
-            <p>Summarizing Last Meeting</p>
-            <p>Prioritizing Tasks Request</p>
+        <div className={`${collapsed ? "md:hidden" : "block"} mt-7 min-h-0 flex-1 overflow-y-auto px-5`}>
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-white/25">Recent</span>
+            <ChevronLeft size={14} className="rotate-180 text-white/20" />
           </div>
-
-          <p className="px-6 text-sm text-slate-400 mt-8 mb-4">
-            {t("yesterday")}
-          </p>
-
-          <div className="px-6 dark:text-slate-300">
-            <p>Document Summary Request</p>
+          <div className="space-y-1">
+            {recentChats.map((chat) => (
+              <button key={chat} type="button" className="w-full truncate rounded-lg px-2 py-2.5 text-left text-xs text-white/40 transition hover:bg-white/[.04] hover:text-white/75">
+                {chat}
+              </button>
+            ))}
           </div>
         </div>
-      )}
 
-      {/* Logout */}
-      <div className="mt-auto px-6 py-6 border-t border-slate-200 dark:border-[#2A3550]">
-        <button
-          title="Logout"
-          onClick={onLogout}
-          className={`
-            w-full
-            flex
-            items-center
-
-            ${
-              collapsed
-                ? "justify-center px-0"
-                : "justify-start px-4"
-            }
-
-            gap-3
-
-            text-slate-500
-            dark:text-slate-400
-            hover:text-red-500
-
-            transition-colors
-          `}
-        >
-          <LogOut
-              size={collapsed ? 24 : 18}
-              className="transition-all duration-300"
-            />
-
-          <span
-            className={`
-              whitespace-nowrap
-              overflow-hidden
-
-              transition-all
-              duration-300
-
-              ${
-                collapsed
-                  ? "w-0 opacity-0"
-                  : "w-auto opacity-100"
-              }
-            `}
+        <div className="mt-auto border-t border-white/[.07] p-3">
+          <div className={`mb-2 flex items-center rounded-xl border border-white/[.07] bg-white/[.035] p-2 ${collapsed ? "md:justify-center" : "gap-3"}`}>
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#5b35b8] to-[#241052] text-xs font-bold uppercase">
+              {currentUser?.username.slice(0, 2) ?? "U"}
+            </span>
+            <div className={`${collapsed ? "md:hidden" : "block"} min-w-0 flex-1`}>
+              <p className="truncate text-xs font-semibold">{currentUser?.username ?? "User"}</p>
+              <p className="mt-0.5 text-[10px] capitalize text-white/35">{currentUser?.role ?? "user"} account</p>
+            </div>
+            <button type="button" onClick={onLogout} aria-label="Log out" className={`${collapsed ? "md:hidden" : "grid"} app-icon-button size-8 place-items-center rounded-lg text-white/35 hover:text-rose-300`}>
+              <LogOut size={15} />
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={() => setCollapsed((value) => !value)}
+            className="hidden h-9 w-full items-center justify-center gap-2 rounded-lg text-xs text-white/30 transition hover:bg-white/[.04] hover:text-white/65 md:flex"
           >
-            {t("logout")}
-          </span>
-        </button>
-      </div>
-    </aside>
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            {!collapsed && <span>Collapse sidebar</span>}
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
