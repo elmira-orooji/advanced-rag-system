@@ -98,6 +98,43 @@ input[aria-invalid="true"] {
   backdrop-filter: blur(14px);
 }
 .app-icon-button:hover { border-color: rgba(255,255,255,.16); background: rgba(255,255,255,.075); }
+.knowledge-dropzone {
+  border: 1px dashed rgba(143,120,216,.28);
+  background: linear-gradient(145deg, rgba(50,18,122,.09), rgba(255,255,255,.025)), rgba(9,7,14,.38);
+  box-shadow: inset 0 1px rgba(255,255,255,.055);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+.knowledge-dropzone:hover, .knowledge-dropzone.is-active {
+  border-color: rgba(143,120,216,.58);
+  background: linear-gradient(145deg, rgba(50,18,122,.18), rgba(143,120,216,.04));
+  box-shadow: 0 18px 50px rgba(50,18,122,.12), inset 0 1px rgba(255,255,255,.08);
+}
+.knowledge-chat-panel {
+  background: linear-gradient(160deg, rgba(255,255,255,.065), rgba(255,255,255,.018) 42%, rgba(50,18,122,.05)), rgba(7,6,10,.82);
+  box-shadow: -24px 0 64px rgba(0,0,0,.25), inset 1px 0 rgba(255,255,255,.025);
+  -webkit-backdrop-filter: blur(30px) saturate(140%);
+  backdrop-filter: blur(30px) saturate(140%);
+}
+.knowledge-chat-panel [class*="overflow-y-auto"] {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.knowledge-chat-panel [class*="overflow-y-auto"]::-webkit-scrollbar {
+  display: none;
+}
+.chat-composer-textarea {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.chat-composer-textarea::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+.knowledge-chat-panel .chat-rag-label {
+  display: none;
+}
 .app-orb { animation: app-orb-float 10s ease-in-out infinite alternate; }
 .app-orb-delayed { animation-delay: -5s; }
 @keyframes app-orb-float { to { transform: translate3d(-22px, 18px, 0) scale(1.08); } }

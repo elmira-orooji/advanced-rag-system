@@ -36,9 +36,9 @@ export default function ChatInput({ disabled, onSend }: ChatInputProps) {
           }
         }}
         placeholder={isFa ? "از پایگاه دانش خود بپرسید..." : "Ask your knowledge base..."}
-        className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-1 py-2.5 text-sm leading-5 text-white outline-none placeholder:text-white/25 disabled:opacity-50"
+        className="chat-composer-textarea max-h-32 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-sm leading-5 text-white outline-none placeholder:text-white/25 disabled:opacity-50"
       />
-      <div className="mb-0.5 hidden items-center gap-1.5 text-[10px] text-white/20 sm:flex">
+      <div className="chat-rag-label mb-0.5 hidden items-center gap-1.5 text-[10px] text-white/20 sm:flex">
         <Sparkles size={12} /> RAG
       </div>
       <button
