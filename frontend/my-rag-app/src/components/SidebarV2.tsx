@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { AuthUser } from "../types/auth";
 import type { AppPage } from "../layouts/AppLayout";
+import { useTranslation } from "react-i18next";
 
 interface SidebarV2Props {
   currentUser: AuthUser | null;
@@ -35,11 +36,16 @@ export default function SidebarV2({
   setActivePage,
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
+  const { i18n } = useTranslation();
+  const isFa = i18n.language.startsWith("fa");
+  const labels = isFa
+    ? { home: "فضای کاری", upload: "پایگاه دانش", users: "اعضای تیم", settings: "تنظیمات", newChat: "گفتگوی جدید", recent: "اخیر", collapse: "جمع‌کردن منو", account: "حساب" }
+    : { home: "Workspace", upload: "Knowledge base", users: "Team members", settings: "Settings", newChat: "New conversation", recent: "Recent", collapse: "Collapse sidebar", account: "account" };
   const navigation = [
-    { id: "home" as const, label: "Workspace", icon: Home },
-    { id: "upload" as const, label: "Knowledge base", icon: FileUp },
-    ...(currentUser?.role === "admin" ? [{ id: "users" as const, label: "Team members", icon: UserCog }] : []),
-    { id: "settings" as const, label: "Settings", icon: Settings },
+    { id: "home" as const, label: labels.home, icon: Home },
+    { id: "upload" as const, label: labels.upload, icon: FileUp },
+    ...(currentUser?.role === "admin" ? [{ id: "users" as const, label: labels.users, icon: UserCog }] : []),
+    { id: "settings" as const, label: labels.settings, icon: Settings },
   ];
 
   return (
@@ -75,7 +81,7 @@ export default function SidebarV2({
             className={`flex h-12 w-full items-center rounded-xl bg-[#32127A] text-sm font-semibold shadow-[0_12px_32px_rgba(50,18,122,.3)] transition hover:bg-[#43208F] ${collapsed ? "md:justify-center md:px-0" : "gap-3 px-4"}`}
           >
             <MessageSquareText size={18} />
-            <span className={collapsed ? "md:hidden" : "block"}>New conversation</span>
+            <span className={collapsed ? "md:hidden" : "block"}>{labels.newChat}</span>
           </button>
         </div>
 
@@ -96,7 +102,7 @@ export default function SidebarV2({
 
         <div className={`${collapsed ? "md:hidden" : "block"} mt-7 min-h-0 flex-1 overflow-y-auto px-5`}>
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-white/25">Recent</span>
+            <span className="text-[10px] font-semibold uppercase tracking-[.18em] text-white/25">{labels.recent}</span>
             <ChevronLeft size={14} className="rotate-180 text-white/20" />
           </div>
           <div className="space-y-1">
@@ -115,7 +121,7 @@ export default function SidebarV2({
             </span>
             <div className={`${collapsed ? "md:hidden" : "block"} min-w-0 flex-1`}>
               <p className="truncate text-xs font-semibold">{currentUser?.username ?? "User"}</p>
-              <p className="mt-0.5 text-[10px] capitalize text-white/35">{currentUser?.role ?? "user"} account</p>
+              <p className="mt-0.5 text-[10px] capitalize text-white/35">{currentUser?.role ?? "user"} {labels.account}</p>
             </div>
             <button type="button" onClick={onLogout} aria-label="Log out" className={`${collapsed ? "md:hidden" : "grid"} app-icon-button size-8 place-items-center rounded-lg text-white/35 hover:text-rose-300`}>
               <LogOut size={15} />
@@ -127,7 +133,7 @@ export default function SidebarV2({
             className="hidden h-9 w-full items-center justify-center gap-2 rounded-lg text-xs text-white/30 transition hover:bg-white/[.04] hover:text-white/65 md:flex"
           >
             {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-            {!collapsed && <span>Collapse sidebar</span>}
+            {!collapsed && <span>{labels.collapse}</span>}
           </button>
         </div>
       </aside>

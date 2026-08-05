@@ -4,8 +4,6 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 
 import {
-  UploadCloud,
-  FileText,
   Pencil,
   MessageSquare,
 } from "lucide-react";
