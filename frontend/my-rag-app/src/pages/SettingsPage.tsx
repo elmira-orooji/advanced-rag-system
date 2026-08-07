@@ -7,7 +7,6 @@ import {
   Camera,
   Check,
   Languages,
-  LockKeyhole,
   Monitor,
   Moon,
   Palette,
@@ -117,9 +116,6 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
               </div>
             </SettingsCard>
 
-            <SettingsCard icon={LockKeyhole} title={copy.security} subtitle={copy.securitySub}>
-              <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-white/[.06] bg-black/15 p-3.5"><div className="flex min-w-0 items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-300/[.055] text-emerald-200/65"><ShieldCheck size={16} /></span><div className="min-w-0"><p className="text-xs font-semibold text-white/65">{copy.password}</p><p className="mt-1 truncate text-[10px] text-white/25">{copy.passwordHint}</p></div></div><button type="button" disabled className="shrink-0 rounded-lg border border-white/[.07] px-3 py-2 text-[10px] text-white/25">{isFa ? "به‌زودی" : "Soon"}</button></div>
-            </SettingsCard>
           </main>
         </div>
       </div>
