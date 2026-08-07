@@ -6,12 +6,17 @@ import toast from "react-hot-toast";
 import {
   Camera,
   Check,
+  ChevronDown,
+  Database,
+  Download,
+  HardDrive,
   Languages,
   Monitor,
   Moon,
   Palette,
   ShieldCheck,
   Sun,
+  Trash2,
   UserRound,
 } from "lucide-react";
 
@@ -27,6 +32,8 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
   const currentUser = authService.getUser();
   const isFa = i18n.language.startsWith("fa");
   const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [historyRetention, setHistoryRetention] = useState("always");
+  const [confirmClear, setConfirmClear] = useState(false);
 
   const copy = isFa ? {
     eyebrow: "تنظیمات فضای کاری", title: "تنظیمات", subtitle: "تجربه کاربری، زبان و تنظیمات حساب خود را مدیریت کنید.",
@@ -34,14 +41,14 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
     language: "زبان و جهت صفحه", languageSub: "زبان رابط کاربری را انتخاب کنید.", persian: "فارسی", english: "English",
     appearance: "ظاهر برنامه", appearanceSub: "تم مناسب محیط کاری خود را انتخاب کنید.", light: "روشن", dark: "تیره", system: "سیستم",
     notifications: "اعلان‌ها", notificationsSub: "انتخاب کنید چه رویدادهایی به شما اطلاع داده شوند.", answers: "پاسخ‌های آماده", answersSub: "وقتی پاسخ طولانی آماده شد", documents: "پردازش اسناد", documentsSub: "پس از ایندکس یا خطای سند", securityNotice: "هشدارهای امنیتی", securityNoticeSub: "ورود جدید و تغییرات حساب",
-    security: "امنیت", securitySub: "نشست شما با توکن امن محافظت می‌شود.", password: "تغییر رمز عبور", passwordHint: "مدیریت رمز عبور در مرحله اتصال API فعال می‌شود.", saved: "تنظیمات ذخیره شد", changePhoto: "تغییر عکس پروفایل", invalidPhoto: "تصویر باید JPG، PNG یا WebP و کمتر از ۳ مگابایت باشد", photoUpdated: "عکس پروفایل تغییر کرد",
+    security: "امنیت", securitySub: "نشست شما با توکن امن محافظت می‌شود.", password: "تغییر رمز عبور", passwordHint: "مدیریت رمز عبور در مرحله اتصال API فعال می‌شود.", saved: "تنظیمات ذخیره شد", changePhoto: "تغییر عکس پروفایل", invalidPhoto: "تصویر باید JPG، PNG یا WebP و کمتر از ۳ مگابایت باشد", photoUpdated: "عکس پروفایل تغییر کرد", data: "داده‌ها و فضای ذخیره‌سازی", dataSub: "اسناد، گفتگوها و داده‌های ذخیره‌شده حساب خود را مدیریت کنید.", storage: "فضای مصرف‌شده", used: "۱٫۲ گیگابایت از ۵ گیگابایت", history: "نگهداری تاریخچه گفتگو", historySub: "مدت نگهداری گفتگوهای قبلی را انتخاب کنید.", days30: "۳۰ روز", days90: "۹۰ روز", always: "همیشه", export: "خروجی داده‌های حساب", exportSub: "یک نسخه از گفتگوها و تنظیمات خود دریافت کنید.", exportAction: "دریافت خروجی", clear: "پاک‌سازی تاریخچه گفتگو", clearSub: "تمام گفتگوهای ذخیره‌شده این حساب حذف می‌شوند.", clearAction: "پاک‌سازی", confirmAction: "تأیید حذف", exported: "درخواست خروجی آماده شد", cleared: "تاریخچه گفتگو پاک شد",
   } : {
     eyebrow: "Workspace preferences", title: "Settings", subtitle: "Manage your account, language, and workspace experience.",
     account: "Your account", accountSub: "Active account information", admin: "Workspace admin", user: "Workspace member", profileHint: "Username and role are provided by your authenticated account.",
     language: "Language & direction", languageSub: "Choose the language used across the interface.", persian: "فارسی", english: "English",
     appearance: "Appearance", appearanceSub: "Choose the theme that fits your environment.", light: "Light", dark: "Dark", system: "System",
     notifications: "Notifications", notificationsSub: "Choose which workspace events should notify you.", answers: "Answer ready", answersSub: "When a long-running answer is complete", documents: "Document processing", documentsSub: "When indexing succeeds or fails", securityNotice: "Security alerts", securityNoticeSub: "New sign-ins and account changes",
-    security: "Security", securitySub: "Your session is protected with a secure access token.", password: "Change password", passwordHint: "Password management will be enabled when the account API is connected.", saved: "Settings saved", changePhoto: "Change profile photo", invalidPhoto: "Image must be JPG, PNG, or WebP and smaller than 3 MB", photoUpdated: "Profile photo updated",
+    security: "Security", securitySub: "Your session is protected with a secure access token.", password: "Change password", passwordHint: "Password management will be enabled when the account API is connected.", saved: "Settings saved", changePhoto: "Change profile photo", invalidPhoto: "Image must be JPG, PNG, or WebP and smaller than 3 MB", photoUpdated: "Profile photo updated", data: "Data & storage", dataSub: "Manage your documents, conversations, and stored account data.", storage: "Storage usage", used: "1.2 GB of 5 GB used", history: "Conversation history", historySub: "Choose how long previous conversations are retained.", days30: "30 days", days90: "90 days", always: "Always", export: "Export account data", exportSub: "Download a copy of your conversations and settings.", exportAction: "Export", clear: "Clear conversation history", clearSub: "All saved conversations for this account will be removed.", clearAction: "Clear", confirmAction: "Confirm clear", exported: "Export request prepared", cleared: "Conversation history cleared",
   };
 
   const changeLanguage = (language: "en" | "fa") => {
@@ -116,6 +123,19 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
               </div>
             </SettingsCard>
 
+            <SettingsCard icon={Database} title={copy.data} subtitle={copy.dataSub}>
+              <div className="mt-5 rounded-2xl border border-white/[.07] bg-black/15 p-4">
+                <div className="flex items-center justify-between gap-4"><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#32127A]/20 text-[#a995eb]"><HardDrive size={16} /></span><div><p className="text-xs font-semibold text-white/65">{copy.storage}</p><p className="mt-1 text-[10px] text-white/25">{copy.used}</p></div></div><strong className="text-sm text-[#b6a7ef]">24%</strong></div>
+                <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-white/[.06]"><div className="h-full w-[24%] rounded-full bg-gradient-to-r from-[#32127A] to-[#8f78d8] shadow-[0_0_12px_rgba(143,120,216,.35)]" /></div>
+              </div>
+
+              <div className="mt-3 divide-y divide-white/[.06] rounded-2xl border border-white/[.07] bg-white/[.018] px-4">
+                <div className="flex items-center justify-between gap-4 py-4"><div><p className="text-xs font-semibold text-white/65">{copy.history}</p><p className="mt-1 text-[10px] leading-4 text-white/25">{copy.historySub}</p></div><label className="relative shrink-0"><select value={historyRetention} onChange={(event) => { setHistoryRetention(event.target.value); toast.success(copy.saved); }} className="settings-select h-9 appearance-none rounded-xl border border-white/[.08] bg-[#100e15] ps-3 pe-8 text-[10px] text-white/60 outline-none"><option value="30">{copy.days30}</option><option value="90">{copy.days90}</option><option value="always">{copy.always}</option></select><ChevronDown size={12} className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-white/25" /></label></div>
+                <ActionRow icon={Download} title={copy.export} description={copy.exportSub} action={copy.exportAction} onClick={() => toast.success(copy.exported)} />
+                <ActionRow icon={Trash2} title={copy.clear} description={copy.clearSub} action={confirmClear ? copy.confirmAction : copy.clearAction} danger confirm={confirmClear} onClick={() => { if (confirmClear) { toast.success(copy.cleared); setConfirmClear(false); } else { setConfirmClear(true); } }} />
+              </div>
+            </SettingsCard>
+
           </main>
         </div>
       </div>
@@ -137,4 +157,8 @@ function SegmentButton({ active, label, onClick }: { active: boolean; label: str
 
 function ThemeButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Sun; label: string; onClick: () => void }) {
   return <button type="button" onClick={onClick} className={`relative flex h-20 flex-col items-center justify-center gap-2 rounded-xl border text-xs font-semibold transition ${active ? "border-[#8f78d8]/35 bg-[#32127A]/18 text-white" : "border-white/[.07] bg-white/[.025] text-white/35 hover:border-white/[.13] hover:text-white/65"}`}><Icon size={18} className={active ? "text-[#b6a7ef]" : ""} />{label}{active && <span className="absolute end-2.5 top-2.5 grid size-4 place-items-center rounded-full bg-[#32127A]"><Check size={10} /></span>}</button>;
+}
+
+function ActionRow({ icon: Icon, title, description, action, onClick, danger = false, confirm = false }: { icon: typeof Download; title: string; description: string; action: string; onClick: () => void; danger?: boolean; confirm?: boolean }) {
+  return <div className="flex items-center justify-between gap-4 py-4"><div className="flex min-w-0 items-center gap-3"><span className={`grid size-9 shrink-0 place-items-center rounded-xl ${danger ? "bg-rose-400/[.06] text-rose-300/60" : "bg-white/[.035] text-[#a995eb]"}`}><Icon size={15} /></span><div className="min-w-0"><p className="text-xs font-semibold text-white/65">{title}</p><p className="mt-1 truncate text-[10px] text-white/25">{description}</p></div></div><button type="button" onClick={onClick} className={`shrink-0 rounded-lg border px-3 py-2 text-[10px] font-semibold transition ${danger ? confirm ? "border-rose-400/30 bg-rose-400/15 text-rose-200" : "border-rose-400/12 text-rose-300/55 hover:bg-rose-400/[.08]" : "border-white/[.08] text-white/45 hover:bg-white/[.05] hover:text-white/70"}`}>{action}</button></div>;
 }
