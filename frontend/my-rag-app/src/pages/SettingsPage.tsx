@@ -4,7 +4,6 @@ import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
-  Bell,
   Camera,
   Check,
   Languages,
@@ -28,7 +27,6 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
   const { i18n } = useTranslation();
   const currentUser = authService.getUser();
   const isFa = i18n.language.startsWith("fa");
-  const [notifications, setNotifications] = useState({ answers: true, documents: true, security: false });
   const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const copy = isFa ? {
@@ -119,14 +117,6 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
               </div>
             </SettingsCard>
 
-            <SettingsCard icon={Bell} title={copy.notifications} subtitle={copy.notificationsSub}>
-              <div className="mt-4 divide-y divide-white/[.06]">
-                <ToggleRow label={copy.answers} description={copy.answersSub} checked={notifications.answers} onChange={() => setNotifications((current) => ({ ...current, answers: !current.answers }))} />
-                <ToggleRow label={copy.documents} description={copy.documentsSub} checked={notifications.documents} onChange={() => setNotifications((current) => ({ ...current, documents: !current.documents }))} />
-                <ToggleRow label={copy.securityNotice} description={copy.securityNoticeSub} checked={notifications.security} onChange={() => setNotifications((current) => ({ ...current, security: !current.security }))} />
-              </div>
-            </SettingsCard>
-
             <SettingsCard icon={LockKeyhole} title={copy.security} subtitle={copy.securitySub}>
               <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-white/[.06] bg-black/15 p-3.5"><div className="flex min-w-0 items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-300/[.055] text-emerald-200/65"><ShieldCheck size={16} /></span><div className="min-w-0"><p className="text-xs font-semibold text-white/65">{copy.password}</p><p className="mt-1 truncate text-[10px] text-white/25">{copy.passwordHint}</p></div></div><button type="button" disabled className="shrink-0 rounded-lg border border-white/[.07] px-3 py-2 text-[10px] text-white/25">{isFa ? "به‌زودی" : "Soon"}</button></div>
             </SettingsCard>
@@ -151,8 +141,4 @@ function SegmentButton({ active, label, onClick }: { active: boolean; label: str
 
 function ThemeButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Sun; label: string; onClick: () => void }) {
   return <button type="button" onClick={onClick} className={`relative flex h-20 flex-col items-center justify-center gap-2 rounded-xl border text-xs font-semibold transition ${active ? "border-[#8f78d8]/35 bg-[#32127A]/18 text-white" : "border-white/[.07] bg-white/[.025] text-white/35 hover:border-white/[.13] hover:text-white/65"}`}><Icon size={18} className={active ? "text-[#b6a7ef]" : ""} />{label}{active && <span className="absolute end-2.5 top-2.5 grid size-4 place-items-center rounded-full bg-[#32127A]"><Check size={10} /></span>}</button>;
-}
-
-function ToggleRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: () => void }) {
-  return <div className="flex items-center justify-between gap-4 py-3.5"><div><p className="text-xs font-semibold text-white/65">{label}</p><p className="mt-1 text-[10px] text-white/25">{description}</p></div><button type="button" role="switch" aria-checked={checked} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full border transition ${checked ? "border-[#8f78d8]/30 bg-[#32127A]" : "border-white/[.09] bg-white/[.05]"}`}><span className={`absolute top-1/2 size-4 -translate-y-1/2 rounded-full bg-white shadow transition ${checked ? "end-1" : "start-1"}`} /></button></div>;
 }
