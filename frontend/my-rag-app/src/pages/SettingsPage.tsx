@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
   Bell,
+  Camera,
   Check,
   Languages,
   LockKeyhole,
@@ -28,6 +29,7 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
   const currentUser = authService.getUser();
   const isFa = i18n.language.startsWith("fa");
   const [notifications, setNotifications] = useState({ answers: true, documents: true, security: false });
+  const [profileImage, setProfileImage] = useState<string | null>(null);
 
   const copy = isFa ? {
     eyebrow: "تنظیمات فضای کاری", title: "تنظیمات", subtitle: "تجربه کاربری، زبان و تنظیمات حساب خود را مدیریت کنید.",
@@ -35,14 +37,14 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
     language: "زبان و جهت صفحه", languageSub: "زبان رابط کاربری را انتخاب کنید.", persian: "فارسی", english: "English",
     appearance: "ظاهر برنامه", appearanceSub: "تم مناسب محیط کاری خود را انتخاب کنید.", light: "روشن", dark: "تیره", system: "سیستم",
     notifications: "اعلان‌ها", notificationsSub: "انتخاب کنید چه رویدادهایی به شما اطلاع داده شوند.", answers: "پاسخ‌های آماده", answersSub: "وقتی پاسخ طولانی آماده شد", documents: "پردازش اسناد", documentsSub: "پس از ایندکس یا خطای سند", securityNotice: "هشدارهای امنیتی", securityNoticeSub: "ورود جدید و تغییرات حساب",
-    security: "امنیت", securitySub: "نشست شما با توکن امن محافظت می‌شود.", password: "تغییر رمز عبور", passwordHint: "مدیریت رمز عبور در مرحله اتصال API فعال می‌شود.", saved: "تنظیمات ذخیره شد",
+    security: "امنیت", securitySub: "نشست شما با توکن امن محافظت می‌شود.", password: "تغییر رمز عبور", passwordHint: "مدیریت رمز عبور در مرحله اتصال API فعال می‌شود.", saved: "تنظیمات ذخیره شد", changePhoto: "تغییر عکس پروفایل", invalidPhoto: "تصویر باید JPG، PNG یا WebP و کمتر از ۳ مگابایت باشد", photoUpdated: "عکس پروفایل تغییر کرد",
   } : {
     eyebrow: "Workspace preferences", title: "Settings", subtitle: "Manage your account, language, and workspace experience.",
     account: "Your account", accountSub: "Active account information", admin: "Workspace admin", user: "Workspace member", profileHint: "Username and role are provided by your authenticated account.",
     language: "Language & direction", languageSub: "Choose the language used across the interface.", persian: "فارسی", english: "English",
     appearance: "Appearance", appearanceSub: "Choose the theme that fits your environment.", light: "Light", dark: "Dark", system: "System",
     notifications: "Notifications", notificationsSub: "Choose which workspace events should notify you.", answers: "Answer ready", answersSub: "When a long-running answer is complete", documents: "Document processing", documentsSub: "When indexing succeeds or fails", securityNotice: "Security alerts", securityNoticeSub: "New sign-ins and account changes",
-    security: "Security", securitySub: "Your session is protected with a secure access token.", password: "Change password", passwordHint: "Password management will be enabled when the account API is connected.", saved: "Settings saved",
+    security: "Security", securitySub: "Your session is protected with a secure access token.", password: "Change password", passwordHint: "Password management will be enabled when the account API is connected.", saved: "Settings saved", changePhoto: "Change profile photo", invalidPhoto: "Image must be JPG, PNG, or WebP and smaller than 3 MB", photoUpdated: "Profile photo updated",
   };
 
   const changeLanguage = (language: "en" | "fa") => {
@@ -58,6 +60,22 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
     toast.success(copy.saved);
   };
 
+  const changeProfileImage = (file?: File) => {
+    if (!file) return;
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 3 * 1024 * 1024) {
+      toast.error(copy.invalidPhoto);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setProfileImage(reader.result);
+        toast.success(copy.photoUpdated);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45, ease: [0.22, 1, 0.36, 1] }} className="h-full overflow-hidden px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-9">
       <div className="mx-auto flex h-full w-full max-w-[900px] flex-col">
@@ -70,7 +88,13 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
         <div className="mt-5 grid min-h-0 flex-1 gap-5 overflow-y-auto overscroll-contain pb-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 lg:grid-cols-[280px_minmax(0,1fr)] lg:overflow-hidden">
           <aside className="app-glass-panel h-fit rounded-[24px] p-5 lg:h-full">
             <div className="flex items-center gap-3 border-b border-white/[.07] pb-5 lg:block lg:text-center">
-              <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#5b35b8] to-[#241052] text-sm font-bold uppercase shadow-[0_10px_30px_rgba(50,18,122,.3)] lg:mx-auto lg:size-16 lg:text-base">{currentUser?.username.slice(0, 2) ?? "U"}</span>
+              <div className="relative shrink-0 lg:mx-auto lg:w-fit">
+                <span className="grid size-14 overflow-hidden place-items-center rounded-2xl bg-gradient-to-br from-[#5b35b8] to-[#241052] text-sm font-bold uppercase shadow-[0_10px_30px_rgba(50,18,122,.3)] lg:size-16 lg:text-base">{profileImage ? <img src={profileImage} alt="" className="size-full object-cover" /> : currentUser?.username.slice(0, 2) ?? "U"}</span>
+                <label title={copy.changePhoto} className="absolute -bottom-1.5 -end-1.5 grid size-7 cursor-pointer place-items-center rounded-lg border border-white/15 bg-[#32127A] text-white shadow-lg transition hover:bg-[#43208F] focus-within:ring-4 focus-within:ring-[#32127A]/30">
+                  <Camera size={13} />
+                  <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => changeProfileImage(event.target.files?.[0])} className="sr-only" aria-label={copy.changePhoto} />
+                </label>
+              </div>
               <div className="min-w-0 lg:mt-4"><h2 className="truncate text-sm font-semibold lg:text-base">{currentUser?.username ?? "User"}</h2><p className="mt-1 text-[10px] text-[#a995eb]">{currentUser?.role === "admin" ? copy.admin : copy.user}</p></div>
             </div>
             <div className="mt-5 space-y-3">
