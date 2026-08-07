@@ -21,16 +21,17 @@ interface TeamMember {
   name: string;
   username: string;
   email: string;
+  jobTitle: string;
   role: MemberRole;
   status: "active" | "invited";
   joined: string;
 }
 
 const initialMembers: TeamMember[] = [
-  { id: "1", name: "Ali Ahmadi", username: "ali.ahmadi", email: "ali@knowledgeflow.ai", role: "admin", status: "active", joined: "Aug 01, 2026" },
-  { id: "2", name: "Sara Mohammadi", username: "sara.m", email: "sara@knowledgeflow.ai", role: "user", status: "active", joined: "Aug 02, 2026" },
-  { id: "3", name: "Nima Karimi", username: "nima.k", email: "nima@knowledgeflow.ai", role: "user", status: "active", joined: "Aug 04, 2026" },
-  { id: "4", name: "Mina Rezaei", username: "mina.r", email: "mina@knowledgeflow.ai", role: "user", status: "invited", joined: "Pending" },
+  { id: "1", name: "Ali Ahmadi", username: "ali.ahmadi", email: "ali@knowledgeflow.ai", jobTitle: "Product Manager", role: "admin", status: "active", joined: "Aug 01, 2026" },
+  { id: "2", name: "Sara Mohammadi", username: "sara.m", email: "sara@knowledgeflow.ai", jobTitle: "AI Engineer", role: "user", status: "active", joined: "Aug 02, 2026" },
+  { id: "3", name: "Nima Karimi", username: "nima.k", email: "nima@knowledgeflow.ai", jobTitle: "Research Analyst", role: "user", status: "active", joined: "Aug 04, 2026" },
+  { id: "4", name: "Mina Rezaei", username: "mina.r", email: "mina@knowledgeflow.ai", jobTitle: "Content Specialist", role: "user", status: "invited", joined: "Pending" },
 ];
 
 export default function UsersPage() {
@@ -40,16 +41,16 @@ export default function UsersPage() {
   const [panelOpen, setPanelOpen] = useState(() => window.matchMedia("(min-width: 1280px)").matches);
   const [query, setQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | MemberRole>("all");
-  const [form, setForm] = useState({ name: "", username: "", email: "", role: "user" as MemberRole });
+  const [form, setForm] = useState({ name: "", email: "", jobTitle: "", role: "user" as MemberRole });
 
   const copy = isFa ? {
     eyebrow: "مدیریت دسترسی", title: "اعضای تیم", subtitle: "اعضای فضای کاری، نقش‌ها و سطح دسترسی آن‌ها را مدیریت کنید.", add: "افزودن عضو",
     library: "فهرست اعضا", librarySub: "افرادی که به این فضای کاری دسترسی دارند", search: "جست‌وجوی اعضا...", all: "همه نقش‌ها", member: "عضو", role: "نقش", status: "وضعیت", joined: "تاریخ عضویت", empty: "عضوی پیدا نشد",
-    admin: "مدیر", user: "کاربر", active: "فعال", invited: "دعوت‌شده", panelTitle: "عضو جدید", panelSub: "ایجاد حساب و تعیین سطح دسترسی", name: "نام کامل", username: "نام کاربری", email: "ایمیل", cancel: "بستن", save: "ایجاد عضو", required: "لطفاً تمام فیلدها را تکمیل کنید", created: "عضو جدید ایجاد شد", removed: "عضو حذف شد",
+    admin: "مدیر", user: "کاربر", active: "فعال", invited: "دعوت‌شده", panelTitle: "عضو جدید", panelSub: "ایجاد حساب و تعیین سطح دسترسی", name: "نام کامل", username: "نام کاربری", email: "ایمیل", jobTitle: "عنوان شغلی", cancel: "بستن", save: "ایجاد عضو", required: "لطفاً تمام فیلدها را تکمیل کنید", created: "عضو جدید ایجاد شد", removed: "عضو حذف شد",
   } : {
     eyebrow: "Access management", title: "Team members", subtitle: "Manage workspace members, roles, and access levels.", add: "Add member",
     library: "Member directory", librarySub: "People with access to this workspace", search: "Search members...", all: "All roles", member: "Member", role: "Role", status: "Status", joined: "Joined", empty: "No members found",
-    admin: "Admin", user: "User", active: "Active", invited: "Invited", panelTitle: "New member", panelSub: "Create an account and assign access", name: "Full name", username: "Username", email: "Email address", cancel: "Close", save: "Create member", required: "Please complete all fields", created: "New member created", removed: "Member removed",
+    admin: "Admin", user: "User", active: "Active", invited: "Invited", panelTitle: "New member", panelSub: "Create an account and assign access", name: "Full name", username: "Username", email: "Email address", jobTitle: "Job title", cancel: "Close", save: "Create member", required: "Please complete all fields", created: "New member created", removed: "Member removed",
   };
 
   const filteredMembers = useMemo(() => members.filter((member) => {
@@ -59,12 +60,13 @@ export default function UsersPage() {
   }), [members, query, roleFilter]);
 
   const createMember = () => {
-    if (!form.name.trim() || !form.username.trim() || !form.email.trim()) {
+    if (!form.name.trim() || !form.email.trim() || !form.jobTitle.trim()) {
       toast.error(copy.required);
       return;
     }
-    setMembers((current) => [{ id: crypto.randomUUID(), name: form.name.trim(), username: form.username.trim(), email: form.email.trim(), role: form.role, status: "active", joined: isFa ? "امروز" : "Today" }, ...current]);
-    setForm({ name: "", username: "", email: "", role: "user" });
+    const email = form.email.trim();
+    setMembers((current) => [{ id: crypto.randomUUID(), name: form.name.trim(), username: email.split("@")[0] || form.name.trim().toLowerCase().replace(/\s+/g, "."), email, jobTitle: form.jobTitle.trim(), role: form.role, status: "active", joined: isFa ? "امروز" : "Today" }, ...current]);
+    setForm({ name: "", email: "", jobTitle: "", role: "user" });
     toast.success(copy.created);
     if (window.innerWidth < 1280) setPanelOpen(false);
   };
@@ -107,7 +109,7 @@ export default function UsersPage() {
             <div className="mb-6 rounded-2xl border border-[#8f78d8]/12 bg-[#32127A]/10 p-4"><div className="flex gap-3"><ShieldCheck size={17} className="mt-0.5 shrink-0 text-[#a995eb]" /><p className="text-[11px] leading-5 text-white/35">{isFa ? "نقش مدیر به تنظیمات و مدیریت اعضا دسترسی کامل دارد. نقش کاربر فقط به فضای کاری و پایگاه دانش دسترسی دارد." : "Admins can manage members and settings. Users can access the workspace and knowledge base."}</p></div></div>
             <div className="space-y-4">
               <FormField label={copy.name}><input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder={isFa ? "مثال: سارا محمدی" : "e.g. Sara Mohammadi"} className="team-input" /></FormField>
-              <FormField label={copy.username}><input value={form.username} onChange={(event) => setForm((current) => ({ ...current, username: event.target.value }))} placeholder="sara.m" className="team-input" /></FormField>
+              <FormField label={copy.jobTitle}><input value={form.jobTitle} onChange={(event) => setForm((current) => ({ ...current, jobTitle: event.target.value }))} placeholder={isFa ? "مثال: مهندس هوش مصنوعی" : "e.g. AI Engineer"} className="team-input" /></FormField>
               <FormField label={copy.email}><div className="relative"><Mail size={15} className="pointer-events-none absolute start-3.5 top-1/2 -translate-y-1/2 text-white/25" /><input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} placeholder="sara@example.com" className="team-input ps-10" /></div></FormField>
               <FormField label={copy.role}><div className="relative"><select value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as MemberRole }))} className="team-input appearance-none"><option value="user">{copy.user}</option><option value="admin">{copy.admin}</option></select><ChevronDown size={14} className="pointer-events-none absolute end-3.5 top-1/2 -translate-y-1/2 text-white/25" /></div></FormField>
             </div>
@@ -122,7 +124,7 @@ export default function UsersPage() {
 function MemberRow({ member, copy, onDelete }: { member: TeamMember; copy: Record<string, string>; onDelete: () => void }) {
   const initials = member.name.split(" ").map((part) => part[0]).slice(0, 2).join("");
   return <div className="group relative grid gap-3 p-4 transition hover:bg-white/[.025] md:grid-cols-[minmax(0,2fr)_90px_105px_120px_42px] md:items-center md:px-5 md:py-3.5">
-    <div className="flex min-w-0 items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#5b35b8] to-[#241052] text-[11px] font-bold uppercase shadow-[0_6px_18px_rgba(50,18,122,.2)]">{initials}</span><div className="min-w-0"><p className="truncate text-sm font-semibold text-white/75">{member.name}</p><p className="mt-1 truncate text-[10px] text-white/25">@{member.username} · {member.email}</p></div></div>
+    <div className="flex min-w-0 items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br from-[#5b35b8] to-[#241052] text-[11px] font-bold uppercase shadow-[0_6px_18px_rgba(50,18,122,.2)]">{initials}</span><div className="min-w-0"><p className="truncate text-sm font-semibold text-white/75">{member.name}</p><p className="mt-1 truncate text-[10px] text-white/25">{member.jobTitle} · {member.email}</p></div></div>
     <div><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] ${member.role === "admin" ? "border-[#8f78d8]/15 bg-[#32127A]/15 text-[#b6a7ef]" : "border-white/[.07] bg-white/[.035] text-white/40"}`}>{member.role === "admin" && <ShieldCheck size={11} />}{member.role === "admin" ? copy.admin : copy.user}</span></div>
     <div><span className={`inline-flex items-center gap-1.5 text-[10px] ${member.status === "active" ? "text-emerald-200/55" : "text-amber-200/55"}`}><span className={`size-1.5 rounded-full ${member.status === "active" ? "bg-emerald-300" : "bg-amber-300"}`} />{member.status === "active" ? copy.active : copy.invited}</span></div>
     <span className="hidden text-xs text-white/30 md:block">{member.joined}</span>

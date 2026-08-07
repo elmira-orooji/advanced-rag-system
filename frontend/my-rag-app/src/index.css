@@ -136,6 +136,19 @@ input[aria-invalid="true"] {
 }
 .team-input::placeholder { color: rgba(255,255,255,.2); }
 .team-input:focus { border-color: rgba(143,120,216,.48); background: rgba(255,255,255,.055); box-shadow: 0 0 0 4px rgba(50,18,122,.16); }
+.team-input:is(select) {
+  color-scheme: dark;
+  color: rgba(255,255,255,.82);
+  background-color: #100e15;
+}
+.team-input option {
+  color: #f1eff7;
+  background-color: #100e15;
+}
+.team-input option:checked {
+  color: #ffffff;
+  background-color: #32127a;
+}
 .knowledge-chat-panel [class*="overflow-y-auto"] {
   scrollbar-width: none;
   -ms-overflow-style: none;
