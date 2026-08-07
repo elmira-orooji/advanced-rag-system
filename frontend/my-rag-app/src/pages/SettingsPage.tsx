@@ -1,334 +1,134 @@
-import ChatWindow from "../components/ChatWindow";
-import ChatInput from "../components/ChatInput";     
+import { useState } from "react";
+import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-
+import toast from "react-hot-toast";
 import {
-  Pencil,
-  MessageSquare,
+  Bell,
+  Check,
+  Languages,
+  LockKeyhole,
+  Monitor,
+  Moon,
+  Palette,
+  ShieldCheck,
+  Sun,
+  UserRound,
 } from "lucide-react";
+
+import { authService } from "../services/authService";
 
 interface SettingsPageProps {
   theme: "light" | "dark";
-
-  setTheme: (
-    theme: "light" | "dark"
-  ) => void;
+  setTheme: (theme: "light" | "dark") => void;
 }
 
+export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
+  const { i18n } = useTranslation();
+  const currentUser = authService.getUser();
+  const isFa = i18n.language.startsWith("fa");
+  const [notifications, setNotifications] = useState({ answers: true, documents: true, security: false });
 
- export default function SettingsPage({
-  theme,
-  setTheme,
-}: SettingsPageProps) {
-  const { t, i18n } = useTranslation();
-  
-  
+  const copy = isFa ? {
+    eyebrow: "تنظیمات فضای کاری", title: "تنظیمات", subtitle: "تجربه کاربری، زبان و تنظیمات حساب خود را مدیریت کنید.",
+    account: "حساب کاربری", accountSub: "اطلاعات حساب فعال", admin: "مدیر فضای کاری", user: "عضو فضای کاری", profileHint: "نام کاربری و نقش از حساب احراز هویت‌شده دریافت می‌شوند.",
+    language: "زبان و جهت صفحه", languageSub: "زبان رابط کاربری را انتخاب کنید.", persian: "فارسی", english: "English",
+    appearance: "ظاهر برنامه", appearanceSub: "تم مناسب محیط کاری خود را انتخاب کنید.", light: "روشن", dark: "تیره", system: "سیستم",
+    notifications: "اعلان‌ها", notificationsSub: "انتخاب کنید چه رویدادهایی به شما اطلاع داده شوند.", answers: "پاسخ‌های آماده", answersSub: "وقتی پاسخ طولانی آماده شد", documents: "پردازش اسناد", documentsSub: "پس از ایندکس یا خطای سند", securityNotice: "هشدارهای امنیتی", securityNoticeSub: "ورود جدید و تغییرات حساب",
+    security: "امنیت", securitySub: "نشست شما با توکن امن محافظت می‌شود.", password: "تغییر رمز عبور", passwordHint: "مدیریت رمز عبور در مرحله اتصال API فعال می‌شود.", saved: "تنظیمات ذخیره شد",
+  } : {
+    eyebrow: "Workspace preferences", title: "Settings", subtitle: "Manage your account, language, and workspace experience.",
+    account: "Your account", accountSub: "Active account information", admin: "Workspace admin", user: "Workspace member", profileHint: "Username and role are provided by your authenticated account.",
+    language: "Language & direction", languageSub: "Choose the language used across the interface.", persian: "فارسی", english: "English",
+    appearance: "Appearance", appearanceSub: "Choose the theme that fits your environment.", light: "Light", dark: "Dark", system: "System",
+    notifications: "Notifications", notificationsSub: "Choose which workspace events should notify you.", answers: "Answer ready", answersSub: "When a long-running answer is complete", documents: "Document processing", documentsSub: "When indexing succeeds or fails", securityNotice: "Security alerts", securityNoticeSub: "New sign-ins and account changes",
+    security: "Security", securitySub: "Your session is protected with a secure access token.", password: "Change password", passwordHint: "Password management will be enabled when the account API is connected.", saved: "Settings saved",
+  };
+
+  const changeLanguage = (language: "en" | "fa") => {
+    void i18n.changeLanguage(language);
+    localStorage.setItem("lang", language);
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === "fa" ? "rtl" : "ltr";
+    toast.success(copy.saved);
+  };
+
+  const changeTheme = (nextTheme: "light" | "dark") => {
+    setTheme(nextTheme);
+    toast.success(copy.saved);
+  };
+
   return (
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45, ease: [0.22, 1, 0.36, 1] }} className="h-full overflow-hidden px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-9">
+      <div className="mx-auto flex h-full w-full max-w-[900px] flex-col">
+        <header className="shrink-0">
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-[#a995eb]"><span className="size-1.5 rounded-full bg-[#8f78d8] shadow-[0_0_12px_#8f78d8]" />{copy.eyebrow}</div>
+          <h1 className="text-3xl font-semibold tracking-[-.045em] sm:text-4xl">{copy.title}</h1>
+          <p className="mt-2 max-w-xl text-sm leading-6 text-white/35">{copy.subtitle}</p>
+        </header>
 
-    <motion.div
-          initial={{
-        opacity: 0,
-        y: 20,
-        filter: "blur(8px)",
-      }}
-      animate={{
-        opacity: 1,
-        y: 0,
-        filter: "blur(0px)",
-      }}
-      transition={{
-        duration: 0.5,
-      }}
-  className="
-    h-full
-    overflow-hidden
-
-    
-    bg-[#F6F8FC]
-    dark:bg-[#151B2D]
-  "
->
-  <div className="grid grid-cols-12 h-full">
-<div
-  className="
-    col-span-5
-    flex
-    flex-col
-    items-center
-    pt-12
-  "
->
-  <div className="relative">
-    <img
-      src="https://i.pravatar.cc/200"
-      alt="Profile"
-      className="
-        w-28
-        h-28
-        rounded-full
-        object-cover
-        border-2
-        border-white
-      "
-    />
-
-    <button
-      className="
-        absolute
-        bottom-0
-        right-2
-        w-8
-        h-8
-        rounded-full
-        bg-blue-600
-        text-white
-        flex
-        items-center
-        justify-center
-        shadow-lg
-      "
-    >
-      <Pencil size={16} />
-    </button>
-  </div>
-
-  <h2 className="mt-3
-    text-2xl
-    font-bold
-    text-slate-900
-    dark:text-slate-100">
-
-    Sam Smith
-  </h2>
-
-  <p className="mt-1 text-slate-500 dark:text-slate-400 text-xl">
-    {t("productManager")}
-  </p>
-
-  <div className="w-full max-w-sm mt-10">
-  <p className="text-slate-500 dark:text-slate-300 mb-3 px-3">
-    {t("language")}
-  </p>
-
-  <div className="flex rounded-2xl border border-slate-200 dark:border-[#334155] p-1">
-<button
-  onClick={() => {
-    i18n.changeLanguage("en");
-    localStorage.setItem("lang", "en");
-  }}
-  className={`
-    flex-1
-    h-11
-    rounded-xl
-    transition-all
-
-    ${
-      i18n.language === "en"
-        ? `
-          bg-blue-50
-          text-blue-600
-          font-semibold
-        `
-        : `
-        `
-    }
-  `}
->
-  English
-</button>
-<button
-  onClick={() => {
-    i18n.changeLanguage("fa");
-    localStorage.setItem("lang", "fa");
-  }}
-  className={`
-    flex-1
-    h-11
-    rounded-xl
-    transition-all
-
-    ${
-      i18n.language === "fa"
-        ? `
-          bg-blue-50
-          text-blue-600
-          font-semibold
-        `
-        : `
-          text-slate-600
-          dark:text-slate-300
-        `
-    }
-  `}
->
-  فارسی
-</button>
-  </div>
-</div>
-
-<div className="w-full max-w-sm mt-6">
-  <p className="text-slate-500 dark:text-slate-300 mb-3 px-3">
-    Theme
-  </p>
-
-  <div className="flex rounded-2xl border border-slate-200 dark:border-[#334155] p-1">
-<button
-  onClick={() => setTheme("light")}
-  className={`
-    flex-1
-    h-11
-    rounded-xl
-    transition-all
-
-    ${
-      theme === "light"
-        ? `
-          bg-blue-50
-          text-blue-600
-          font-semibold
-        `
-        : `
-          text-slate-600
-          dark:text-slate-300
-        `
-    }
-  `}
->
-  Light
-</button>
-
-<button
-  onClick={() => setTheme("dark")}
-  className={`
-    flex-1
-    h-11
-    rounded-xl
-    transition-all
-
-    ${
-      theme === "dark"
-        ? `
-          bg-blue-50
-          text-blue-600
-          font-semibold
-        `
-        : `
-          text-slate-600
-          dark:text-slate-300
-        `
-    }
-  `}
->
-  Dark
-</button>
-  </div>
-</div>
-</div>
-
-
-
-
-
-         {/* Right Side - Chat */}
-        <div className="col-span-7 h-screen">
-          <div
-className="
-  bg-white
-  dark:bg-[#1D263B]
-  border-1
-  border-slate-200
- dark:border-[#334155]
-
-  h-full
-
-  flex
-  flex-col
-"
-          >
-            {/* Header */}
-            <div
-              className="
-                px-6
-                py-5
-
-                border-b
-                border-slate-200
-                dark:border-[#334155]
-
-                flex
-                items-center
-                gap-4
-              "
-            >
-              <div
-                className="
-                  w-12
-                  h-12
-
-                  rounded-2xl
-
-                  bg-blue-100
-                  dark:bg-[#24304A]
-                  dark:border-[#334155]
-                  dark:text-cyan-300
-                  flex
-                  items-center
-                  justify-center
-                "
-              >
-                <MessageSquare
-                  size={22}
-                  className="text-blue-600 "
-                />
-              </div>
-
-              <div>
-                <h2
-                  className="
-                    font-semibold
-                    text-lg
-                    dark:text-slate-300
-                    text-stone-700
-                  "
-                >
-                  AI Assistant
-                </h2>
-
-                <p
-                  className="
-                    text-green-400
-                    text-sm
-                  "
-                >
-                  ● RAG Active
-                </p>
-              </div>
+        <div className="mt-5 grid min-h-0 flex-1 gap-5 overflow-y-auto overscroll-contain pb-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 lg:grid-cols-[280px_minmax(0,1fr)] lg:overflow-hidden">
+          <aside className="app-glass-panel h-fit rounded-[24px] p-5 lg:h-full">
+            <div className="flex items-center gap-3 border-b border-white/[.07] pb-5 lg:block lg:text-center">
+              <span className="grid size-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#5b35b8] to-[#241052] text-sm font-bold uppercase shadow-[0_10px_30px_rgba(50,18,122,.3)] lg:mx-auto lg:size-16 lg:text-base">{currentUser?.username.slice(0, 2) ?? "U"}</span>
+              <div className="min-w-0 lg:mt-4"><h2 className="truncate text-sm font-semibold lg:text-base">{currentUser?.username ?? "User"}</h2><p className="mt-1 text-[10px] text-[#a995eb]">{currentUser?.role === "admin" ? copy.admin : copy.user}</p></div>
             </div>
+            <div className="mt-5 space-y-3">
+              <InfoRow icon={UserRound} label={isFa ? "نام کاربری" : "Username"} value={currentUser?.username ?? "—"} />
+              <InfoRow icon={ShieldCheck} label={isFa ? "سطح دسترسی" : "Access level"} value={currentUser?.role === "admin" ? copy.admin : copy.user} />
+            </div>
+            <p className="mt-5 rounded-xl border border-white/[.06] bg-black/15 p-3 text-[10px] leading-5 text-white/25">{copy.profileHint}</p>
+          </aside>
 
-                    {/* Existing Chat */}
-                    <div className="flex-1 overflow-y-auto px-8 py-6 ">
-                    <ChatWindow
-                        messages={[]}
-                        isThinking={false}
-                    />
-                    </div>
+          <main className="min-h-0 space-y-4 lg:overflow-y-auto lg:overscroll-contain lg:pe-1 lg:scrollbar-thin lg:scrollbar-track-transparent lg:scrollbar-thumb-white/10">
+            <SettingsCard icon={Languages} title={copy.language} subtitle={copy.languageSub}>
+              <div className="settings-segmented mt-5 grid grid-cols-2 gap-1 rounded-xl p-1">
+                <SegmentButton active={!isFa} onClick={() => changeLanguage("en")} label={copy.english} />
+                <SegmentButton active={isFa} onClick={() => changeLanguage("fa")} label={copy.persian} />
+              </div>
+            </SettingsCard>
 
-                    {/* Existing Input */}
-                <div className="px-8 py-6 border-t border-slate-200 dark:border-[#334155]">
-                <ChatInput
-                    disabled={false}
-                    onSend={() => {}}
-                />
-                </div>
-          </div>
+            <SettingsCard icon={Palette} title={copy.appearance} subtitle={copy.appearanceSub}>
+              <div className="mt-5 grid grid-cols-2 gap-2">
+                <ThemeButton active={theme === "light"} icon={Sun} label={copy.light} onClick={() => changeTheme("light")} />
+                <ThemeButton active={theme === "dark"} icon={Moon} label={copy.dark} onClick={() => changeTheme("dark")} />
+              </div>
+            </SettingsCard>
+
+            <SettingsCard icon={Bell} title={copy.notifications} subtitle={copy.notificationsSub}>
+              <div className="mt-4 divide-y divide-white/[.06]">
+                <ToggleRow label={copy.answers} description={copy.answersSub} checked={notifications.answers} onChange={() => setNotifications((current) => ({ ...current, answers: !current.answers }))} />
+                <ToggleRow label={copy.documents} description={copy.documentsSub} checked={notifications.documents} onChange={() => setNotifications((current) => ({ ...current, documents: !current.documents }))} />
+                <ToggleRow label={copy.securityNotice} description={copy.securityNoticeSub} checked={notifications.security} onChange={() => setNotifications((current) => ({ ...current, security: !current.security }))} />
+              </div>
+            </SettingsCard>
+
+            <SettingsCard icon={LockKeyhole} title={copy.security} subtitle={copy.securitySub}>
+              <div className="mt-4 flex items-center justify-between gap-4 rounded-xl border border-white/[.06] bg-black/15 p-3.5"><div className="flex min-w-0 items-center gap-3"><span className="grid size-9 shrink-0 place-items-center rounded-xl bg-emerald-300/[.055] text-emerald-200/65"><ShieldCheck size={16} /></span><div className="min-w-0"><p className="text-xs font-semibold text-white/65">{copy.password}</p><p className="mt-1 truncate text-[10px] text-white/25">{copy.passwordHint}</p></div></div><button type="button" disabled className="shrink-0 rounded-lg border border-white/[.07] px-3 py-2 text-[10px] text-white/25">{isFa ? "به‌زودی" : "Soon"}</button></div>
+            </SettingsCard>
+          </main>
         </div>
-    </div>
-       </motion.div>
+      </div>
+    </motion.div>
   );
 }
-    
-      
-      
-      
-     
+
+function SettingsCard({ icon: Icon, title, subtitle, children }: { icon: typeof Monitor; title: string; subtitle: string; children: ReactNode }) {
+  return <section className="app-glass-panel rounded-[22px] p-4 sm:p-5"><div className="flex items-start gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#8f78d8]/15 bg-[#32127A]/18 text-[#a995eb]"><Icon size={17} /></span><div><h2 className="text-sm font-semibold">{title}</h2><p className="mt-1 text-[11px] leading-5 text-white/30">{subtitle}</p></div></div>{children}</section>;
+}
+
+function InfoRow({ icon: Icon, label, value }: { icon: typeof UserRound; label: string; value: string }) {
+  return <div className="flex items-center gap-3 rounded-xl border border-white/[.06] bg-white/[.025] p-3"><Icon size={15} className="shrink-0 text-[#a995eb]" /><div className="min-w-0"><span className="block text-[9px] uppercase tracking-[.12em] text-white/20">{label}</span><strong className="mt-1 block truncate text-xs font-medium text-white/55">{value}</strong></div></div>;
+}
+
+function SegmentButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`flex h-10 items-center justify-center gap-2 rounded-lg text-xs font-semibold transition ${active ? "bg-[#32127A] text-white shadow-[0_8px_20px_rgba(50,18,122,.28)]" : "text-white/35 hover:bg-white/[.04] hover:text-white/65"}`}>{active && <Check size={13} />}{label}</button>;
+}
+
+function ThemeButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Sun; label: string; onClick: () => void }) {
+  return <button type="button" onClick={onClick} className={`relative flex h-20 flex-col items-center justify-center gap-2 rounded-xl border text-xs font-semibold transition ${active ? "border-[#8f78d8]/35 bg-[#32127A]/18 text-white" : "border-white/[.07] bg-white/[.025] text-white/35 hover:border-white/[.13] hover:text-white/65"}`}><Icon size={18} className={active ? "text-[#b6a7ef]" : ""} />{label}{active && <span className="absolute end-2.5 top-2.5 grid size-4 place-items-center rounded-full bg-[#32127A]"><Check size={10} /></span>}</button>;
+}
+
+function ToggleRow({ label, description, checked, onChange }: { label: string; description: string; checked: boolean; onChange: () => void }) {
+  return <div className="flex items-center justify-between gap-4 py-3.5"><div><p className="text-xs font-semibold text-white/65">{label}</p><p className="mt-1 text-[10px] text-white/25">{description}</p></div><button type="button" role="switch" aria-checked={checked} onClick={onChange} className={`relative h-6 w-11 shrink-0 rounded-full border transition ${checked ? "border-[#8f78d8]/30 bg-[#32127A]" : "border-white/[.09] bg-white/[.05]"}`}><span className={`absolute top-1/2 size-4 -translate-y-1/2 rounded-full bg-white shadow transition ${checked ? "end-1" : "start-1"}`} /></button></div>;
+}
