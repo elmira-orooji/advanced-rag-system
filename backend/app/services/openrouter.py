@@ -71,6 +71,28 @@ class OpenRouterClient:
             raise OpenRouterError("OpenRouter returned an empty response")
         return answer.strip()
 
+    def research_plan(self, question: str, max_steps: int) -> list[str]:
+        response = self._request({
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": "You plan source-grounded research. Return valid JSON only."},
+                {"role": "user", "content": f"Break this research question into 2 to {max_steps} distinct search queries. Cover definitions, evidence, comparisons, and limitations when relevant. Use the same language as the question. Return exactly a JSON array of strings. Question: {question}"},
+            ],
+            "temperature": 0.1,
+            "max_tokens": 350,
+        })
+        try:
+            content = response["choices"][0]["message"]["content"].strip()
+            if content.startswith("```"):
+                content = content.strip("`").removeprefix("json").strip()
+            queries = json.loads(content)
+            if not isinstance(queries, list): raise ValueError
+            result = [str(value).strip() for value in queries if isinstance(value, str) and len(value.strip()) >= 2]
+            if len(result) < 2: raise ValueError
+            return result[:max_steps]
+        except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise OpenRouterError("The research planner returned an invalid plan") from exc
+
     def _request(self, body: dict[str, Any]) -> dict[str, Any]:
         request = Request(
             OPENROUTER_URL,

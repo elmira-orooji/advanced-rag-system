@@ -1,0 +1,25 @@
+import uuid
+from pydantic import BaseModel, Field
+from app.schemas.rag import Citation
+
+
+class ResearchRequest(BaseModel):
+    question: str = Field(min_length=5, max_length=2000)
+    document_set_id: uuid.UUID
+    document_ids: list[uuid.UUID] | None = Field(default=None, max_length=50)
+    max_steps: int = Field(default=4, ge=2, le=6)
+
+
+class ResearchStep(BaseModel):
+    query: str
+    evidence_count: int
+
+
+class ResearchResponse(BaseModel):
+    response_id: uuid.UUID
+    question: str
+    answer: str
+    grounded: bool
+    citations: list[Citation]
+    steps: list[ResearchStep]
+    evidence_reviewed: int
