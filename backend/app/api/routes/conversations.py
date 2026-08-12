@@ -18,6 +18,7 @@ from app.schemas.conversation import ChatMessageCreate, ConversationCreate, Conv
 from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
+from app.services.retrieval import hybrid_search
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -96,7 +97,7 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
         document_ids = [str(value) for value in db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()).all()]
     else: raise HTTPException(status_code=409, detail="Conversation has no valid knowledge scope")
     try:
-        qdrant = QdrantClient(); qdrant.ensure_collection(); points = qdrant.search(query=payload.content, limit=payload.limit, document_id=document_id, document_ids=document_ids)
+        qdrant = QdrantClient(); qdrant.ensure_collection(); points = hybrid_search(db, query=payload.content, limit=payload.limit, document_id=document_id, document_ids=document_ids)
     except QdrantError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
     if sources:

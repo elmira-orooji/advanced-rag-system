@@ -10,6 +10,7 @@ from app.models.document_set import DocumentSet
 from app.models.user import User
 from app.schemas.search import SearchHit, SearchRequest, SearchResponse
 from app.services.qdrant import QdrantClient, QdrantError
+from app.services.retrieval import hybrid_search
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -37,7 +38,7 @@ def semantic_search(payload: SearchRequest, db: Session = Depends(get_db), user:
         else: document_ids = [str(value) for value in available]
     try:
         client = QdrantClient(); client.ensure_collection()
-        points = client.search(query=payload.query, limit=payload.limit, document_id=str(payload.document_id) if payload.document_id else None, document_ids=document_ids)
+        points = hybrid_search(db, query=payload.query, limit=payload.limit, document_id=str(payload.document_id) if payload.document_id else None, document_ids=document_ids)
     except QdrantError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
     return SearchResponse(query=payload.query, results=[SearchHit(score=point["score"], **point["payload"]) for point in points])

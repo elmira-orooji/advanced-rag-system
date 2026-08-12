@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
-from app.core.document_set_access import require_set_access
+from app.core.document_set_access import require_document_access, require_set_access
 from app.db.database import get_db
 from app.models.document import Document
 from app.models.answer_feedback import AnswerRecord
@@ -15,6 +15,7 @@ from app.schemas.rag import Citation, RagRequest, RagResponse
 from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
+from app.services.retrieval import hybrid_search
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
@@ -43,9 +44,13 @@ def answer_question(
         raise HTTPException(status_code=422, detail="Choose either a document or a document set scope")
     if payload.document_ids and not payload.document_set_id:
         raise HTTPException(status_code=422, detail="Selected documents require a document set")
+    if not payload.document_id and not payload.document_set_id:
+        raise HTTPException(status_code=422, detail="A permitted document or knowledge set is required")
 
     document_ids: list[str] | None = None
-    if payload.document_set_id:
+    if payload.document_id:
+        require_document_access(db, user, payload.document_id)
+    elif payload.document_set_id:
         require_set_access(db, user, payload.document_set_id)
         document_set = db.scalar(select(DocumentSet).where(DocumentSet.id == payload.document_set_id, DocumentSet.organization_id == user.organization_id))
         if document_set is None:
@@ -72,7 +77,8 @@ def answer_question(
     try:
         qdrant = QdrantClient()
         qdrant.ensure_collection()
-        points = qdrant.search(
+        points = hybrid_search(
+            db,
             query=payload.question,
             limit=payload.limit,
             document_id=str(payload.document_id) if payload.document_id else None,

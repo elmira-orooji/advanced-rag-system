@@ -15,6 +15,7 @@ from app.schemas.research import ResearchRequest, ResearchResponse, ResearchStep
 from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
+from app.services.retrieval import hybrid_search
 
 router = APIRouter(prefix="/research", tags=["deep-research"])
 
@@ -36,7 +37,7 @@ def run_research(payload: ResearchRequest, db: Session = Depends(get_db), user: 
     try:
         qdrant = QdrantClient(); qdrant.ensure_collection(); unique: dict[str, SearchHit] = {}; steps = []
         for query in queries:
-            points = qdrant.search(query=query, limit=5, document_ids=document_ids)
+            points = hybrid_search(db, query=query, limit=5, document_ids=document_ids)
             steps.append(ResearchStep(query=query, evidence_count=len(points)))
             for point in points:
                 hit = SearchHit(score=point["score"], **point["payload"]); key = str(hit.chunk_id)

@@ -19,6 +19,7 @@ from app.schemas.rag import Citation, RagResponse
 from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
+from app.services.retrieval import hybrid_search
 
 router = APIRouter(prefix="/assistants", tags=["assistants"])
 
@@ -118,7 +119,7 @@ def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerReque
     ).all()] if set_ids else []
     try:
         qdrant = QdrantClient(); qdrant.ensure_collection()
-        points = qdrant.search(payload.question, payload.limit, document_ids=document_ids)
+        points = hybrid_search(db, payload.question, payload.limit, document_ids=document_ids)
     except QdrantError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
