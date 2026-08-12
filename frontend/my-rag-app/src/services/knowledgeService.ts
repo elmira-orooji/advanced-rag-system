@@ -82,10 +82,15 @@ export const knowledgeService = {
   removeDocumentFromSet: (setId: string, documentId: string) =>
     request(`/document-sets/${setId}/documents/${documentId}`, { method: "DELETE", headers: headers() }),
   deleteDocument: (documentId: string) => request(`/documents/${documentId}`, { method: "DELETE", headers: headers() }),
-  ask: (question: string, documentSetId: string) =>
+  ask: (question: string, documentSetId: string, documentIds?: string[]) =>
     request<RagResponse>("/rag/answer", {
       method: "POST",
       headers: headers(true),
-      body: JSON.stringify({ question, document_set_id: documentSetId, limit: 5 }),
+      body: JSON.stringify({
+        question,
+        document_set_id: documentSetId,
+        document_ids: documentIds?.length ? documentIds : null,
+        limit: 5,
+      }),
     }),
 };

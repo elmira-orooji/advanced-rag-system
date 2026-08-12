@@ -4,8 +4,8 @@ import { useDropzone } from "react-dropzone";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
-  BookOpen, ChevronDown, FileText, FolderKanban, MessageSquareText, MoreHorizontal,
-  PanelRightClose, Pencil, Plus, Search, Sparkles, Trash2, UploadCloud, X,
+  BookOpen, Check, ChevronDown, FileText, FolderKanban, MessageSquareText, MoreHorizontal,
+  PanelRightClose, Pencil, Plus, Search, SlidersHorizontal, Sparkles, Trash2, UploadCloud, X,
 } from "lucide-react";
 import ChatInput from "../components/ChatInput";
 import ChatWindow from "../components/ChatWindow";
@@ -29,20 +29,22 @@ export default function UploadFilesPage() {
   const [isThinking, setIsThinking] = useState(false);
   const [dialog, setDialog] = useState<"create" | "edit" | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [scopeOpen, setScopeOpen] = useState(false);
 
   const copy = isFa ? {
     eyebrow: "مدیریت منابع", title: "پایگاه دانش", subtitle: "اسناد را در مجموعه‌های موضوعی سازمان‌دهی کنید و پاسخ‌ها را به همان محدوده محدود کنید.",
     sets: "مجموعه‌های دانش", newSet: "مجموعه جدید", allDocs: "همه اسناد", documents: "سند", indexed: "آماده",
     drop: "فایل را در این مجموعه رها کنید", browse: "یا برای انتخاب کلیک کنید", formats: "PDF و TXT تا ۱۰ مگابایت",
     library: "اسناد مجموعه", search: "جست‌وجوی اسناد...", allStatuses: "همه وضعیت‌ها", empty: "این مجموعه هنوز سندی ندارد.",
-    chatTitle: "دستیار دانش", chatSub: "پرسش در محدوده مجموعه انتخاب‌شده", chatEmpty: "پاسخ‌های مبتنی بر مجموعه", chatHint: "یک مجموعه را انتخاب کنید و درباره اسناد آن سؤال بپرسید.",
+    chatTitle: "دستیار دانش", chatSub: "پرسش در محدوده مجموعه انتخاب‌شده", chatEmpty: "پاسخ‌های مبتنی بر مجموعه", chatHint: "یک مجموعه را انتخاب کنید و درباره اسناد آن سؤال بپرسید.", allSources: "همه اسناد مجموعه", selectedSources: "اسناد انتخاب‌شده", chooseSources: "انتخاب محدوده پاسخ", clearSelection: "استفاده از همه",
     createTitle: "ایجاد مجموعه دانش", editTitle: "ویرایش مجموعه", name: "نام مجموعه", description: "توضیحات", cancel: "انصراف", save: "ذخیره", create: "ایجاد مجموعه", edit: "ویرایش", delete: "حذف مجموعه",
   } : {
     eyebrow: "Source management", title: "Knowledge base", subtitle: "Organize documents into focused collections and keep every answer within the right scope.",
     sets: "Knowledge sets", newSet: "New set", allDocs: "All documents", documents: "documents", indexed: "ready",
     drop: "Drop files into this set", browse: "or click to browse", formats: "PDF and TXT up to 10 MB",
     library: "Set documents", search: "Search documents...", allStatuses: "All statuses", empty: "This set has no documents yet.",
-    chatTitle: "Knowledge assistant", chatSub: "Search within the selected set", chatEmpty: "Set-grounded answers", chatHint: "Select a knowledge set, then ask questions across its documents.",
+    chatTitle: "Knowledge assistant", chatSub: "Search within the selected set", chatEmpty: "Set-grounded answers", chatHint: "Select a knowledge set, then ask questions across its documents.", allSources: "All documents in set", selectedSources: "Selected documents", chooseSources: "Choose answer scope", clearSelection: "Use all documents",
     createTitle: "Create knowledge set", editTitle: "Edit knowledge set", name: "Set name", description: "Description", cancel: "Cancel", save: "Save changes", create: "Create set", edit: "Edit", delete: "Delete set",
   };
 
@@ -66,7 +68,13 @@ export default function UploadFilesPage() {
       .catch((error) => toast.error(error.message))
       .finally(() => setLoading(false));
     setChatMessages([]);
+    setSelectedDocumentIds([]);
+    setScopeOpen(false);
   }, [selectedSetId]);
+  useEffect(() => {
+    const availableIds = new Set(documents.filter((item) => item.status === "indexed").map((item) => item.id));
+    setSelectedDocumentIds((current) => current.filter((id) => availableIds.has(id)));
+  }, [documents]);
 
   const onDrop = useCallback(async (files: File[]) => {
     if (!selectedSetId || !files.length) return;
@@ -95,7 +103,7 @@ export default function UploadFilesPage() {
     setChatMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content, createdAt: new Date().toISOString() }]);
     setIsThinking(true);
     try {
-      const result = await knowledgeService.ask(content, selectedSetId);
+      const result = await knowledgeService.ask(content, selectedSetId, selectedDocumentIds);
       setChatMessages((current) => [...current, {
         id: crypto.randomUUID(), role: "assistant", content: result.answer, createdAt: new Date().toISOString(),
         grounded: result.grounded,
@@ -151,9 +159,21 @@ export default function UploadFilesPage() {
     </main>
 
     {chatOpen && <button onClick={() => setChatOpen(false)} className="fixed inset-x-0 bottom-0 top-16 z-40 bg-black/65 backdrop-blur-sm xl:hidden" />}
-    <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}><div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]"><header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span><div><h2 className="text-sm font-semibold">{copy.chatTitle}</h2><p className="mt-1 max-w-56 truncate text-[10px] text-white/30">{selectedSet?.name || copy.chatSub}</p></div></div><button onClick={() => setChatOpen(false)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button></header><div className="relative min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{copy.chatHint}</p></div>}</div><div className="shrink-0 border-t border-white/[.07] p-4"><ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} /></div></div></aside>
+    <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}><div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]"><header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span><div><h2 className="text-sm font-semibold">{copy.chatTitle}</h2><p className="mt-1 max-w-56 truncate text-[10px] text-white/30">{selectedSet?.name || copy.chatSub}</p></div></div><button onClick={() => setChatOpen(false)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button></header><div className="relative min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{copy.chatHint}</p></div>}</div><div className="relative shrink-0 border-t border-white/[.07] p-4"><ScopeSelector documents={documents.filter((item) => item.status === "indexed")} selectedIds={selectedDocumentIds} open={scopeOpen} copy={copy} isFa={isFa} onToggle={() => setScopeOpen((value) => !value)} onChange={setSelectedDocumentIds} onClose={() => setScopeOpen(false)} /><ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} /></div></div></aside>
     {dialog && <SetDialog mode={dialog} item={dialog === "edit" ? selectedSet : undefined} isFa={isFa} copy={copy} onClose={() => setDialog(null)} onSaved={async () => { setDialog(null); await loadSets(); }} />}
   </motion.div>;
+}
+
+function ScopeSelector({ documents, selectedIds, open, copy, isFa, onToggle, onChange, onClose }: { documents: KnowledgeDocument[]; selectedIds: string[]; open: boolean; copy: Record<string, string>; isFa: boolean; onToggle: () => void; onChange: (ids: string[]) => void; onClose: () => void }) {
+  const selectedDocuments = documents.filter((item) => selectedIds.includes(item.id));
+  const toggle = (id: string) => onChange(selectedIds.includes(id) ? selectedIds.filter((item) => item !== id) : [...selectedIds, id]);
+  return <div className="mb-3">
+    <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <button type="button" onClick={onToggle} aria-expanded={open} className={`flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-[10px] font-semibold transition ${selectedIds.length ? "border-[#8f78d8]/30 bg-[#32127A]/25 text-[#c5b8f4]" : "border-white/[.08] bg-white/[.035] text-white/40 hover:text-white/65"}`}><SlidersHorizontal size={12} />{selectedIds.length ? `${selectedIds.length} ${copy.selectedSources}` : copy.allSources}<ChevronDown size={11} className={`transition ${open ? "rotate-180" : ""}`} /></button>
+      {selectedDocuments.map((document) => <span key={document.id} className="flex h-8 max-w-36 shrink-0 items-center gap-1 rounded-lg border border-white/[.07] bg-black/15 ps-2.5 pe-1 text-[10px] text-white/45"><FileText size={11} /><span className="truncate">{document.filename}</span><button type="button" onClick={() => toggle(document.id)} className="grid size-6 shrink-0 place-items-center rounded-md hover:bg-white/[.06] hover:text-white"><X size={11} /></button></span>)}
+    </div>
+    {open && <><button type="button" aria-label="Close source selector" onClick={onClose} className="fixed inset-0 z-[59] cursor-default" /><div className="absolute bottom-[calc(100%-12px)] inset-x-4 z-[60] overflow-hidden rounded-2xl border border-white/10 bg-[rgba(18,14,25,.98)] shadow-[0_-20px_60px_rgba(0,0,0,.4)] backdrop-blur-2xl"><div className="flex items-center justify-between border-b border-white/[.07] px-4 py-3"><div><p className="text-xs font-semibold text-white/75">{copy.chooseSources}</p><p className="mt-1 text-[9px] text-white/25">{isFa ? "فقط اسناد آماده قابل انتخاب هستند" : "Only ready documents can be selected"}</p></div>{selectedIds.length > 0 && <button type="button" onClick={() => onChange([])} className="text-[10px] text-[#b6a7ef] hover:text-white">{copy.clearSelection}</button>}</div><div className="max-h-52 overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-white/10">{documents.length ? documents.map((document) => { const selected = selectedIds.includes(document.id); return <button type="button" key={document.id} onClick={() => toggle(document.id)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-start transition ${selected ? "bg-[#32127A]/25" : "hover:bg-white/[.035]"}`}><span className={`grid size-7 shrink-0 place-items-center rounded-lg border ${selected ? "border-[#8f78d8]/35 bg-[#32127A]/40 text-[#c5b8f4]" : "border-white/[.08] text-white/25"}`}>{selected ? <Check size={13} /> : <FileText size={13} />}</span><span className="min-w-0 flex-1 truncate text-[11px] text-white/65">{document.filename}</span></button>; }) : <div className="grid min-h-20 place-items-center text-[10px] text-white/25">{isFa ? "سند آماده‌ای وجود ندارد" : "No ready documents"}</div>}</div></div></>}
+  </div>;
 }
 
 function DocumentRow({ document, isAdmin, isFa, onRemove }: { document: KnowledgeDocument; isAdmin: boolean; isFa: boolean; onRemove: () => Promise<void> }) {
