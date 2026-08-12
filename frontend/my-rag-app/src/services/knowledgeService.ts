@@ -25,6 +25,7 @@ export interface DocumentSet {
 }
 
 interface RagResponse {
+  response_id: string;
   answer: string;
   grounded: boolean;
   citations: Array<{

@@ -25,6 +25,8 @@ export interface ChatMessage {
 
   sources?: Source[];
   grounded?: boolean;
+  responseId?: string;
+  feedback?: 1 | -1;
 }
 
 export interface ChatSession {

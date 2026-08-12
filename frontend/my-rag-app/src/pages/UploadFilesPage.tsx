@@ -105,7 +105,7 @@ export default function UploadFilesPage() {
     try {
       const result = await knowledgeService.ask(content, selectedSetId, selectedDocumentIds);
       setChatMessages((current) => [...current, {
-        id: crypto.randomUUID(), role: "assistant", content: result.answer, createdAt: new Date().toISOString(),
+        id: crypto.randomUUID(), role: "assistant", content: result.answer, responseId: result.response_id, createdAt: new Date().toISOString(),
         grounded: result.grounded,
         sources: result.citations.map((citation) => ({
           id: citation.chunk_id,

@@ -7,7 +7,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> { const 
 
 export interface CustomAssistant { id: string; name: string; description: string | null; instructions: string; is_active: boolean; created_by_id: string; document_set_ids: string[]; document_set_names: string[]; created_at: string; updated_at: string; }
 export interface AssistantPayload { name: string; description?: string; instructions: string; document_set_ids: string[]; is_active: boolean; }
-export interface AssistantAnswer { answer: string; grounded: boolean; citations: Array<{ id: number; chunk_id: string; document_id: string; filename: string; chunk_index: number; excerpt: string; score: number; page: number | null; section: string | null }>; }
+export interface AssistantAnswer { response_id: string; answer: string; grounded: boolean; citations: Array<{ id: number; chunk_id: string; document_id: string; filename: string; chunk_index: number; excerpt: string; score: number; page: number | null; section: string | null }>; }
 
 export const assistantService = {
   list: () => request<CustomAssistant[]>("/assistants", { headers: headers() }),

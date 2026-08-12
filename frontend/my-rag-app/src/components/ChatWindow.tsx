@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { CheckCircle2, Copy, FileText, Quote, ShieldAlert, Sparkles, X } from "lucide-react";
+import { CheckCircle2, Copy, FileText, Quote, ShieldAlert, Sparkles, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import type { ChatMessage, Source } from "../types/chat";
+import { feedbackService, type FeedbackReason } from "../services/feedbackService";
 
 interface ChatWindowProps { messages: ChatMessage[]; isThinking: boolean; }
 
@@ -20,13 +21,35 @@ export default function ChatWindow({ messages, isThinking }: ChatWindowProps) {
           {message.role === "assistant" && <>
             <div className={`mt-3 flex items-center gap-1.5 text-[10px] ${message.grounded ? "text-emerald-200/50" : "text-amber-200/45"}`}>{message.grounded ? <><CheckCircle2 size={12} />{isFa ? "پاسخ متصل به منبع" : "Source-linked answer"}</> : <><ShieldAlert size={12} />{isFa ? "بدون ارجاع به منبع" : "No source citation"}</>}</div>
             {message.sources?.length ? <div className="mt-3 border-t border-white/[.07] pt-3"><p className="mb-2 text-[10px] font-bold uppercase tracking-[.16em] text-[#a995eb]">{isFa ? "شواهد" : "Evidence"}</p><div className="flex flex-wrap gap-2">{message.sources.map((source) => <button key={`${source.id}-${source.citationId}`} onClick={() => setEvidence(source)} className="flex max-w-full items-center gap-1.5 rounded-lg border border-white/[.07] bg-black/15 px-2.5 py-1.5 text-[11px] text-white/45 transition hover:border-[#8f78d8]/30 hover:bg-[#32127A]/15 hover:text-white/70"><span className="grid size-4 shrink-0 place-items-center rounded bg-[#32127A]/40 text-[9px] text-[#c5b8f4]">{source.citationId}</span><FileText size={11} /><span className="truncate">{source.title}</span></button>)}</div></div> : null}
-            <button aria-label="Copy response" onClick={() => { void navigator.clipboard.writeText(message.content); toast.success(isFa ? "پاسخ کپی شد" : "Response copied"); }} className="mt-3 grid size-7 place-items-center rounded-lg text-white/25 hover:bg-white/[.06] hover:text-white/70"><Copy size={13} /></button>
+            <div className="mt-3 flex items-center gap-1"><button aria-label="Copy response" onClick={() => { void navigator.clipboard.writeText(message.content); toast.success(isFa ? "پاسخ کپی شد" : "Response copied"); }} className="grid size-7 place-items-center rounded-lg text-white/25 hover:bg-white/[.06] hover:text-white/70"><Copy size={13} /></button>{message.responseId && <MessageFeedback responseId={message.responseId} isFa={isFa} />}</div>
           </>}
         </div>
       </article>)}
       {isThinking && <div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><Sparkles size={14} /></span><div className="flex gap-1.5 rounded-2xl border border-white/[.08] bg-white/[.045] px-4 py-4">{[0, 1, 2].map((item) => <span key={item} className="size-1.5 animate-bounce rounded-full bg-[#a995eb]" style={{ animationDelay: `${item * 120}ms` }} />)}</div></div>}
     </div>
     {evidence && <EvidenceDrawer source={evidence} isFa={isFa} onClose={() => setEvidence(null)} />}
+  </div>;
+}
+
+function MessageFeedback({ responseId, isFa }: { responseId: string; isFa: boolean }) {
+  const [rating, setRating] = useState<1 | -1 | null>(null);
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState<FeedbackReason | "">("");
+  const [comment, setComment] = useState("");
+  const [saving, setSaving] = useState(false);
+  const positive = async () => { setSaving(true); try { await feedbackService.save(responseId, 1); setRating(1); setOpen(false); toast.success(isFa ? "از بازخورد شما متشکریم" : "Thanks for your feedback"); } catch (e) { toast.error((e as Error).message); } finally { setSaving(false); } };
+  const negative = async () => { if (!reason) return; setSaving(true); try { await feedbackService.save(responseId, -1, reason, comment.trim()); setRating(-1); setOpen(false); toast.success(isFa ? "بازخورد ثبت شد" : "Feedback saved"); } catch (e) { toast.error((e as Error).message); } finally { setSaving(false); } };
+  const reasons: Array<[FeedbackReason, string]> = [
+    ["incorrect", isFa ? "پاسخ اشتباه بود" : "The answer was incorrect"],
+    ["irrelevant_source", isFa ? "منبع نامرتبط بود" : "The source was irrelevant"],
+    ["incomplete", isFa ? "پاسخ ناقص بود" : "The answer was incomplete"],
+    ["citation_issue", isFa ? "ارجاع مشکل داشت" : "The citation had an issue"],
+    ["other", isFa ? "مورد دیگر" : "Something else"],
+  ];
+  return <div className="relative flex items-center gap-1">
+    <button disabled={saving} onClick={() => void positive()} aria-label="Helpful" className={`grid size-7 place-items-center rounded-lg transition ${rating === 1 ? "bg-emerald-300/10 text-emerald-200" : "text-white/25 hover:bg-white/[.06] hover:text-white/70"}`}><ThumbsUp size={13} /></button>
+    <button disabled={saving} onClick={() => setOpen(!open)} aria-label="Not helpful" className={`grid size-7 place-items-center rounded-lg transition ${rating === -1 ? "bg-rose-300/10 text-rose-200" : "text-white/25 hover:bg-white/[.06] hover:text-white/70"}`}><ThumbsDown size={13} /></button>
+    {open && <div className="absolute bottom-9 start-0 z-30 w-72 rounded-2xl border border-white/10 bg-[rgba(18,14,25,.98)] p-3 shadow-2xl backdrop-blur-2xl"><div className="flex items-center justify-between"><p className="text-[11px] font-semibold text-white/70">{isFa ? "مشکل پاسخ چه بود؟" : "What was wrong with the answer?"}</p><button onClick={() => setOpen(false)} className="grid size-6 place-items-center rounded-md text-white/30 hover:bg-white/5"><X size={12} /></button></div><div className="mt-2 space-y-1">{reasons.map(([value, label]) => <button key={value} onClick={() => setReason(value)} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-[10px] ${reason === value ? "bg-[#32127A]/35 text-white/75" : "text-white/40 hover:bg-white/[.04]"}`}><span className={`size-2 rounded-full border ${reason === value ? "border-[#a995eb] bg-[#a995eb]" : "border-white/20"}`} />{label}</button>)}</div>{reason === "other" && <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} rows={2} placeholder={isFa ? "توضیح اختیاری..." : "Optional details..."} className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/20 p-2.5 text-[10px] outline-none placeholder:text-white/20 focus:border-[#8f78d8]/40" />}<button disabled={!reason || saving} onClick={() => void negative()} className="mt-3 h-9 w-full rounded-xl bg-[#32127A] text-[10px] font-semibold disabled:opacity-40">{saving ? "…" : isFa ? "ثبت بازخورد" : "Submit feedback"}</button></div>}
   </div>;
 }
 
