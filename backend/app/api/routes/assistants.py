@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.routes.auth import get_current_user
+from app.core.document_set_access import accessible_set_ids
 from app.db.database import get_db
 from app.models.assistant import Assistant
 from app.models.document import Document
@@ -43,12 +44,13 @@ def _sets(db: Session, ids: list[uuid.UUID]) -> list[DocumentSet]:
     return items
 
 
-def _response(item: Assistant) -> AssistantResponse:
+def _response(item: Assistant, allowed_set_ids: set[uuid.UUID] | None = None) -> AssistantResponse:
+    visible_sets = item.document_sets if allowed_set_ids is None else [value for value in item.document_sets if value.id in allowed_set_ids]
     return AssistantResponse(
         id=item.id, name=item.name, description=item.description, instructions=item.instructions,
         is_active=item.is_active, created_by_id=item.created_by_id,
-        document_set_ids=[value.id for value in item.document_sets],
-        document_set_names=[value.name for value in item.document_sets],
+        document_set_ids=[value.id for value in visible_sets],
+        document_set_names=[value.name for value in visible_sets],
         created_at=item.created_at, updated_at=item.updated_at,
     )
 
@@ -58,7 +60,11 @@ def list_assistants(db: Session = Depends(get_db), user: User = Depends(get_curr
     statement = select(Assistant).options(selectinload(Assistant.document_sets)).order_by(Assistant.updated_at.desc())
     if user.role != "admin":
         statement = statement.where(Assistant.is_active.is_(True))
-    return [_response(item) for item in db.scalars(statement).all()]
+    items = list(db.scalars(statement).all())
+    allowed = accessible_set_ids(db, user)
+    if allowed is not None:
+        items = [item for item in items if any(value.id in allowed for value in item.document_sets)]
+    return [_response(item, allowed) for item in items]
 
 
 @router.post("", response_model=AssistantResponse, status_code=status.HTTP_201_CREATED)
@@ -96,11 +102,16 @@ def delete_assistant(assistant_id: uuid.UUID, db: Session = Depends(get_db), _: 
 
 
 @router.post("/{assistant_id}/answer", response_model=RagResponse)
-def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerRequest, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     item = _get(db, assistant_id)
     if not item.is_active:
         raise HTTPException(status_code=409, detail="Assistant is inactive")
     set_ids = [value.id for value in item.document_sets]
+    allowed = accessible_set_ids(db, user)
+    if allowed is not None:
+        set_ids = [value for value in set_ids if value in allowed]
+        if not set_ids:
+            raise HTTPException(status_code=403, detail="You do not have access to this assistant's knowledge")
     document_ids = [str(value) for value in db.scalars(
         select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()
     ).all()] if set_ids else []

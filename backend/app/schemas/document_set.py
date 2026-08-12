@@ -25,6 +25,7 @@ class DocumentSetResponse(BaseModel):
     created_by_id: uuid.UUID
     document_count: int = 0
     indexed_document_count: int = 0
+    access_level: str = "manage"
     created_at: datetime
     updated_at: datetime
 

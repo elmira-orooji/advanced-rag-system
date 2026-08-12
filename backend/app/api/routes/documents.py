@@ -8,10 +8,13 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import BASE_DIR, MAX_UPLOAD_SIZE, UPLOAD_DIR
+from app.core.document_set_access import require_set_access
+from app.api.routes.auth import get_current_user
 from app.db.database import get_db
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.document_set import DocumentSet
+from app.models.user import User
 from app.schemas.document import (
     ChunkingRequest,
     DeleteDocumentResponse,
@@ -32,7 +35,9 @@ ALLOWED_FILE_TYPES = {
 
 
 @router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-def create_document(payload: DocumentCreate, db: Session = Depends(get_db)):
+def create_document(payload: DocumentCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access is required")
     document = Document(
         filename=payload.filename,
         content_type=payload.content_type,
@@ -49,11 +54,15 @@ def list_documents(
     limit: int = Query(default=20, ge=1, le=100),
     document_set_id: uuid.UUID | None = Query(default=None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
+    if user.role != "admin" and document_set_id is None:
+        raise HTTPException(status_code=403, detail="A permitted knowledge set is required")
     statement = select(Document)
     if document_set_id is not None:
         if db.get(DocumentSet, document_set_id) is None:
             raise HTTPException(status_code=404, detail="Document set not found")
+        require_set_access(db, user, document_set_id)
         statement = statement.join(Document.document_sets).where(DocumentSet.id == document_set_id)
     statement = (
         statement
@@ -72,6 +81,7 @@ def list_documents(
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ):
     content_type = file.content_type or ""
     expected_suffix = ALLOWED_FILE_TYPES.get(content_type)
@@ -136,8 +146,17 @@ async def ingest_document(
     file: UploadFile = File(...),
     chunk_size: int = Query(default=1000, ge=200, le=4000),
     overlap: int = Query(default=200, ge=0, le=1000),
+    document_set_id: uuid.UUID | None = Query(default=None),
     db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
 ):
+    if document_set_id is None:
+        if user.role != "admin":
+            raise HTTPException(status_code=403, detail="A permitted knowledge set is required")
+    else:
+        if db.get(DocumentSet, document_set_id) is None:
+            raise HTTPException(status_code=404, detail="Document set not found")
+        require_set_access(db, user, document_set_id, "edit")
     try:
         chunking = ChunkingRequest(chunk_size=chunk_size, overlap=overlap)
     except ValueError as exc:
@@ -145,13 +164,16 @@ async def ingest_document(
 
     document: Document | None = None
     try:
-        document = await upload_document(file=file, db=db)
+        document = await upload_document(file=file, db=db, _=user)
         document = create_document_chunks(
             document_id=document.id,
             payload=chunking,
             db=db,
+            user=None,
         )
-        document = index_document(document_id=document.id, db=db)
+        document = index_document(document_id=document.id, db=db, user=None)
+        if document_set_id is not None:
+            document.document_sets.append(db.get(DocumentSet, document_set_id))
         document.processing_error = None
         db.commit()
         db.refresh(document)
@@ -209,7 +231,10 @@ def create_document_chunks(
     document_id: uuid.UUID,
     payload: ChunkingRequest,
     db: Session = Depends(get_db),
+    user: User | None = Depends(get_current_user),
 ):
+    if user is not None and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access is required")
     statement = (
         select(Document)
         .options(selectinload(Document.chunks))
@@ -252,7 +277,9 @@ def create_document_chunks(
 
 
 @router.post("/{document_id}/index", response_model=DocumentDetail)
-def index_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
+def index_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: User | None = Depends(get_current_user)):
+    if user is not None and user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access is required")
     statement = (
         select(Document)
         .options(selectinload(Document.chunks))
@@ -291,7 +318,9 @@ def index_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
 
 
 @router.delete("/{document_id}", response_model=DeleteDocumentResponse)
-def delete_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
+def delete_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access is required")
     document = db.get(Document, document_id)
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -344,7 +373,7 @@ def _get_document_directory(document: Document) -> Path | None:
 
 
 @router.get("/{document_id}", response_model=DocumentDetail)
-def get_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
+def get_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     statement = (
         select(Document)
         .options(selectinload(Document.chunks))
@@ -357,5 +386,17 @@ def get_document(document_id: uuid.UUID, db: Session = Depends(get_db)):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Document not found",
         )
+
+    if user.role != "admin":
+        allowed = False
+        for document_set in document.document_sets:
+            try:
+                require_set_access(db, user, document_set.id)
+                allowed = True
+                break
+            except HTTPException:
+                continue
+        if not allowed:
+            raise HTTPException(status_code=403, detail="You do not have access to this document")
 
     return document

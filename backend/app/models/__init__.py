@@ -3,7 +3,8 @@ from app.models.chunk import Chunk
 from app.models.conversation import Conversation
 from app.models.document import Document
 from app.models.document_set import DocumentSet
+from app.models.document_set_permission import DocumentSetPermission
 from app.models.message import Message
 from app.models.user import User
 
-__all__ = ["Assistant", "Chunk", "Conversation", "Document", "DocumentSet", "Message", "User"]
+__all__ = ["Assistant", "Chunk", "Conversation", "Document", "DocumentSet", "DocumentSetPermission", "Message", "User"]

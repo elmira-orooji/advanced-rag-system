@@ -6,9 +6,11 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.routes.auth import get_current_user
+from app.core.document_set_access import accessible_set_ids, require_set_access
 from app.db.database import get_db
 from app.models.document import Document
 from app.models.document_set import DocumentSet, document_set_documents
+from app.models.document_set_permission import DocumentSetPermission
 from app.models.user import User
 from app.schemas.document_set import (
     DocumentMembershipRequest,
@@ -37,7 +39,7 @@ def _get_set(db: Session, set_id: uuid.UUID, with_documents: bool = False) -> Do
     return document_set
 
 
-def _response(document_set: DocumentSet, document_count: int, indexed_count: int) -> DocumentSetResponse:
+def _response(document_set: DocumentSet, document_count: int, indexed_count: int, access_level: str = "manage") -> DocumentSetResponse:
     return DocumentSetResponse(
         id=document_set.id,
         name=document_set.name,
@@ -45,6 +47,7 @@ def _response(document_set: DocumentSet, document_count: int, indexed_count: int
         created_by_id=document_set.created_by_id,
         document_count=document_count,
         indexed_document_count=indexed_count,
+        access_level=access_level,
         created_at=document_set.created_at,
         updated_at=document_set.updated_at,
     )
@@ -53,9 +56,9 @@ def _response(document_set: DocumentSet, document_count: int, indexed_count: int
 @router.get("", response_model=list[DocumentSetResponse])
 def list_document_sets(
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
-    rows = db.execute(
+    statement = (
         select(
             DocumentSet,
             func.count(Document.id),
@@ -65,8 +68,13 @@ def list_document_sets(
         .outerjoin(Document, Document.id == document_set_documents.c.document_id)
         .group_by(DocumentSet.id)
         .order_by(DocumentSet.updated_at.desc())
-    ).all()
-    return [_response(item, total, indexed) for item, total, indexed in rows]
+    )
+    allowed = accessible_set_ids(db, user)
+    if allowed is not None:
+        statement = statement.where(DocumentSet.id.in_(allowed))
+    rows = db.execute(statement).all()
+    permission_map = {} if user.role == "admin" else dict(db.execute(select(DocumentSetPermission.document_set_id, DocumentSetPermission.permission).where(DocumentSetPermission.user_id == user.id)).all())
+    return [_response(item, total, indexed, permission_map.get(item.id, "manage")) for item, total, indexed in rows]
 
 
 @router.post("", response_model=DocumentSetResponse, status_code=status.HTTP_201_CREATED)
@@ -94,8 +102,9 @@ def create_document_set(
 def get_document_set(
     set_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
+    require_set_access(db, user, set_id)
     item = _get_set(db, set_id, with_documents=True)
     return DocumentSetDetail(
         **_response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents)).model_dump(),
@@ -108,8 +117,9 @@ def update_document_set(
     set_id: uuid.UUID,
     payload: DocumentSetUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    user: User = Depends(get_current_user),
 ):
+    require_set_access(db, user, set_id, "manage")
     item = _get_set(db, set_id, with_documents=True)
     if payload.name is not None:
         item.name = payload.name.strip()
@@ -128,8 +138,9 @@ def update_document_set(
 def delete_document_set(
     set_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    user: User = Depends(get_current_user),
 ):
+    require_set_access(db, user, set_id, "manage")
     item = _get_set(db, set_id)
     db.delete(item)
     db.commit()
@@ -140,8 +151,9 @@ def add_document_to_set(
     set_id: uuid.UUID,
     payload: DocumentMembershipRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    user: User = Depends(get_current_user),
 ):
+    require_set_access(db, user, set_id, "edit")
     item = _get_set(db, set_id, with_documents=True)
     document = db.get(Document, payload.document_id)
     if document is None:
@@ -161,8 +173,9 @@ def remove_document_from_set(
     set_id: uuid.UUID,
     document_id: uuid.UUID,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    user: User = Depends(get_current_user),
 ):
+    require_set_access(db, user, set_id, "edit")
     item = _get_set(db, set_id, with_documents=True)
     document = next((doc for doc in item.documents if doc.id == document_id), None)
     if document is None:

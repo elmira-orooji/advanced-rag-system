@@ -1,0 +1,50 @@
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import delete, select
+from sqlalchemy.orm import Session
+
+from app.api.routes.auth import get_current_user
+from app.db.database import get_db
+from app.models.document_set import DocumentSet
+from app.models.document_set_permission import DocumentSetPermission
+from app.models.user import User
+from app.schemas.user_management import SetPermissionItem, SetPermissionsUpdate, UserAdminResponse
+
+router = APIRouter(prefix="/users", tags=["users"])
+
+
+def admin_only(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access is required")
+    return user
+
+
+@router.get("", response_model=list[UserAdminResponse])
+def list_users(db: Session = Depends(get_db), _: User = Depends(admin_only)):
+    return db.scalars(select(User).order_by(User.created_at.desc())).all()
+
+
+@router.get("/{user_id}/document-set-permissions", response_model=list[SetPermissionItem])
+def get_permissions(user_id: uuid.UUID, db: Session = Depends(get_db), _: User = Depends(admin_only)):
+    if db.get(User, user_id) is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    rows = db.execute(select(DocumentSetPermission, DocumentSet.name).join(DocumentSet, DocumentSet.id == DocumentSetPermission.document_set_id).where(DocumentSetPermission.user_id == user_id).order_by(DocumentSet.name)).all()
+    return [SetPermissionItem(document_set_id=item.document_set_id, document_set_name=name, permission=item.permission) for item, name in rows]
+
+
+@router.put("/{user_id}/document-set-permissions", response_model=list[SetPermissionItem])
+def replace_permissions(user_id: uuid.UUID, payload: SetPermissionsUpdate, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    target = db.get(User, user_id)
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.role == "admin" and payload.permissions:
+        raise HTTPException(status_code=422, detail="Admins already have access to all knowledge sets")
+    set_ids = {item.document_set_id for item in payload.permissions}
+    existing_ids = set(db.scalars(select(DocumentSet.id).where(DocumentSet.id.in_(set_ids))).all()) if set_ids else set()
+    if existing_ids != set_ids:
+        raise HTTPException(status_code=422, detail="One or more knowledge sets do not exist")
+    db.execute(delete(DocumentSetPermission).where(DocumentSetPermission.user_id == user_id))
+    db.add_all([DocumentSetPermission(user_id=user_id, document_set_id=item.document_set_id, permission=item.permission, granted_by_id=admin.id) for item in payload.permissions])
+    db.commit()
+    return get_permissions(user_id, db, admin)

@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
+from app.core.document_set_access import require_set_access
 from app.db.database import get_db
 from app.models.document import Document
 from app.models.document_set import DocumentSet
@@ -35,7 +36,7 @@ def _normalize_citations(answer: str, source_count: int) -> tuple[str, set[int]]
 def answer_question(
     payload: RagRequest,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     if payload.document_id and (payload.document_set_id or payload.document_ids):
         raise HTTPException(status_code=422, detail="Choose either a document or a document set scope")
@@ -44,6 +45,7 @@ def answer_question(
 
     document_ids: list[str] | None = None
     if payload.document_set_id:
+        require_set_access(db, user, payload.document_set_id)
         document_set = db.get(DocumentSet, payload.document_set_id)
         if document_set is None:
             raise HTTPException(status_code=404, detail="Document set not found")
