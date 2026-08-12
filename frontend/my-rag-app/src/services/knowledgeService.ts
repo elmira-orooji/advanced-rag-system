@@ -42,6 +42,11 @@ interface RagResponse {
   sources: Array<{ chunk_id: string; document_id: string; filename: string; content: string; score: number }>;
 }
 
+export interface ResearchResponse extends RagResponse {
+  steps: Array<{ query: string; evidence_count: number }>;
+  evidence_reviewed: number;
+}
+
 function headers(json = false) {
   const token = authService.getSession()?.accessToken;
   return {
@@ -89,5 +94,11 @@ export const knowledgeService = {
         document_ids: documentIds?.length ? documentIds : null,
         limit: 5,
       }),
+    }),
+  research: (question: string, documentSetId: string, documentIds?: string[]) =>
+    request<ResearchResponse>("/research/run", {
+      method: "POST",
+      headers: headers(true),
+      body: JSON.stringify({ question, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, max_steps: 4 }),
     }),
 };

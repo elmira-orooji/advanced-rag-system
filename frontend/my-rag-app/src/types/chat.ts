@@ -27,6 +27,7 @@ export interface ChatMessage {
   grounded?: boolean;
   responseId?: string;
   feedback?: 1 | -1;
+  research?: { steps: Array<{ query: string; evidence_count: number }>; evidenceReviewed: number };
 }
 
 export interface ChatSession {
