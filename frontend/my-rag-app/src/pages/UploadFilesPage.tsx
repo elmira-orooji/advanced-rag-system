@@ -1,183 +1,157 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
-  ChevronDown,
-  File,
-  FileText,
-  MessageSquareText,
-  PanelRightClose,
-  Search,
-  Sparkles,
-  Trash2,
-  UploadCloud,
-  X,
+  BookOpen, ChevronDown, FileText, FolderKanban, MessageSquareText, MoreHorizontal,
+  PanelRightClose, Pencil, Plus, Search, Sparkles, Trash2, UploadCloud, X,
 } from "lucide-react";
 import ChatInput from "../components/ChatInput";
 import ChatWindow from "../components/ChatWindow";
+import { authService } from "../services/authService";
+import { knowledgeService, type DocumentSet, type KnowledgeDocument } from "../services/knowledgeService";
 import type { ChatMessage } from "../types/chat";
-
-type DocumentStatus = "indexed" | "processing" | "queued";
-
-interface KnowledgeDocument {
-  id: string;
-  name: string;
-  type: string;
-  size: string;
-  added: string;
-  status: DocumentStatus;
-  chunks?: number;
-}
-
-const initialDocuments: KnowledgeDocument[] = [
-  { id: "1", name: "Product_Specifications.pdf", type: "PDF", size: "2.4 MB", added: "Today, 09:42", status: "indexed", chunks: 86 },
-  { id: "2", name: "Employee_Handbook.docx", type: "DOCX", size: "1.1 MB", added: "Yesterday", status: "indexed", chunks: 42 },
-  { id: "3", name: "Research_Notes.txt", type: "TXT", size: "184 KB", added: "Yesterday", status: "processing" },
-  { id: "4", name: "Q2_Strategy.pdf", type: "PDF", size: "3.7 MB", added: "Aug 03", status: "indexed", chunks: 128 },
-];
 
 export default function UploadFilesPage() {
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
-  const [documents, setDocuments] = useState(initialDocuments);
+  const isAdmin = authService.getUser()?.role === "admin";
+  const [sets, setSets] = useState<DocumentSet[]>([]);
+  const [selectedSetId, setSelectedSetId] = useState("");
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | DocumentStatus>("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 1280px)").matches);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [dialog, setDialog] = useState<"create" | "edit" | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const copy = isFa ? {
-    eyebrow: "مدیریت منابع", title: "پایگاه دانش", subtitle: "اسناد مورد استفاده برای پاسخ‌های هوشمند را مدیریت و سازمان‌دهی کنید.",
-    add: "افزودن سند", drop: "فایل‌ها را اینجا رها کنید", browse: "یا برای انتخاب فایل کلیک کنید", formats: "PDF، DOCX و TXT تا حداکثر ۱۰ مگابایت",
-    total: "کل اسناد", indexed: "ایندکس‌شده", processing: "در حال پردازش", chunks: "بخش‌های دانش", library: "کتابخانه اسناد", librarySub: "منابع قابل جست‌وجوی فضای کاری شما",
-    search: "جست‌وجوی اسناد...", all: "همه وضعیت‌ها", file: "سند", status: "وضعیت", added: "افزوده‌شده", size: "حجم", empty: "سندی پیدا نشد",
-    health: "سلامت پایگاه دانش", healthy: "آماده و همگام", coverage: "پوشش ایندکس", security: "فضای کاری خصوصی", securitySub: "اسناد فقط برای اعضای مجاز قابل دسترسی هستند.",
+    eyebrow: "مدیریت منابع", title: "پایگاه دانش", subtitle: "اسناد را در مجموعه‌های موضوعی سازمان‌دهی کنید و پاسخ‌ها را به همان محدوده محدود کنید.",
+    sets: "مجموعه‌های دانش", newSet: "مجموعه جدید", allDocs: "همه اسناد", documents: "سند", indexed: "آماده",
+    drop: "فایل را در این مجموعه رها کنید", browse: "یا برای انتخاب کلیک کنید", formats: "PDF و TXT تا ۱۰ مگابایت",
+    library: "اسناد مجموعه", search: "جست‌وجوی اسناد...", allStatuses: "همه وضعیت‌ها", empty: "این مجموعه هنوز سندی ندارد.",
+    chatTitle: "دستیار دانش", chatSub: "پرسش در محدوده مجموعه انتخاب‌شده", chatEmpty: "پاسخ‌های مبتنی بر مجموعه", chatHint: "یک مجموعه را انتخاب کنید و درباره اسناد آن سؤال بپرسید.",
+    createTitle: "ایجاد مجموعه دانش", editTitle: "ویرایش مجموعه", name: "نام مجموعه", description: "توضیحات", cancel: "انصراف", save: "ذخیره", create: "ایجاد مجموعه", edit: "ویرایش", delete: "حذف مجموعه",
   } : {
-    eyebrow: "Source management", title: "Knowledge base", subtitle: "Manage and organize the documents that ground your AI answers.",
-    add: "Add documents", drop: "Drop your files here", browse: "or click to browse from your device", formats: "PDF, DOCX and TXT up to 10 MB",
-    total: "Total documents", indexed: "Indexed", processing: "Processing", chunks: "Knowledge chunks", library: "Document library", librarySub: "Searchable sources in your workspace",
-    search: "Search documents...", all: "All statuses", file: "Document", status: "Status", added: "Added", size: "Size", empty: "No documents found",
-    health: "Knowledge health", healthy: "Ready and synchronized", coverage: "Index coverage", security: "Private workspace", securitySub: "Documents are only accessible to authorized members.",
+    eyebrow: "Source management", title: "Knowledge base", subtitle: "Organize documents into focused collections and keep every answer within the right scope.",
+    sets: "Knowledge sets", newSet: "New set", allDocs: "All documents", documents: "documents", indexed: "ready",
+    drop: "Drop files into this set", browse: "or click to browse", formats: "PDF and TXT up to 10 MB",
+    library: "Set documents", search: "Search documents...", allStatuses: "All statuses", empty: "This set has no documents yet.",
+    chatTitle: "Knowledge assistant", chatSub: "Search within the selected set", chatEmpty: "Set-grounded answers", chatHint: "Select a knowledge set, then ask questions across its documents.",
+    createTitle: "Create knowledge set", editTitle: "Edit knowledge set", name: "Set name", description: "Description", cancel: "Cancel", save: "Save changes", create: "Create set", edit: "Edit", delete: "Delete set",
   };
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const additions = acceptedFiles.map<KnowledgeDocument>((file) => ({
-      id: crypto.randomUUID(), name: file.name, type: file.name.split(".").pop()?.toUpperCase() ?? "FILE",
-      size: file.size > 1024 * 1024 ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`,
-      added: isFa ? "همین حالا" : "Just now", status: "queued",
-    }));
-    setDocuments((current) => [...additions, ...current]);
-    if (additions.length) toast.success(isFa ? `${additions.length} سند به صف پردازش اضافه شد` : `${additions.length} document${additions.length > 1 ? "s" : ""} added to the queue`);
-  }, [isFa]);
+  const selectedSet = sets.find((item) => item.id === selectedSetId);
+
+  const loadSets = useCallback(async () => {
+    try {
+      const result = await knowledgeService.listSets();
+      setSets(result);
+      setSelectedSetId((current) => current && result.some((item) => item.id === current) ? current : result[0]?.id || "");
+    } catch (error) { toast.error((error as Error).message); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { void loadSets(); }, [loadSets]);
+  useEffect(() => {
+    if (!selectedSetId) { setDocuments([]); return; }
+    setLoading(true);
+    knowledgeService.listDocuments(selectedSetId)
+      .then(setDocuments)
+      .catch((error) => toast.error(error.message))
+      .finally(() => setLoading(false));
+    setChatMessages([]);
+  }, [selectedSetId]);
+
+  const onDrop = useCallback(async (files: File[]) => {
+    if (!selectedSetId || !files.length) return;
+    setUploading(true);
+    try {
+      for (const file of files) await knowledgeService.uploadDocument(file, selectedSetId);
+      toast.success(isFa ? "اسناد پردازش و به مجموعه اضافه شدند" : "Documents processed and added to the set");
+      setDocuments(await knowledgeService.listDocuments(selectedSetId));
+      await loadSets();
+    } catch (error) { toast.error((error as Error).message); }
+    finally { setUploading(false); }
+  }, [isFa, loadSets, selectedSetId]);
 
   const { getInputProps, getRootProps, isDragActive, open } = useDropzone({
-    onDrop, noClick: true, maxSize: 10 * 1024 * 1024,
-    accept: { "application/pdf": [".pdf"], "text/plain": [".txt"], "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"] },
+    onDrop, noClick: true, disabled: !selectedSetId || uploading, maxSize: 10 * 1024 * 1024,
+    accept: { "application/pdf": [".pdf"], "text/plain": [".txt"] },
     onDropRejected: () => toast.error(isFa ? "نوع یا حجم فایل مجاز نیست" : "Unsupported file type or size"),
   });
 
-  const filteredDocuments = useMemo(() => documents.filter((document) => {
-    const matchesQuery = document.name.toLowerCase().includes(query.toLowerCase());
-    const matchesStatus = statusFilter === "all" || document.status === statusFilter;
-    return matchesQuery && matchesStatus;
-  }), [documents, query, statusFilter]);
+  const filtered = useMemo(() => documents.filter((item) =>
+    item.filename.toLowerCase().includes(query.toLowerCase()) && (statusFilter === "all" || item.status === statusFilter)
+  ), [documents, query, statusFilter]);
 
-  const chatCopy = isFa
-    ? { title: "دستیار دانش", subtitle: "از اسناد خود سؤال بپرسید", empty: "پاسخ‌های مبتنی بر منبع", hint: "درباره اسناد این کتابخانه سؤال بپرسید تا پاسخی همراه با منابع دریافت کنید." }
-    : { title: "Knowledge assistant", subtitle: "Ask questions across your documents", empty: "Source-grounded answers", hint: "Ask about the documents in this library to receive an answer with traceable sources." };
-
-  const handleChatMessage = (content: string) => {
+  const handleChatMessage = async (content: string) => {
+    if (!selectedSetId) return toast.error(isFa ? "ابتدا یک مجموعه انتخاب کنید" : "Select a knowledge set first");
     setChatMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content, createdAt: new Date().toISOString() }]);
     setIsThinking(true);
-    window.setTimeout(() => {
+    try {
+      const result = await knowledgeService.ask(content, selectedSetId);
       setChatMessages((current) => [...current, {
-        id: crypto.randomUUID(), role: "assistant",
-        content: isFa ? "این پاسخ بر اساس اسناد پایگاه دانش تولید شده است. پس از اتصال endpoint چت، پاسخ واقعی جایگزین این پیش‌نمایش می‌شود." : "This answer is grounded in the documents in this knowledge base. The live response will replace this preview when the chat endpoint is connected.",
-        createdAt: new Date().toISOString(),
-        sources: documents.filter((item) => item.status === "indexed").slice(0, 2).map((item) => ({ id: item.id, title: item.name })),
+        id: crypto.randomUUID(), role: "assistant", content: result.answer, createdAt: new Date().toISOString(),
+        sources: result.sources.map((source) => ({ id: source.chunk_id, title: source.filename })),
       }]);
-      setIsThinking(false);
-    }, 1000);
+    } catch (error) { toast.error((error as Error).message); }
+    finally { setIsThinking(false); }
   };
 
-  return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .45, ease: [0.22, 1, 0.36, 1] }} className="relative flex h-full overflow-hidden">
-      <div className="min-w-0 flex-1 overflow-hidden px-4 py-5 sm:px-6 sm:py-7 lg:px-8 lg:py-9">
-      <div className="mx-auto flex h-full w-full max-w-[900px] flex-col transition-[max-width] duration-300 ease-[cubic-bezier(.22,1,.36,1)]">
-        <header className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-[#a995eb]"><span className="size-1.5 rounded-full bg-[#8f78d8] shadow-[0_0_12px_#8f78d8]" />{copy.eyebrow}</div>
-            <h1 className="text-3xl font-semibold tracking-[-.045em] sm:text-4xl">{copy.title}</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-white/35">{copy.subtitle}</p>
-          </div>
-          <div className="flex gap-2">
-            <button type="button" onClick={() => setChatOpen(true)} aria-expanded={chatOpen} className={`${chatOpen ? "hidden" : "flex"} app-icon-button h-11 items-center justify-center gap-2 rounded-xl px-4 text-sm font-semibold text-white/65 hover:text-white`}><MessageSquareText size={17} />{chatCopy.title}</button>
-          </div>
+  const deleteSet = async () => {
+    if (!selectedSet || !confirm(isFa ? `مجموعه «${selectedSet.name}» حذف شود؟ اسناد حذف نمی‌شوند.` : `Delete “${selectedSet.name}”? Documents will be kept.`)) return;
+    try { await knowledgeService.deleteSet(selectedSet.id); setMenuOpen(false); toast.success(isFa ? "مجموعه حذف شد" : "Set deleted"); await loadSets(); }
+    catch (error) { toast.error((error as Error).message); }
+  };
+
+  return <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="relative flex h-full overflow-hidden">
+    <main className="min-w-0 flex-1 overflow-hidden px-4 py-5 sm:px-6 lg:px-8">
+      <div className="mx-auto flex h-full w-full max-w-[980px] flex-col gap-5">
+        <header className="flex shrink-0 items-end justify-between gap-4">
+          <div><div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-[#a995eb]"><span className="size-1.5 rounded-full bg-[#8f78d8]" />{copy.eyebrow}</div><h1 className="text-3xl font-semibold tracking-[-.045em] sm:text-4xl">{copy.title}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/35">{copy.subtitle}</p></div>
+          {!chatOpen && <button onClick={() => setChatOpen(true)} className="app-icon-button hidden h-11 items-center gap-2 rounded-xl px-4 text-sm text-white/65 sm:flex"><MessageSquareText size={17} />{copy.chatTitle}</button>}
         </header>
 
-        <div className="mt-5 flex min-h-0 flex-1">
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-5">
-            <div {...getRootProps()} className={`knowledge-dropzone relative flex min-h-36 shrink-0 cursor-pointer flex-col items-center justify-center rounded-[24px] p-5 text-center transition sm:min-h-40 ${isDragActive ? "is-active" : ""}`} onClick={open}>
-              <input {...getInputProps()} />
-              <span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/25 bg-[#32127A]/25 text-[#b6a7ef] shadow-[0_0_34px_rgba(50,18,122,.22)]"><UploadCloud size={22} /></span>
-              <p className="mt-4 text-sm font-semibold text-white/85">{copy.drop}</p>
-              <p className="mt-1 text-xs text-white/35">{copy.browse}</p>
-              <p className="mt-3 rounded-full border border-white/[.07] bg-black/15 px-3 py-1 text-[10px] text-white/25">{copy.formats}</p>
-            </div>
-
-            <section className="app-glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[24px]">
-              <div className="flex flex-col gap-4 border-b border-white/[.07] p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-                <div><h2 className="text-sm font-semibold">{copy.library}</h2><p className="mt-1 text-xs text-white/30">{copy.librarySub}</p></div>
-                <div className="flex gap-2">
-                  <label className="relative min-w-0 flex-1 sm:w-56"><Search size={15} className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-white/25" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={copy.search} className="h-10 w-full rounded-xl border border-white/[.09] bg-white/[.035] ps-9 pe-3 text-xs text-white outline-none transition placeholder:text-white/20 focus:border-[#8f78d8]/45 focus:bg-white/[.055]" /></label>
-                  <label className="relative"><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)} className="h-10 appearance-none rounded-xl border border-white/[.09] bg-[#100e15] ps-3 pe-8 text-xs text-white/55 outline-none"><option value="all">{copy.all}</option><option value="indexed">{copy.indexed}</option><option value="processing">{copy.processing}</option><option value="queued">Queued</option></select><ChevronDown size={13} className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-white/25" /></label>
-                </div>
-              </div>
-
-              <div className="hidden grid-cols-[minmax(0,2fr)_120px_130px_80px_42px] gap-3 border-b border-white/[.055] px-5 py-3 text-[10px] font-bold uppercase tracking-[.14em] text-white/20 md:grid"><span>{copy.file}</span><span>{copy.status}</span><span>{copy.added}</span><span>{copy.size}</span><span /></div>
-              <div className="min-h-0 flex-1 divide-y divide-white/[.055] overflow-y-auto overscroll-contain scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-                {filteredDocuments.length ? filteredDocuments.map((document) => (
-                  <DocumentRow key={document.id} document={document} isFa={isFa} onDelete={() => { setDocuments((current) => current.filter((item) => item.id !== document.id)); toast.success(isFa ? "سند حذف شد" : "Document removed"); }} />
-                )) : <div className="grid min-h-40 place-items-center text-sm text-white/30">{copy.empty}</div>}
-              </div>
-            </section>
+        <section className="shrink-0">
+          <div className="mb-3 flex items-center justify-between"><h2 className="text-xs font-semibold uppercase tracking-[.14em] text-white/35">{copy.sets}</h2>{isAdmin && <button onClick={() => setDialog("create")} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[#b6a7ef] hover:bg-[#32127A]/20"><Plus size={14} />{copy.newSet}</button>}</div>
+          <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10">
+            {sets.map((item) => <button key={item.id} onClick={() => setSelectedSetId(item.id)} className={`min-w-[210px] rounded-2xl border p-4 text-start transition ${selectedSetId === item.id ? "border-[#8f78d8]/45 bg-[#32127A]/25 shadow-[0_12px_35px_rgba(50,18,122,.2)]" : "border-white/[.07] bg-white/[.025] hover:bg-white/[.045]"}`}><div className="flex items-start justify-between"><span className={`grid size-9 place-items-center rounded-xl ${selectedSetId === item.id ? "bg-[#8f78d8]/20 text-[#b6a7ef]" : "bg-white/[.04] text-white/35"}`}><FolderKanban size={17} /></span>{selectedSetId === item.id && <span className="mt-1 size-1.5 rounded-full bg-[#a995eb] shadow-[0_0_10px_#a995eb]" />}</div><p className="mt-3 truncate text-sm font-semibold text-white/80">{item.name}</p><p className="mt-1 line-clamp-1 text-[11px] text-white/30">{item.description || (isFa ? "بدون توضیحات" : "No description")}</p><p className="mt-3 text-[10px] text-white/25">{item.document_count} {copy.documents} · {item.indexed_document_count} {copy.indexed}</p></button>)}
+            {!loading && !sets.length && <button onClick={() => isAdmin && setDialog("create")} className="grid min-h-[132px] min-w-[230px] place-items-center rounded-2xl border border-dashed border-white/10 text-xs text-white/30"><span className="flex flex-col items-center gap-2"><BookOpen size={20} />{isAdmin ? copy.newSet : (isFa ? "مجموعه‌ای وجود ندارد" : "No knowledge sets")}</span></button>}
           </div>
+        </section>
 
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          {selectedSet && <div className="flex shrink-0 items-center justify-between"><div><h2 className="text-lg font-semibold">{selectedSet.name}</h2><p className="mt-1 text-xs text-white/30">{selectedSet.description}</p></div>{isAdmin && <div className="relative"><button onClick={() => setMenuOpen(!menuOpen)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><MoreHorizontal size={17} /></button>{menuOpen && <div className="absolute end-0 top-11 z-30 w-40 rounded-xl border border-white/10 bg-[#15121c] p-1.5 shadow-2xl"><button onClick={() => { setDialog("edit"); setMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/65 hover:bg-white/5"><Pencil size={13} />{copy.edit}</button><button onClick={deleteSet} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-rose-300/75 hover:bg-rose-400/5"><Trash2 size={13} />{copy.delete}</button></div>}</div>}</div>}
+          {isAdmin && selectedSet && <div {...getRootProps()} onClick={open} className={`knowledge-dropzone flex min-h-28 shrink-0 cursor-pointer items-center justify-center gap-4 rounded-[22px] p-4 transition ${isDragActive ? "is-active" : ""}`}><input {...getInputProps()} /><span className="grid size-11 place-items-center rounded-2xl border border-[#8f78d8]/25 bg-[#32127A]/25 text-[#b6a7ef]">{uploading ? <span className="size-4 animate-spin rounded-full border-2 border-white/20 border-t-[#b6a7ef]" /> : <UploadCloud size={20} />}</span><div className="text-start"><p className="text-sm font-semibold text-white/75">{copy.drop}</p><p className="mt-1 text-[11px] text-white/30">{copy.browse} · {copy.formats}</p></div></div>}
+          <section className="app-glass-panel flex min-h-0 flex-1 flex-col overflow-hidden rounded-[22px]">
+            <div className="flex shrink-0 flex-col gap-3 border-b border-white/[.07] p-4 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-sm font-semibold">{copy.library}</h2><div className="flex gap-2"><label className="relative flex-1 sm:w-56"><Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 text-white/25" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={copy.search} className="h-9 w-full rounded-xl border border-white/[.09] bg-white/[.035] ps-9 pe-3 text-xs outline-none placeholder:text-white/20" /></label><label className="relative"><select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 appearance-none rounded-xl border border-white/[.09] bg-[#100e15] ps-3 pe-8 text-xs text-white/55"><option value="all">{copy.allStatuses}</option><option value="indexed">Indexed</option><option value="failed">Failed</option></select><ChevronDown size={13} className="absolute end-2.5 top-1/2 -translate-y-1/2 text-white/25" /></label></div></div>
+            <div className="min-h-0 flex-1 divide-y divide-white/[.055] overflow-y-auto">
+              {loading ? <div className="grid h-full place-items-center"><span className="size-5 animate-spin rounded-full border-2 border-white/10 border-t-[#a995eb]" /></div> : filtered.length ? filtered.map((doc) => <DocumentRow key={doc.id} document={doc} isAdmin={isAdmin} isFa={isFa} onRemove={async () => { if (!selectedSetId) return; await knowledgeService.removeDocumentFromSet(selectedSetId, doc.id); setDocuments((items) => items.filter((item) => item.id !== doc.id)); await loadSets(); toast.success(isFa ? "سند از مجموعه خارج شد" : "Document removed from set"); }} />) : <div className="grid h-full min-h-28 place-items-center text-xs text-white/30">{selectedSet ? copy.empty : (isFa ? "یک مجموعه انتخاب کنید" : "Select a knowledge set")}</div>}
+            </div>
+          </section>
         </div>
       </div>
-      </div>
+    </main>
 
-      {chatOpen && <button type="button" aria-label="Close chat" onClick={() => setChatOpen(false)} className="fixed inset-x-0 bottom-0 top-16 z-40 bg-black/65 backdrop-blur-sm xl:hidden" />}
-      <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 xl:shrink-0 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}>
-        <div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]">
-          <header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5">
-            <div className="flex items-center gap-3">
-              <span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span>
-              <div><h2 className="text-sm font-semibold">{chatCopy.title}</h2><p className="mt-1 text-[10px] text-white/30">{chatCopy.subtitle}</p></div>
-            </div>
-            <button type="button" onClick={() => setChatOpen(false)} aria-label="Collapse chat" className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40 hover:text-white"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button>
-          </header>
-          <div className="min-h-0 flex-1 p-4">
-            {chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : (
-              <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{chatCopy.empty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{chatCopy.hint}</p></div>
-            )}
-          </div>
-          <div className="shrink-0 border-t border-white/[.07] p-4"><ChatInput disabled={isThinking} onSend={handleChatMessage} /></div>
-        </div>
-      </aside>
-    </motion.div>
-  );
+    {chatOpen && <button onClick={() => setChatOpen(false)} className="fixed inset-x-0 bottom-0 top-16 z-40 bg-black/65 backdrop-blur-sm xl:hidden" />}
+    <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}><div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]"><header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span><div><h2 className="text-sm font-semibold">{copy.chatTitle}</h2><p className="mt-1 max-w-56 truncate text-[10px] text-white/30">{selectedSet?.name || copy.chatSub}</p></div></div><button onClick={() => setChatOpen(false)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button></header><div className="min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{copy.chatHint}</p></div>}</div><div className="shrink-0 border-t border-white/[.07] p-4"><ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} /></div></div></aside>
+    {dialog && <SetDialog mode={dialog} item={dialog === "edit" ? selectedSet : undefined} isFa={isFa} copy={copy} onClose={() => setDialog(null)} onSaved={async () => { setDialog(null); await loadSets(); }} />}
+  </motion.div>;
 }
 
-function DocumentRow({ document, isFa, onDelete }: { document: KnowledgeDocument; isFa: boolean; onDelete: () => void }) {
-  const status = document.status === "indexed" ? (isFa ? "ایندکس‌شده" : "Indexed") : document.status === "processing" ? (isFa ? "در حال پردازش" : "Processing") : (isFa ? "در صف" : "Queued");
-  const statusStyle = document.status === "indexed" ? "border-emerald-300/10 bg-emerald-300/[.055] text-emerald-200/60" : document.status === "processing" ? "border-amber-300/10 bg-amber-300/[.055] text-amber-200/60" : "border-[#8f78d8]/15 bg-[#32127A]/15 text-[#a995eb]";
-  return <div className="group relative grid gap-3 p-4 transition hover:bg-white/[.025] md:grid-cols-[minmax(0,2fr)_120px_130px_80px_42px] md:items-center md:px-5 md:py-3.5">
-    <div className="flex min-w-0 items-center gap-3"><span className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/[.07] bg-white/[.035] text-[#a995eb]">{document.type === "PDF" ? <FileText size={17} /> : <File size={17} />}</span><div className="min-w-0"><p className="truncate text-xs font-semibold text-white/75 sm:text-sm">{document.name}</p><p className="mt-1 text-[10px] text-white/25 md:hidden">{document.type} · {document.size} · {document.added}</p></div></div>
-    <div><span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] ${statusStyle}`}><span className={`size-1.5 rounded-full ${document.status === "indexed" ? "bg-emerald-300" : document.status === "processing" ? "animate-pulse bg-amber-300" : "bg-[#8f78d8]"}`} />{status}</span></div>
-    <span className="hidden text-xs text-white/30 md:block">{document.added}</span><span className="hidden text-xs text-white/30 md:block">{document.size}</span>
-    <div className="absolute end-4 mt-0 md:relative md:end-auto"><button type="button" aria-label={isFa ? "حذف سند" : "Delete document"} onClick={onDelete} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/25 opacity-100 transition hover:text-rose-300 md:opacity-0 md:group-hover:opacity-100"><Trash2 size={14} /></button></div>
-  </div>;
+function DocumentRow({ document, isAdmin, isFa, onRemove }: { document: KnowledgeDocument; isAdmin: boolean; isFa: boolean; onRemove: () => Promise<void> }) {
+  const ready = document.status === "indexed";
+  return <div className="group flex items-center gap-3 px-4 py-3.5 hover:bg-white/[.025]"><span className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/[.07] bg-white/[.035] text-[#a995eb]"><FileText size={17} /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white/75">{document.filename}</p><p className="mt-1 text-[10px] text-white/25">{new Intl.DateTimeFormat(isFa ? "fa-IR" : "en", { dateStyle: "medium" }).format(new Date(document.created_at))}</p></div><span className={`rounded-full border px-2.5 py-1 text-[10px] ${ready ? "border-emerald-300/10 bg-emerald-300/[.055] text-emerald-200/60" : document.status === "failed" ? "border-rose-300/10 bg-rose-300/[.055] text-rose-200/60" : "border-amber-300/10 bg-amber-300/[.055] text-amber-200/60"}`}>{document.status}</span>{isAdmin && <button onClick={() => void onRemove()} title={isFa ? "خارج کردن از مجموعه" : "Remove from set"} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/20 opacity-100 hover:text-rose-300 md:opacity-0 md:group-hover:opacity-100"><X size={14} /></button>}</div>;
+}
+
+function SetDialog({ mode, item, isFa, copy, onClose, onSaved }: { mode: "create" | "edit"; item?: DocumentSet; isFa: boolean; copy: Record<string, string>; onClose: () => void; onSaved: () => void }) {
+  const [name, setName] = useState(item?.name || ""); const [description, setDescription] = useState(item?.description || ""); const [saving, setSaving] = useState(false);
+  const submit = async (event: React.FormEvent) => { event.preventDefault(); if (name.trim().length < 2) return; setSaving(true); try { if (mode === "create") await knowledgeService.createSet({ name: name.trim(), description: description.trim() }); else if (item) await knowledgeService.updateSet(item.id, { name: name.trim(), description: description.trim() || null }); toast.success(isFa ? "مجموعه ذخیره شد" : "Knowledge set saved"); onSaved(); } catch (error) { toast.error((error as Error).message); } finally { setSaving(false); } };
+  return <div className="fixed inset-0 z-[80] grid place-items-center bg-black/70 p-4 backdrop-blur-md" onMouseDown={onClose}><motion.form initial={{ opacity: 0, scale: .97 }} animate={{ opacity: 1, scale: 1 }} onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="app-glass-panel w-full max-w-md rounded-[24px] border border-white/10 p-6 shadow-2xl"><div className="flex items-start justify-between"><div><span className="grid size-10 place-items-center rounded-xl bg-[#32127A]/30 text-[#b6a7ef]"><FolderKanban size={18} /></span><h2 className="mt-4 text-xl font-semibold">{mode === "create" ? copy.createTitle : copy.editTitle}</h2></div><button type="button" onClick={onClose} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><X size={16} /></button></div><label className="mt-6 block text-xs font-semibold text-white/55">{copy.name}<input autoFocus value={name} onChange={(e) => setName(e.target.value)} maxLength={120} className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-sm outline-none focus:border-[#8f78d8]/50" /></label><label className="mt-4 block text-xs font-semibold text-white/55">{copy.description}<textarea value={description} onChange={(e) => setDescription(e.target.value)} maxLength={500} rows={3} className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/20 p-3 text-sm outline-none focus:border-[#8f78d8]/50" /></label><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-xs text-white/45 hover:bg-white/5">{copy.cancel}</button><button disabled={saving || name.trim().length < 2} className="rounded-xl bg-[#32127A] px-5 py-2.5 text-xs font-semibold text-white shadow-[0_8px_24px_rgba(50,18,122,.35)] disabled:opacity-40">{saving ? "…" : mode === "create" ? copy.create : copy.save}</button></div></motion.form></div>;
 }
