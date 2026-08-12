@@ -8,6 +8,7 @@ from app.api.routes.auth import get_current_user
 from app.core.document_set_access import require_set_access
 from app.db.database import get_db
 from app.models.document import Document
+from app.models.answer_feedback import AnswerRecord
 from app.models.document_set import DocumentSet
 from app.models.user import User
 from app.schemas.rag import Citation, RagRequest, RagResponse
@@ -88,9 +89,13 @@ def answer_question(
         for point in points
     ]
     if not sources:
+        message = "No relevant information was found in the indexed documents."
+        record = AnswerRecord(user_id=user.id, document_set_id=payload.document_set_id, question=payload.question, answer=message, grounded=False, citation_count=0)
+        db.add(record); db.commit(); db.refresh(record)
         return RagResponse(
+            response_id=record.id,
             question=payload.question,
-            answer="No relevant information was found in the indexed documents.",
+            answer=message,
             grounded=False,
             citations=[],
             sources=[],
@@ -119,7 +124,10 @@ def answer_question(
         for index, source in enumerate(sources, start=1)
         if index in used_citation_ids
     ]
+    record = AnswerRecord(user_id=user.id, document_set_id=payload.document_set_id, question=payload.question, answer=answer, grounded=bool(citations), citation_count=len(citations))
+    db.add(record); db.commit(); db.refresh(record)
     return RagResponse(
+        response_id=record.id,
         question=payload.question,
         answer=answer,
         grounded=bool(citations),

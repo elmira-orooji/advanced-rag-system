@@ -14,6 +14,7 @@ class RagRequest(BaseModel):
 
 
 class RagResponse(BaseModel):
+    response_id: uuid.UUID
     question: str
     answer: str
     grounded: bool

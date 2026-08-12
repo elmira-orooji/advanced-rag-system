@@ -10,6 +10,7 @@ from app.api.routes.auth import get_current_user
 from app.core.document_set_access import accessible_set_ids
 from app.db.database import get_db
 from app.models.assistant import Assistant
+from app.models.answer_feedback import AnswerRecord
 from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.models.user import User
@@ -122,7 +123,10 @@ def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerReque
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
     if not sources:
-        return RagResponse(question=payload.question, answer="No relevant information was found in this assistant's knowledge.", grounded=False, citations=[], sources=[])
+        message = "No relevant information was found in this assistant's knowledge."
+        record = AnswerRecord(user_id=user.id, assistant_id=item.id, question=payload.question, answer=message, grounded=False, citation_count=0)
+        db.add(record); db.commit(); db.refresh(record)
+        return RagResponse(response_id=record.id, question=payload.question, answer=message, grounded=False, citations=[], sources=[])
     try:
         answer = OpenRouterClient().answer(payload.question, [source.model_dump(mode="json") for source in sources], instructions=item.instructions)
     except OpenRouterError as exc:
@@ -136,4 +140,6 @@ def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerReque
     citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename,
                           chunk_index=source.chunk_index, excerpt=source.content, score=source.score)
                  for index, source in enumerate(sources, 1) if index in used]
-    return RagResponse(question=payload.question, answer=answer, grounded=bool(citations), citations=citations, sources=sources)
+    record = AnswerRecord(user_id=user.id, assistant_id=item.id, question=payload.question, answer=answer, grounded=bool(citations), citation_count=len(citations))
+    db.add(record); db.commit(); db.refresh(record)
+    return RagResponse(response_id=record.id, question=payload.question, answer=answer, grounded=bool(citations), citations=citations, sources=sources)
