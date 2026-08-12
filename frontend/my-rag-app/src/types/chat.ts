@@ -5,6 +5,13 @@ export type MessageRole =
 export interface Source {
   id: string;
   title: string;
+  citationId?: number;
+  documentId?: string;
+  chunkIndex?: number;
+  excerpt?: string;
+  score?: number;
+  page?: number | null;
+  section?: string | null;
 }
 
 export interface ChatMessage {
@@ -17,6 +24,7 @@ export interface ChatMessage {
   createdAt: string;
 
   sources?: Source[];
+  grounded?: boolean;
 }
 
 export interface ChatSession {

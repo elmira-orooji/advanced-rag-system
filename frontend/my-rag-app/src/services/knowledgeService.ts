@@ -25,6 +25,18 @@ export interface DocumentSet {
 
 interface RagResponse {
   answer: string;
+  grounded: boolean;
+  citations: Array<{
+    id: number;
+    chunk_id: string;
+    document_id: string;
+    filename: string;
+    chunk_index: number;
+    excerpt: string;
+    score: number;
+    page: number | null;
+    section: string | null;
+  }>;
   sources: Array<{ chunk_id: string; document_id: string; filename: string; content: string; score: number }>;
 }
 

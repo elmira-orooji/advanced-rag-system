@@ -98,7 +98,18 @@ export default function UploadFilesPage() {
       const result = await knowledgeService.ask(content, selectedSetId);
       setChatMessages((current) => [...current, {
         id: crypto.randomUUID(), role: "assistant", content: result.answer, createdAt: new Date().toISOString(),
-        sources: result.sources.map((source) => ({ id: source.chunk_id, title: source.filename })),
+        grounded: result.grounded,
+        sources: result.citations.map((citation) => ({
+          id: citation.chunk_id,
+          citationId: citation.id,
+          documentId: citation.document_id,
+          title: citation.filename,
+          chunkIndex: citation.chunk_index,
+          excerpt: citation.excerpt,
+          score: citation.score,
+          page: citation.page,
+          section: citation.section,
+        })),
       }]);
     } catch (error) { toast.error((error as Error).message); }
     finally { setIsThinking(false); }
@@ -140,7 +151,7 @@ export default function UploadFilesPage() {
     </main>
 
     {chatOpen && <button onClick={() => setChatOpen(false)} className="fixed inset-x-0 bottom-0 top-16 z-40 bg-black/65 backdrop-blur-sm xl:hidden" />}
-    <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}><div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]"><header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span><div><h2 className="text-sm font-semibold">{copy.chatTitle}</h2><p className="mt-1 max-w-56 truncate text-[10px] text-white/30">{selectedSet?.name || copy.chatSub}</p></div></div><button onClick={() => setChatOpen(false)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button></header><div className="min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{copy.chatHint}</p></div>}</div><div className="shrink-0 border-t border-white/[.07] p-4"><ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} /></div></div></aside>
+    <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}><div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]"><header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span><div><h2 className="text-sm font-semibold">{copy.chatTitle}</h2><p className="mt-1 max-w-56 truncate text-[10px] text-white/30">{selectedSet?.name || copy.chatSub}</p></div></div><button onClick={() => setChatOpen(false)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button></header><div className="relative min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{copy.chatHint}</p></div>}</div><div className="shrink-0 border-t border-white/[.07] p-4"><ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} /></div></div></aside>
     {dialog && <SetDialog mode={dialog} item={dialog === "edit" ? selectedSet : undefined} isFa={isFa} copy={copy} onClose={() => setDialog(null)} onSaved={async () => { setDialog(null); await loadSets(); }} />}
   </motion.div>;
 }
