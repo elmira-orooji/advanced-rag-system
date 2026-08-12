@@ -15,4 +15,18 @@ class RagRequest(BaseModel):
 class RagResponse(BaseModel):
     question: str
     answer: str
+    grounded: bool
+    citations: list["Citation"]
     sources: list[SearchHit]
+
+
+class Citation(BaseModel):
+    id: int
+    chunk_id: uuid.UUID
+    document_id: uuid.UUID
+    filename: str
+    chunk_index: int
+    excerpt: str
+    score: float
+    page: int | None = None
+    section: str | None = None

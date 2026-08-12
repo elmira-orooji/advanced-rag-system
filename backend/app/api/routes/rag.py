@@ -1,3 +1,5 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -7,12 +9,26 @@ from app.db.database import get_db
 from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.models.user import User
-from app.schemas.rag import RagRequest, RagResponse
+from app.schemas.rag import Citation, RagRequest, RagResponse
 from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
 
 router = APIRouter(prefix="/rag", tags=["rag"])
+
+
+def _normalize_citations(answer: str, source_count: int) -> tuple[str, set[int]]:
+    used: set[int] = set()
+
+    def replace(match: re.Match[str]) -> str:
+        number = int(match.group(1))
+        if 1 <= number <= source_count:
+            used.add(number)
+            return f"[{number}]"
+        return ""
+
+    normalized = re.sub(r"\[\s*(?:Source\s*)?(\d+)\s*\]", replace, answer, flags=re.IGNORECASE)
+    return re.sub(r"[ \t]{2,}", " ", normalized).strip(), used
 
 
 @router.post("/answer", response_model=RagResponse)
@@ -63,6 +79,8 @@ def answer_question(
         return RagResponse(
             question=payload.question,
             answer="No relevant information was found in the indexed documents.",
+            grounded=False,
+            citations=[],
             sources=[],
         )
 
@@ -75,8 +93,25 @@ def answer_question(
             detail=str(exc),
         ) from exc
 
+    answer, used_citation_ids = _normalize_citations(answer, len(sources))
+    citations = [
+        Citation(
+            id=index,
+            chunk_id=source.chunk_id,
+            document_id=source.document_id,
+            filename=source.filename,
+            chunk_index=source.chunk_index,
+            excerpt=source.content,
+            score=source.score,
+        )
+        for index, source in enumerate(sources, start=1)
+        if index in used_citation_ids
+    ]
     return RagResponse(
         question=payload.question,
         answer=answer,
+        grounded=bool(citations),
+        citations=citations,
         sources=sources,
     )
+import re
