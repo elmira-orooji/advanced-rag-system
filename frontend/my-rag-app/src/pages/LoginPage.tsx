@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   Sparkles,
   UserRound,
+  Building2,
 } from "lucide-react";
 
 import loginHero from "../assets/login-android-hero-purple.png";
@@ -40,7 +41,7 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginSchemaType>({
     resolver: zodResolver(loginSchema) as never,
-    defaultValues: { username: "", password: "", rememberMe: false },
+    defaultValues: { username: "", password: "", rememberMe: false, organization: "default" },
   });
 
   const usernameError = errors.username
@@ -101,6 +102,16 @@ export default function LoginPage() {
           <p className="mt-3 max-w-sm text-sm leading-6 text-white/45">{t.subtitle}</p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="mt-10 space-y-5" noValidate>
+            <Field id="organization" label={isRtl ? "فضای کاری" : "Workspace"} error={errors.organization?.message} icon={<Building2 size={18} />} isRtl={isRtl}>
+              <input
+                id="organization"
+                type="text"
+                autoComplete="organization"
+                {...register("organization")}
+                placeholder="default"
+                className="h-14 w-full rounded-xl border border-white/10 bg-white/[.045] px-12 text-[15px] text-white outline-none ring-4 ring-transparent transition placeholder:text-white/25 hover:border-white/20 focus:border-[#32127A] focus:bg-white/[.06] focus:ring-[#32127A]/20"
+              />
+            </Field>
             <Field id="username" label={t.username} error={usernameError} icon={<UserRound size={18} />} isRtl={isRtl}>
               <input
                 id="username"

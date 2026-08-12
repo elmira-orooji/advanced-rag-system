@@ -139,7 +139,7 @@ export default function SidebarV2({
             </span>
             <div className={`${collapsed ? "md:hidden" : "block"} min-w-0 flex-1`}>
               <p className="truncate text-xs font-semibold">{currentUser?.username ?? "User"}</p>
-              <p className="mt-0.5 text-[10px] capitalize text-white/35">{currentUser?.role ?? "user"} {labels.account}</p>
+              <p className="mt-0.5 truncate text-[10px] capitalize text-white/35">{currentUser?.organization_name ?? "Workspace"} · {currentUser?.role ?? "user"}</p>
             </div>
             <button type="button" onClick={onLogout} aria-label="Log out" className={`${collapsed ? "md:hidden" : "grid"} app-icon-button size-8 place-items-center rounded-lg text-white/35 hover:text-rose-300`}>
               <LogOut size={15} />
