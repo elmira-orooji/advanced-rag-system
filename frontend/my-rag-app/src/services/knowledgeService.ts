@@ -19,6 +19,7 @@ export interface DocumentSet {
   created_by_id: string;
   document_count: number;
   indexed_document_count: number;
+  access_level: "view" | "edit" | "manage";
   created_at: string;
   updated_at: string;
 }
@@ -71,12 +72,7 @@ export const knowledgeService = {
   uploadDocument: async (file: File, setId: string) => {
     const form = new FormData();
     form.append("file", file);
-    const document = await request<KnowledgeDocument>("/documents/ingest", { method: "POST", headers: headers(), body: form });
-    await request(`/document-sets/${setId}/documents`, {
-      method: "POST",
-      headers: headers(true),
-      body: JSON.stringify({ document_id: document.id }),
-    });
+    const document = await request<KnowledgeDocument>(`/documents/ingest?document_set_id=${encodeURIComponent(setId)}`, { method: "POST", headers: headers(), body: form });
     return document;
   },
   removeDocumentFromSet: (setId: string, documentId: string) =>
