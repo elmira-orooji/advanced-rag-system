@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
 from app.core.document_set_access import require_document_access, require_set_access
+from app.core.metadata_filters import filter_document_ids
 from app.db.database import get_db
 from app.models.document import Document
 from app.models.answer_feedback import AnswerRecord
@@ -63,6 +64,7 @@ def answer_question(
                 Document.status == "indexed",
             )
         ).all())
+        available_ids = filter_document_ids(db, available_ids, payload.filters)
         if payload.document_ids:
             requested_ids = set(payload.document_ids)
             invalid_ids = requested_ids - available_ids

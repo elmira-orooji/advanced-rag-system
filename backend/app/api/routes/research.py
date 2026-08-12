@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
 from app.core.document_set_access import require_set_access
+from app.core.metadata_filters import filter_document_ids
 from app.db.database import get_db
 from app.models.answer_feedback import AnswerRecord
 from app.models.document import Document
@@ -25,6 +26,7 @@ def run_research(payload: ResearchRequest, db: Session = Depends(get_db), user: 
     require_set_access(db, user, payload.document_set_id)
     if db.scalar(select(DocumentSet).where(DocumentSet.id == payload.document_set_id, DocumentSet.organization_id == user.organization_id)) is None: raise HTTPException(status_code=404, detail="Document set not found")
     available = set(db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id == payload.document_set_id, Document.status == "indexed")).all())
+    available = filter_document_ids(db, available, payload.filters)
     if payload.document_ids:
         requested = set(payload.document_ids)
         if requested - available: raise HTTPException(status_code=422, detail="Selected documents are unavailable or outside this set")

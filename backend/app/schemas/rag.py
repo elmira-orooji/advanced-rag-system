@@ -3,6 +3,7 @@ import uuid
 from pydantic import BaseModel, Field
 
 from app.schemas.search import SearchHit
+from app.schemas.metadata import MetadataFilters
 
 
 class RagRequest(BaseModel):
@@ -11,6 +12,7 @@ class RagRequest(BaseModel):
     document_id: uuid.UUID | None = None
     document_set_id: uuid.UUID | None = None
     document_ids: list[uuid.UUID] | None = Field(default=None, max_length=50)
+    filters: MetadataFilters | None = None
 
 
 class RagResponse(BaseModel):

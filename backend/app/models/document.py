@@ -1,8 +1,8 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -25,6 +25,11 @@ class Document(Base):
     processing_error: Mapped[str | None] = mapped_column(String(500))
     processing_progress: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     processing_stage: Mapped[str] = mapped_column(String(40), default="queued", nullable=False)
+    author: Mapped[str | None] = mapped_column(String(160), index=True)
+    language: Mapped[str | None] = mapped_column(String(20), index=True)
+    source_type: Mapped[str | None] = mapped_column(String(40), index=True)
+    document_date: Mapped[date | None] = mapped_column(Date, index=True)
+    tags: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

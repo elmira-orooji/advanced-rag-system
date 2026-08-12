@@ -22,6 +22,7 @@ from app.schemas.document import (
     DocumentCreate,
     DocumentDetail,
     DocumentResponse,
+    DocumentMetadataUpdate,
     IngestResponse,
 )
 from app.services.document_extractor import ExtractionError, extract_text
@@ -34,6 +35,18 @@ ALLOWED_FILE_TYPES = {
     "application/pdf": ".pdf",
     "text/plain": ".txt",
 }
+
+
+@router.patch("/{document_id}/metadata", response_model=DocumentResponse)
+def update_document_metadata(document_id: uuid.UUID, payload: DocumentMetadataUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    document = require_document_access(db, user, document_id, "edit")
+    document.author = payload.author
+    document.language = payload.language
+    document.source_type = payload.source_type
+    document.document_date = payload.document_date
+    document.tags = payload.tags
+    db.commit(); db.refresh(document)
+    return document
 
 
 @router.post("", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -186,7 +199,7 @@ async def ingest_document(
         document = Document(
             id=document_id, organization_id=user.organization_id, filename=safe_filename,
             content_type=content_type, storage_path=original_path.relative_to(BASE_DIR).as_posix(),
-            status="queued", processing_progress=0, processing_stage="queued",
+            status="queued", processing_progress=0, processing_stage="queued", source_type="upload", tags=[],
         )
         db.add(document)
         db.flush()

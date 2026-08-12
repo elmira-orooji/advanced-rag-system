@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -30,12 +30,33 @@ class DocumentResponse(BaseModel):
     processing_error: str | None
     processing_progress: int
     processing_stage: str
+    author: str | None
+    language: str | None
+    source_type: str | None
+    document_date: date | None
+    tags: list[str]
     created_at: datetime
     updated_at: datetime
 
 
 class IngestResponse(DocumentResponse):
     job_id: uuid.UUID
+
+
+class DocumentMetadataUpdate(BaseModel):
+    author: str | None = Field(default=None, max_length=160)
+    language: str | None = Field(default=None, max_length=20)
+    source_type: str | None = Field(default=None, max_length=40)
+    document_date: date | None = None
+    tags: list[str] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def normalize_metadata(self):
+        self.author = self.author.strip() if self.author else None
+        self.language = self.language.strip().lower() if self.language else None
+        self.source_type = self.source_type.strip().lower() if self.source_type else None
+        self.tags = list(dict.fromkeys(tag.strip().lower() for tag in self.tags if tag.strip()))
+        return self
 
 
 class DeleteDocumentResponse(BaseModel):
