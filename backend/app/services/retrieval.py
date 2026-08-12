@@ -15,7 +15,8 @@ RRF_K = 60
 
 
 def _normalize(text: str) -> str:
-    return text.lower().translate(str.maketrans({"ي": "ی", "ك": "ک", "ة": "ه", "ۀ": "ه"}))
+    mapping = {"\u064a": "\u06cc", "\u0643": "\u06a9", "\u0629": "\u0647", "\u06c0": "\u0647"}
+    return text.lower().translate(str.maketrans(mapping))
 
 
 def _tokens(text: str) -> list[str]:
@@ -39,12 +40,41 @@ def _bm25(query: str, rows: list[tuple[Chunk, str]], limit: int) -> list[dict]:
             if not frequency:
                 continue
             inverse_frequency = math.log(1 + (total - document_frequency[token] + 0.5) / (document_frequency[token] + 0.5))
-            denominator = frequency + 1.5 * (1 - 0.75 + 0.75 * len(tokens) / average_length)
+            denominator = frequency + 1.5 * (0.25 + 0.75 * len(tokens) / average_length)
             score += inverse_frequency * frequency * 2.5 / denominator
         if score > 0:
             scored.append((score, chunk, filename))
     scored.sort(key=lambda item: item[0], reverse=True)
     return [{"id": str(chunk.id), "score": score, "payload": {"chunk_id": str(chunk.id), "document_id": str(chunk.document_id), "filename": filename, "chunk_index": chunk.chunk_index, "content": chunk.content}} for score, chunk, filename in scored[:limit]]
+
+
+def _proximity(query_terms: set[str], tokens: list[str]) -> float:
+    positions = [index for index, token in enumerate(tokens) if token in query_terms]
+    if len(positions) < 2:
+        return 0.0
+    return min(len(query_terms) / (positions[-1] - positions[0] + 1), 1.0)
+
+
+def _rerank(query: str, candidates: list[dict], limit: int) -> list[dict]:
+    query_tokens = _tokens(query)
+    query_terms = set(query_tokens)
+    if not query_terms:
+        return candidates[:limit]
+    normalized_query = " ".join(query_tokens)
+    reranked = []
+    for candidate in candidates:
+        payload = candidate["payload"]
+        content_tokens = _tokens(payload.get("content", ""))
+        content_terms = set(content_tokens)
+        filename_terms = set(_tokens(payload.get("filename", "")))
+        coverage = len(query_terms & content_terms) / len(query_terms)
+        title_coverage = len(query_terms & filename_terms) / len(query_terms)
+        phrase_match = normalized_query in " ".join(content_tokens)
+        hybrid_score = float(candidate.get("score", 0.0))
+        score = 0.50 * hybrid_score + 0.25 * coverage + 0.10 * _proximity(query_terms, content_tokens) + 0.10 * float(phrase_match) + 0.05 * title_coverage
+        reranked.append({**candidate, "score": min(score, 1.0), "retrieval": {**candidate.get("retrieval", {}), "reranked": True, "hybrid_score": round(hybrid_score, 6), "term_coverage": round(coverage, 6), "phrase_match": phrase_match}})
+    reranked.sort(key=lambda item: item["score"], reverse=True)
+    return reranked[:limit]
 
 
 def hybrid_search(db: Session, query: str, limit: int, document_id: str | None = None, document_ids: list[str] | None = None) -> list[dict]:
@@ -56,30 +86,24 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
         scoped_ids = [uuid.UUID(value) for value in document_ids]
     else:
         raise ValueError("Hybrid search requires an explicit document scope")
-
     candidate_limit = min(max(limit * 4, 20), 80)
     vector_results = QdrantClient().search(query=query, limit=candidate_limit, document_id=document_id, document_ids=document_ids)
     rows = list(db.execute(select(Chunk, Document.filename).join(Document, Document.id == Chunk.document_id).where(Chunk.document_id.in_(scoped_ids))).all())
     lexical_results = _bm25(query, rows, candidate_limit)
-
     fused: dict[str, dict] = {}
-    for source, weight in ((vector_results, 1.0), (lexical_results, 1.0)):
+    for source, source_name in ((vector_results, "vector"), (lexical_results, "bm25")):
         for rank, result in enumerate(source, 1):
             chunk_id = str(result.get("payload", {}).get("chunk_id") or result.get("id"))
             item = fused.setdefault(chunk_id, {"point": result, "score": 0.0, "vector_rank": None, "lexical_rank": None})
-            item["score"] += weight / (RRF_K + rank)
-            if source is vector_results:
+            item["score"] += 1 / (RRF_K + rank)
+            if source_name == "vector":
                 item["vector_rank"] = rank
                 item["point"] = result
             else:
                 item["lexical_rank"] = rank
                 if item["vector_rank"] is None:
                     item["point"] = result
-
-    ranked = sorted(fused.values(), key=lambda item: item["score"], reverse=True)[:limit]
+    ranked = sorted(fused.values(), key=lambda item: item["score"], reverse=True)
     maximum = 2 / (RRF_K + 1)
-    results = []
-    for item in ranked:
-        point = item["point"]
-        results.append({**point, "score": min(item["score"] / maximum, 1.0), "retrieval": {"method": "hybrid", "vector_rank": item["vector_rank"], "bm25_rank": item["lexical_rank"]}})
-    return results
+    candidates = [{**item["point"], "score": min(item["score"] / maximum, 1.0), "retrieval": {"method": "hybrid", "vector_rank": item["vector_rank"], "bm25_rank": item["lexical_rank"]}} for item in ranked]
+    return _rerank(query, candidates, limit)
