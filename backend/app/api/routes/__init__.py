@@ -1,6 +1,7 @@
 from app.api.routes.assistants import router as assistants_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.conversations import router as conversations_router
+from app.api.routes.connectors import router as connectors_router
 from app.api.routes.document_sets import router as document_sets_router
 from app.api.routes.feedback import router as feedback_router
 from app.api.routes.documents import router as documents_router
@@ -12,6 +13,7 @@ __all__ = [
     "assistants_router",
     "auth_router",
     "conversations_router",
+    "connectors_router",
     "document_sets_router",
     "feedback_router",
     "documents_router",
