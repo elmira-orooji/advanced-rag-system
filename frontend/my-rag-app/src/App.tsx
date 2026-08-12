@@ -7,6 +7,7 @@ import {
 import LoginPage from "./pages/LoginPage";
 import AppLayout from "./layouts/AppLayout";
 import ProtectedRoute from "./components/ProtectedRoute";
+import SharedChatPage from "./pages/SharedChatPage";
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -34,6 +35,7 @@ export default function App() {
           path="/home"
           element={<ProtectedRoute><AppLayout /></ProtectedRoute>}
         />
+        <Route path="/share/:visibility/:token" element={<SharedChatPage />} />
       </Routes>
     </BrowserRouter>
   );
