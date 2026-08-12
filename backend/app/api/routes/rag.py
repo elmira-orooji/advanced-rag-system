@@ -37,25 +37,35 @@ def answer_question(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    if payload.document_id and payload.document_set_id:
-        raise HTTPException(status_code=422, detail="Choose either a document or a document set")
+    if payload.document_id and (payload.document_set_id or payload.document_ids):
+        raise HTTPException(status_code=422, detail="Choose either a document or a document set scope")
+    if payload.document_ids and not payload.document_set_id:
+        raise HTTPException(status_code=422, detail="Selected documents require a document set")
 
     document_ids: list[str] | None = None
     if payload.document_set_id:
         document_set = db.get(DocumentSet, payload.document_set_id)
         if document_set is None:
             raise HTTPException(status_code=404, detail="Document set not found")
-        document_ids = [
-            str(item)
-            for item in db.scalars(
-                select(Document.id)
-                .join(Document.document_sets)
-                .where(
-                    DocumentSet.id == payload.document_set_id,
-                    Document.status == "indexed",
+        available_ids = set(db.scalars(
+            select(Document.id)
+            .join(Document.document_sets)
+            .where(
+                DocumentSet.id == payload.document_set_id,
+                Document.status == "indexed",
+            )
+        ).all())
+        if payload.document_ids:
+            requested_ids = set(payload.document_ids)
+            invalid_ids = requested_ids - available_ids
+            if invalid_ids:
+                raise HTTPException(
+                    status_code=422,
+                    detail="One or more selected documents are unavailable or outside this set",
                 )
-            ).all()
-        ]
+            document_ids = [str(item) for item in payload.document_ids]
+        else:
+            document_ids = [str(item) for item in available_ids]
     try:
         qdrant = QdrantClient()
         qdrant.ensure_collection()

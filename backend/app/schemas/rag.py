@@ -10,6 +10,7 @@ class RagRequest(BaseModel):
     limit: int = Field(default=5, ge=1, le=8)
     document_id: uuid.UUID | None = None
     document_set_id: uuid.UUID | None = None
+    document_ids: list[uuid.UUID] | None = Field(default=None, max_length=50)
 
 
 class RagResponse(BaseModel):
