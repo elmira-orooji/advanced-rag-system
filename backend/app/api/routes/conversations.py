@@ -19,6 +19,7 @@ from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.retrieval import hybrid_search
+from app.services.query_rewriting import should_rewrite
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -84,6 +85,13 @@ def delete_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_db
 @router.post("/{conversation_id}/messages", response_model=MessageResponse)
 def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     conversation = _owned(db, conversation_id, user, messages=True)
+    history = [{"role": message.role, "content": message.content} for message in conversation.messages[-8:]]
+    retrieval_query = payload.content
+    if should_rewrite(payload.content, history):
+        try:
+            retrieval_query = OpenRouterClient().rewrite_query(payload.content, history)
+        except OpenRouterError:
+            retrieval_query = payload.content
     document_id: str | None = None; document_ids: list[str] | None = None; instructions: str | None = None
     if conversation.document_id:
         require_document_access(db, user, conversation.document_id); document_id = str(conversation.document_id)
@@ -97,11 +105,10 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
         document_ids = [str(value) for value in db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()).all()]
     else: raise HTTPException(status_code=409, detail="Conversation has no valid knowledge scope")
     try:
-        qdrant = QdrantClient(); qdrant.ensure_collection(); points = hybrid_search(db, query=payload.content, limit=payload.limit, document_id=document_id, document_ids=document_ids)
+        qdrant = QdrantClient(); qdrant.ensure_collection(); points = hybrid_search(db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids)
     except QdrantError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
     if sources:
-        history = [{"role": message.role, "content": message.content} for message in conversation.messages[-10:]]
         try: answer = OpenRouterClient().answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions)
         except OpenRouterError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     else: answer = _no_results_message(payload.content)
