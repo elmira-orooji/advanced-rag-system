@@ -15,10 +15,13 @@ class Conversation(Base):
     __tablename__ = "conversations"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     title: Mapped[str] = mapped_column(String(200), default="New conversation", nullable=False)
     document_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("documents.id", ondelete="SET NULL"), index=True
     )
+    document_set_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document_sets.id", ondelete="SET NULL"), index=True)
+    assistant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("assistants.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

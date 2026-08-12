@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.document_set_permission import DocumentSetPermission
+from app.models.document import Document
 from app.models.user import User
 
 LEVELS = {"view": 1, "edit": 2, "manage": 3}
@@ -22,3 +23,16 @@ def require_set_access(db: Session, user: User, set_id: uuid.UUID, minimum: str 
     allowed = accessible_set_ids(db, user, minimum)
     if allowed is not None and set_id not in allowed:
         raise HTTPException(status_code=403, detail=f"{minimum.capitalize()} access to this knowledge set is required")
+
+
+def require_document_access(db: Session, user: User, document_id: uuid.UUID, minimum: str = "view") -> Document:
+    document = db.get(Document, document_id)
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    if user.role == "admin":
+        return document
+    allowed = accessible_set_ids(db, user, minimum) or set()
+    memberships = {item.id for item in document.document_sets}
+    if not memberships.intersection(allowed):
+        raise HTTPException(status_code=403, detail="You do not have access to this document")
+    return document

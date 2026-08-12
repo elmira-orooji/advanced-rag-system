@@ -9,6 +9,8 @@ from app.schemas.search import SearchHit
 class ConversationCreate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=200)
     document_id: uuid.UUID | None = None
+    document_set_id: uuid.UUID | None = None
+    assistant_id: uuid.UUID | None = None
 
 
 class ConversationResponse(BaseModel):
@@ -17,6 +19,8 @@ class ConversationResponse(BaseModel):
     id: uuid.UUID
     title: str
     document_id: uuid.UUID | None
+    document_set_id: uuid.UUID | None
+    assistant_id: uuid.UUID | None
     created_at: datetime
     updated_at: datetime
 
