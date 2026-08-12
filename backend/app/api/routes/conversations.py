@@ -14,7 +14,7 @@ from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.models.message import Message
 from app.models.user import User
-from app.schemas.conversation import ChatMessageCreate, ConversationCreate, ConversationDetail, ConversationResponse, MessageResponse
+from app.schemas.conversation import ChatMessageCreate, ConversationCreate, ConversationDetail, ConversationResponse, ConversationUpdate, MessageResponse
 from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
@@ -63,6 +63,16 @@ def list_conversations(offset: int = Query(default=0, ge=0), limit: int = Query(
 @router.get("/{conversation_id}", response_model=ConversationDetail)
 def get_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return _owned(db, conversation_id, user, messages=True)
+
+
+@router.patch("/{conversation_id}", response_model=ConversationResponse)
+def update_conversation(conversation_id: uuid.UUID, payload: ConversationUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    conversation = _owned(db, conversation_id, user)
+    conversation.title = payload.title.strip()
+    conversation.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(conversation)
+    return conversation
 
 
 @router.delete("/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -13,6 +13,10 @@ class ConversationCreate(BaseModel):
     assistant_id: uuid.UUID | None = None
 
 
+class ConversationUpdate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+
+
 class ConversationResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
