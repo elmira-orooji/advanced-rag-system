@@ -11,6 +11,7 @@ from app.core.config import BASE_DIR, MAX_UPLOAD_SIZE, UPLOAD_DIR
 from app.db.database import get_db
 from app.models.chunk import Chunk
 from app.models.document import Document
+from app.models.document_set import DocumentSet
 from app.schemas.document import (
     ChunkingRequest,
     DeleteDocumentResponse,
@@ -46,10 +47,16 @@ def create_document(payload: DocumentCreate, db: Session = Depends(get_db)):
 def list_documents(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    document_set_id: uuid.UUID | None = Query(default=None),
     db: Session = Depends(get_db),
 ):
+    statement = select(Document)
+    if document_set_id is not None:
+        if db.get(DocumentSet, document_set_id) is None:
+            raise HTTPException(status_code=404, detail="Document set not found")
+        statement = statement.join(Document.document_sets).where(DocumentSet.id == document_set_id)
     statement = (
-        select(Document)
+        statement
         .order_by(Document.created_at.desc())
         .offset(offset)
         .limit(limit)

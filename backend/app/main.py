@@ -4,7 +4,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.api.routes import auth_router, conversations_router, documents_router, rag_router, search_router
+from app.api.routes import auth_router, conversations_router, document_sets_router, documents_router, rag_router, search_router
 from app.core.config import FRONTEND_ORIGINS
 from app.db.database import get_db
 
@@ -18,6 +18,7 @@ app.add_middleware(
 )
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(documents_router, prefix="/api/v1")
+app.include_router(document_sets_router, prefix="/api/v1")
 app.include_router(search_router, prefix="/api/v1")
 app.include_router(rag_router, prefix="/api/v1")
 app.include_router(conversations_router, prefix="/api/v1")

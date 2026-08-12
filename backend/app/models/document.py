@@ -9,6 +9,7 @@ from app.db.database import Base
 
 if TYPE_CHECKING:
     from app.models.chunk import Chunk
+    from app.models.document_set import DocumentSet
 
 
 class Document(Base):
@@ -30,4 +31,7 @@ class Document(Base):
 
     chunks: Mapped[list["Chunk"]] = relationship(
         back_populates="document", cascade="all, delete-orphan"
+    )
+    document_sets: Mapped[list["DocumentSet"]] = relationship(
+        secondary="document_set_documents", back_populates="documents"
     )

@@ -114,6 +114,7 @@ class QdrantClient:
         query: str,
         limit: int,
         document_id: str | None = None,
+        document_ids: list[str] | None = None,
     ) -> list[dict[str, Any]]:
         collection = quote(self.collection, safe="")
         body: dict[str, Any] = {
@@ -126,6 +127,14 @@ class QdrantClient:
             body["filter"] = {
                 "must": [
                     {"key": "document_id", "match": {"value": document_id}}
+                ]
+            }
+        elif document_ids is not None:
+            if not document_ids:
+                return []
+            body["filter"] = {
+                "must": [
+                    {"key": "document_id", "match": {"any": document_ids}}
                 ]
             }
 
