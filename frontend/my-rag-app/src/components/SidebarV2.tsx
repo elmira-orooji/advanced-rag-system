@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   ChevronLeft,
+  Bot,
   FileUp,
   Home,
   LogOut,
@@ -40,10 +41,11 @@ export default function SidebarV2({
   const isFa = i18n.language.startsWith("fa");
   const labels = isFa
     ? { home: "فضای کاری", upload: "پایگاه دانش", users: "اعضای تیم", settings: "تنظیمات", newChat: "گفتگوی جدید", recent: "اخیر", collapse: "جمع‌کردن منو", account: "حساب" }
-    : { home: "Workspace", upload: "Knowledge base", users: "Team members", settings: "Settings", newChat: "New conversation", recent: "Recent", collapse: "Collapse sidebar", account: "account" };
+    : { home: "Workspace", upload: "Knowledge base", assistants: "Assistants", users: "Team members", settings: "Settings", newChat: "New conversation", recent: "Recent", collapse: "Collapse sidebar", account: "account" };
   const navigation = [
     { id: "home" as const, label: labels.home, icon: Home },
     { id: "upload" as const, label: labels.upload, icon: FileUp },
+    { id: "assistants" as const, label: "assistants" in labels ? labels.assistants : "دستیارها", icon: Bot },
     ...(currentUser?.role === "admin" ? [{ id: "users" as const, label: labels.users, icon: UserCog }] : []),
     { id: "settings" as const, label: labels.settings, icon: Settings },
   ];

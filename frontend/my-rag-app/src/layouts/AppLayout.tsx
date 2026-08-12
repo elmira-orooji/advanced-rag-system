@@ -7,9 +7,10 @@ import DashboardPage from "../pages/DashboardPage";
 import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import UsersPage from "../pages/UsersPage";
+import AssistantsPage from "../pages/AssistantsPage";
 import { authService } from "../services/authService";
 
-export type AppPage = "home" | "upload" | "users" | "settings";
+export type AppPage = "home" | "upload" | "assistants" | "users" | "settings";
 
 export default function AppLayout() {
   const navigate = useNavigate();
@@ -74,6 +75,7 @@ export default function AppLayout() {
         <main className="relative z-10 min-h-0 flex-1 overflow-hidden">
           {activePage === "home" && <DashboardPage username={currentUser?.username ?? "there"} />}
           {activePage === "upload" && <UploadFilesPage />}
+          {activePage === "assistants" && <AssistantsPage />}
           {activePage === "users" && currentUser?.role === "admin" && <UsersPage />}
           {activePage === "settings" && <SettingsPage theme={theme} setTheme={setTheme} />}
         </main>
