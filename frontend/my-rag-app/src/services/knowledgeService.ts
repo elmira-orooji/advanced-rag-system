@@ -10,8 +10,22 @@ export interface KnowledgeDocument {
   processing_error: string | null;
   processing_progress: number;
   processing_stage: string;
+  author: string | null;
+  language: string | null;
+  source_type: string | null;
+  document_date: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
+}
+
+export interface MetadataFilters {
+  authors?: string[];
+  languages?: string[];
+  source_types?: string[];
+  tags?: string[];
+  date_from?: string;
+  date_to?: string;
 }
 
 export interface DocumentSet {
@@ -87,7 +101,9 @@ export const knowledgeService = {
     request(`/document-sets/${setId}/documents/${documentId}`, { method: "DELETE", headers: headers() }),
   deleteDocument: (documentId: string) => request(`/documents/${documentId}`, { method: "DELETE", headers: headers() }),
   retryDocument: (documentId: string) => request<KnowledgeDocument>(`/documents/${documentId}/retry`, { method: "POST", headers: headers() }),
-  ask: (question: string, documentSetId: string, documentIds?: string[]) =>
+  updateMetadata: (documentId: string, data: { author?: string | null; language?: string | null; source_type?: string | null; document_date?: string | null; tags?: string[] }) =>
+    request<KnowledgeDocument>(`/documents/${documentId}/metadata`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
+  ask: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters) =>
     request<RagResponse>("/rag/answer", {
       method: "POST",
       headers: headers(true),
@@ -96,12 +112,13 @@ export const knowledgeService = {
         document_set_id: documentSetId,
         document_ids: documentIds?.length ? documentIds : null,
         limit: 5,
+        filters: filters && Object.keys(filters).length ? filters : null,
       }),
     }),
-  research: (question: string, documentSetId: string, documentIds?: string[]) =>
+  research: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters) =>
     request<ResearchResponse>("/research/run", {
       method: "POST",
       headers: headers(true),
-      body: JSON.stringify({ question, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, max_steps: 4 }),
+      body: JSON.stringify({ question, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, filters: filters && Object.keys(filters).length ? filters : null, max_steps: 4 }),
     }),
 };

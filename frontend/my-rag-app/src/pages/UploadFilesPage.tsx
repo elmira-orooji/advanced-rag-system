@@ -5,12 +5,12 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
   BookOpen, Check, ChevronDown, FileText, FolderKanban, GitBranch as Github, Globe2, Link2, MessageSquareText, MoreHorizontal,
-  PanelRightClose, Pencil, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Telescope, Trash2, UploadCloud, Zap, X,
+  PanelRightClose, Pencil, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Telescope, Trash2, UploadCloud, Zap, X, Filter,
 } from "lucide-react";
 import ChatInput from "../components/ChatInput";
 import ChatWindow from "../components/ChatWindow";
 import { authService } from "../services/authService";
-import { knowledgeService, type DocumentSet, type KnowledgeDocument, type ResearchResponse } from "../services/knowledgeService";
+import { knowledgeService, type DocumentSet, type KnowledgeDocument, type MetadataFilters, type ResearchResponse } from "../services/knowledgeService";
 import type { ChatMessage } from "../types/chat";
 import { connectorService, type Connector } from "../services/connectorService";
 
@@ -36,6 +36,7 @@ export default function UploadFilesPage() {
   const [connectorDialog, setConnectorDialog] = useState(false);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [answerMode, setAnswerMode] = useState<"quick" | "research">("quick");
+  const [metadataFilters, setMetadataFilters] = useState<MetadataFilters>({});
 
   const copy = isFa ? {
     eyebrow: "مدیریت منابع", title: "پایگاه دانش", subtitle: "اسناد را در مجموعه‌های موضوعی سازمان‌دهی کنید و پاسخ‌ها را به همان محدوده محدود کنید.",
@@ -119,7 +120,7 @@ export default function UploadFilesPage() {
     setIsThinking(true);
     try {
       const isResearch = answerMode === "research";
-      const result = isResearch ? await knowledgeService.research(content, selectedSetId, selectedDocumentIds) : await knowledgeService.ask(content, selectedSetId, selectedDocumentIds);
+      const result = isResearch ? await knowledgeService.research(content, selectedSetId, selectedDocumentIds, metadataFilters) : await knowledgeService.ask(content, selectedSetId, selectedDocumentIds, metadataFilters);
       setChatMessages((current) => [...current, {
         id: crypto.randomUUID(), role: "assistant", content: result.answer, responseId: result.response_id, createdAt: new Date().toISOString(),
         grounded: result.grounded,
@@ -178,10 +179,28 @@ export default function UploadFilesPage() {
 
     {chatOpen && <button onClick={() => setChatOpen(false)} className="fixed inset-x-0 bottom-0 top-16 z-40 bg-black/65 backdrop-blur-sm xl:hidden" />}
     {chatOpen && <div className="fixed bottom-[86px] end-5 z-[56] flex rounded-xl border border-white/[.09] bg-[rgba(16,12,22,.92)] p-1 shadow-xl backdrop-blur-xl xl:absolute"><button onClick={() => setAnswerMode("quick")} title={isFa ? "پاسخ سریع" : "Quick answer"} className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold transition ${answerMode === "quick" ? "bg-[#32127A] text-white" : "text-white/30"}`}><Zap size={11} />{isFa ? "سریع" : "Quick"}</button><button onClick={() => setAnswerMode("research")} title={isFa ? "پژوهش عمیق" : "Deep research"} className={`flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[9px] font-semibold transition ${answerMode === "research" ? "bg-[#32127A] text-white" : "text-white/30"}`}><Telescope size={11} />{isFa ? "پژوهش" : "Research"}</button></div>}
-    <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}><div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]"><header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span><div><h2 className="text-sm font-semibold">{copy.chatTitle}</h2><p className="mt-1 max-w-56 truncate text-[10px] text-white/30">{selectedSet?.name || copy.chatSub}</p></div></div><button onClick={() => setChatOpen(false)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button></header><div className="relative min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{copy.chatHint}</p></div>}</div><div className="relative shrink-0 border-t border-white/[.07] p-4"><ScopeSelector documents={documents.filter((item) => item.status === "indexed")} selectedIds={selectedDocumentIds} open={scopeOpen} copy={copy} isFa={isFa} onToggle={() => setScopeOpen((value) => !value)} onChange={setSelectedDocumentIds} onClose={() => setScopeOpen(false)} /><ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} /></div></div></aside>
+    <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}><div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]"><header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span><div><h2 className="text-sm font-semibold">{copy.chatTitle}</h2><p className="mt-1 max-w-56 truncate text-[10px] text-white/30">{selectedSet?.name || copy.chatSub}</p></div></div><button onClick={() => setChatOpen(false)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button></header><div className="relative min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{copy.chatHint}</p></div>}</div><div className="relative shrink-0 border-t border-white/[.07] p-4"><MetadataFilterBar documents={documents} filters={metadataFilters} onChange={setMetadataFilters} isFa={isFa} /><ScopeSelector documents={documents.filter((item) => item.status === "indexed")} selectedIds={selectedDocumentIds} open={scopeOpen} copy={copy} isFa={isFa} onToggle={() => setScopeOpen((value) => !value)} onChange={setSelectedDocumentIds} onClose={() => setScopeOpen(false)} /><ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} /></div></div></aside>
     {dialog && <SetDialog mode={dialog} item={dialog === "edit" ? selectedSet : undefined} isFa={isFa} copy={copy} onClose={() => setDialog(null)} onSaved={async () => { setDialog(null); await loadSets(); }} />}
     {connectorDialog && selectedSetId && <ConnectorDialog setId={selectedSetId} isFa={isFa} onClose={() => setConnectorDialog(false)} onSaved={async () => { setConnectorDialog(false); setConnectors(await connectorService.list(selectedSetId)); setDocuments(await knowledgeService.listDocuments(selectedSetId)); await loadSets(); }} />}
   </motion.div>;
+}
+
+function MetadataFilterBar({ documents, filters, onChange, isFa }: { documents: KnowledgeDocument[]; filters: MetadataFilters; onChange: (value: MetadataFilters) => void; isFa: boolean }) {
+  const [open, setOpen] = useState(false);
+  const languages = [...new Set(documents.map((item) => item.language).filter(Boolean))] as string[];
+  const types = [...new Set(documents.map((item) => item.source_type).filter(Boolean))] as string[];
+  const tags = [...new Set(documents.flatMap((item) => item.tags))];
+  const count = Object.values(filters).filter((value) => Array.isArray(value) ? value.length : Boolean(value)).length;
+  const toggle = (key: "languages" | "source_types" | "tags", value: string) => {
+    const current = filters[key] || [];
+    onChange({ ...filters, [key]: current.includes(value) ? current.filter((item) => item !== value) : [...current, value] });
+  };
+  return <div className="mb-2"><button type="button" onClick={() => setOpen(!open)} className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[10px] font-semibold ${count ? "border-[#8f78d8]/30 bg-[#32127A]/25 text-[#c5b8f4]" : "border-white/[.08] bg-white/[.035] text-white/40"}`}><Filter size={12} />{isFa ? "فیلتر اطلاعات سند" : "Metadata filters"}{count > 0 && <span className="grid size-4 place-items-center rounded-full bg-[#32127A] text-[8px]">{count}</span>}<ChevronDown size={11} className={open ? "rotate-180" : ""} /></button>{open && <div className="mt-2 rounded-xl border border-white/[.08] bg-black/20 p-3"><FilterGroup title={isFa ? "زبان" : "Language"} values={languages} selected={filters.languages || []} onToggle={(value) => toggle("languages", value)} /><FilterGroup title={isFa ? "نوع منبع" : "Source type"} values={types} selected={filters.source_types || []} onToggle={(value) => toggle("source_types", value)} /><FilterGroup title={isFa ? "برچسب" : "Tags"} values={tags} selected={filters.tags || []} onToggle={(value) => toggle("tags", value)} /><div className="mt-2 grid grid-cols-2 gap-2"><input type="date" value={filters.date_from || ""} onChange={(event) => onChange({ ...filters, date_from: event.target.value || undefined })} className="h-8 rounded-lg border border-white/[.08] bg-[#100e15] px-2 text-[9px] text-white/55" /><input type="date" value={filters.date_to || ""} onChange={(event) => onChange({ ...filters, date_to: event.target.value || undefined })} className="h-8 rounded-lg border border-white/[.08] bg-[#100e15] px-2 text-[9px] text-white/55" /></div>{count > 0 && <button onClick={() => onChange({})} className="mt-3 text-[9px] text-[#b6a7ef]">{isFa ? "پاک‌کردن فیلترها" : "Clear filters"}</button>}</div>}</div>;
+}
+
+function FilterGroup({ title, values, selected, onToggle }: { title: string; values: string[]; selected: string[]; onToggle: (value: string) => void }) {
+  if (!values.length) return null;
+  return <div className="mb-2"><p className="mb-1.5 text-[9px] font-semibold text-white/30">{title}</p><div className="flex flex-wrap gap-1">{values.map((value) => <button type="button" key={value} onClick={() => onToggle(value)} className={`rounded-md border px-2 py-1 text-[9px] ${selected.includes(value) ? "border-[#8f78d8]/30 bg-[#32127A]/30 text-[#c5b8f4]" : "border-white/[.07] text-white/30"}`}>{value}</button>)}</div></div>;
 }
 
 function ScopeSelector({ documents, selectedIds, open, copy, isFa, onToggle, onChange, onClose }: { documents: KnowledgeDocument[]; selectedIds: string[]; open: boolean; copy: Record<string, string>; isFa: boolean; onToggle: () => void; onChange: (ids: string[]) => void; onClose: () => void }) {
