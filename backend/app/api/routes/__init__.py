@@ -1,4 +1,5 @@
 from app.api.routes.assistants import router as assistants_router
+from app.api.routes.analytics import router as analytics_router
 from app.api.routes.auth import router as auth_router
 from app.api.routes.conversations import router as conversations_router
 from app.api.routes.connectors import router as connectors_router
@@ -11,6 +12,7 @@ from app.api.routes.users import router as users_router
 
 __all__ = [
     "assistants_router",
+    "analytics_router",
     "auth_router",
     "conversations_router",
     "connectors_router",
