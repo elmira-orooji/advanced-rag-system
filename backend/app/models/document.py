@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -23,6 +23,8 @@ class Document(Base):
     extracted_text_path: Mapped[str | None] = mapped_column(String(500))
     status: Mapped[str] = mapped_column(String(30), default="pending", nullable=False)
     processing_error: Mapped[str | None] = mapped_column(String(500))
+    processing_progress: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    processing_stage: Mapped[str] = mapped_column(String(40), default="queued", nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

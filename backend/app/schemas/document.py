@@ -28,12 +28,14 @@ class DocumentResponse(BaseModel):
     content_type: str | None
     status: str
     processing_error: str | None
+    processing_progress: int
+    processing_stage: str
     created_at: datetime
     updated_at: datetime
 
 
 class IngestResponse(DocumentResponse):
-    chunks_count: int
+    job_id: uuid.UUID
 
 
 class DeleteDocumentResponse(BaseModel):

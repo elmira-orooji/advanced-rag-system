@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.api.routes import analytics_router, assistants_router, auth_router, chat_shares_router, connectors_router, conversations_router, document_sets_router, documents_router, feedback_router, rag_router, research_router, search_router, users_router
 from app.core.config import FRONTEND_ORIGINS
 from app.db.database import get_db
+from app.services.document_jobs import recover_document_jobs
 
 app = FastAPI(title="Advanced RAG API")
 app.add_middleware(
@@ -29,6 +30,11 @@ app.include_router(conversations_router, prefix="/api/v1")
 app.include_router(connectors_router, prefix="/api/v1")
 app.include_router(chat_shares_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
+
+
+@app.on_event("startup")
+def resume_background_jobs() -> None:
+    recover_document_jobs()
 
 
 @app.get("/")

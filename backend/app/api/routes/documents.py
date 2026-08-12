@@ -2,19 +2,20 @@ import shutil
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import BASE_DIR, MAX_UPLOAD_SIZE, UPLOAD_DIR
-from app.core.document_set_access import require_set_access
+from app.core.document_set_access import require_document_access, require_set_access
 from app.api.routes.auth import get_current_user
 from app.db.database import get_db
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.models.user import User
+from app.models.processing_job import ProcessingJob
 from app.schemas.document import (
     ChunkingRequest,
     DeleteDocumentResponse,
@@ -26,6 +27,7 @@ from app.schemas.document import (
 from app.services.document_extractor import ExtractionError, extract_text
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import chunk_text
+from app.services.document_jobs import enqueue_document_job
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 ALLOWED_FILE_TYPES = {
@@ -145,6 +147,7 @@ async def upload_document(
     status_code=status.HTTP_201_CREATED,
 )
 async def ingest_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     chunk_size: int = Query(default=1000, ge=200, le=4000),
     overlap: int = Query(default=200, ge=0, le=1000),
@@ -166,53 +169,68 @@ async def ingest_document(
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     document: Document | None = None
+    document_dir: Path | None = None
     try:
-        document = await upload_document(file=file, db=db, user=user)
-        document = create_document_chunks(
-            document_id=document.id,
-            payload=chunking,
-            db=db,
-            user=None,
+        content_type = file.content_type or ""
+        expected_suffix = ALLOWED_FILE_TYPES.get(content_type)
+        safe_filename = Path(file.filename or "").name
+        if expected_suffix is None or Path(safe_filename).suffix.lower() != expected_suffix:
+            raise HTTPException(status_code=415, detail="Only PDF and UTF-8 TXT files are supported")
+        document_id = uuid.uuid4()
+        document_dir = UPLOAD_DIR / str(document_id)
+        document_dir.mkdir(parents=True, exist_ok=False)
+        original_path = document_dir / f"original{expected_suffix}"
+        size = await _save_upload(file, original_path)
+        if size == 0:
+            raise HTTPException(status_code=400, detail="The uploaded file is empty")
+        document = Document(
+            id=document_id, organization_id=user.organization_id, filename=safe_filename,
+            content_type=content_type, storage_path=original_path.relative_to(BASE_DIR).as_posix(),
+            status="queued", processing_progress=0, processing_stage="queued",
         )
-        document = index_document(document_id=document.id, db=db, user=None)
+        db.add(document)
+        db.flush()
         if document_set_id is not None:
             document.document_sets.append(target_set)
-        document.processing_error = None
+        job = ProcessingJob(organization_id=user.organization_id, document_id=document.id)
+        db.add(job)
         db.commit()
         db.refresh(document)
+        db.refresh(job)
+        background_tasks.add_task(enqueue_document_job, job.id, chunking.chunk_size, chunking.overlap)
         return IngestResponse(
             **DocumentResponse.model_validate(document).model_dump(),
-            chunks_count=len(document.chunks),
+            job_id=job.id,
         )
-    except HTTPException as exc:
-        if document is not None:
-            error_message = _format_error_detail(exc.detail)
-            _mark_document_failed(db, document.id, error_message)
-            raise HTTPException(
-                status_code=exc.status_code,
-                detail={
-                    "message": error_message,
-                    "document_id": str(document.id),
-                    "status": "failed",
-                },
-            ) from exc
+    except HTTPException:
+        db.rollback()
+        if document_dir is not None: shutil.rmtree(document_dir, ignore_errors=True)
         raise
+    except (OSError, SQLAlchemyError) as exc:
+        db.rollback()
+        if document_dir is not None: shutil.rmtree(document_dir, ignore_errors=True)
+        raise HTTPException(status_code=500, detail="Could not queue document processing") from exc
+    finally:
+        await file.close()
 
 
-def _format_error_detail(detail: object) -> str:
-    if isinstance(detail, str):
-        return detail[:500]
-    return str(detail)[:500]
-
-
-def _mark_document_failed(db: Session, document_id: uuid.UUID, message: str) -> None:
-    db.rollback()
+@router.post("/{document_id}/retry", response_model=IngestResponse)
+def retry_document(document_id: uuid.UUID, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     document = db.scalar(select(Document).where(Document.id == document_id, Document.organization_id == user.organization_id))
     if document is None:
-        return
-    document.status = "failed"
-    document.processing_error = message
-    db.commit()
+        raise HTTPException(status_code=404, detail="Document not found")
+    require_document_access(db, user, document_id, "edit")
+    job = db.scalar(select(ProcessingJob).where(ProcessingJob.document_id == document_id))
+    if job is None:
+        job = ProcessingJob(organization_id=user.organization_id, document_id=document.id)
+        db.add(job)
+    elif job.status in {"queued", "running", "retrying"}:
+        raise HTTPException(status_code=409, detail="Document processing is already active")
+    job.status = "retrying"; job.progress = 0; job.stage = "queued"; job.error = None; job.completed_at = None
+    document.status = "queued"; document.processing_progress = 0; document.processing_stage = "queued"; document.processing_error = None
+    db.commit(); db.refresh(job); db.refresh(document)
+    background_tasks.add_task(enqueue_document_job, job.id)
+    return IngestResponse(**DocumentResponse.model_validate(document).model_dump(), job_id=job.id)
 
 
 async def _save_upload(file: UploadFile, destination: Path) -> int:
