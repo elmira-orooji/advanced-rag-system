@@ -8,12 +8,16 @@ class LoginRequest(BaseModel):
     username: str = Field(min_length=3, max_length=100)
     password: str = Field(min_length=8, max_length=200)
     remember_me: bool = False
+    organization: str = Field(default="default", min_length=2, max_length=80)
 
 
 class AuthUser(BaseModel):
     id: UUID
     username: str
     role: Literal["admin", "user"]
+    organization_id: UUID
+    organization_name: str
+    organization_slug: str
 
 
 class LoginResponse(BaseModel):

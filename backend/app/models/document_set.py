@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, Table, Column, func
+from sqlalchemy import DateTime, ForeignKey, String, Table, Column, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -22,9 +22,11 @@ document_set_documents = Table(
 
 class DocumentSet(Base):
     __tablename__ = "document_sets"
+    __table_args__ = (UniqueConstraint("organization_id", "name", name="uq_document_sets_org_name"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(String(120), nullable=False, unique=True, index=True)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="RESTRICT"), index=True, nullable=False)
+    name: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(String(500))
     created_by_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True

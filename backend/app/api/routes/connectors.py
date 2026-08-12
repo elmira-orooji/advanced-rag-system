@@ -25,7 +25,7 @@ def list_connectors(set_id: uuid.UUID, db: Session = Depends(get_db), user: User
 
 @router.post("", response_model=ConnectorResponse, status_code=status.HTTP_201_CREATED)
 def create_connector(set_id: uuid.UUID, payload: ConnectorCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    if db.get(DocumentSet, set_id) is None: raise HTTPException(status_code=404, detail="Document set not found")
+    if db.scalar(select(DocumentSet).where(DocumentSet.id == set_id, DocumentSet.organization_id == user.organization_id)) is None: raise HTTPException(status_code=404, detail="Document set not found")
     require_set_access(db, user, set_id, "edit")
     item = Connector(document_set_id=set_id, created_by_id=user.id, connector_type=payload.connector_type, name=payload.name.strip(), source_url=str(payload.source_url), status="pending")
     db.add(item); db.commit(); db.refresh(item); return item

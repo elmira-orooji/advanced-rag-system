@@ -29,8 +29,8 @@ def require_admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-def _get_set(db: Session, set_id: uuid.UUID, with_documents: bool = False) -> DocumentSet:
-    statement = select(DocumentSet).where(DocumentSet.id == set_id)
+def _get_set(db: Session, set_id: uuid.UUID, user: User, with_documents: bool = False) -> DocumentSet:
+    statement = select(DocumentSet).where(DocumentSet.id == set_id, DocumentSet.organization_id == user.organization_id)
     if with_documents:
         statement = statement.options(selectinload(DocumentSet.documents))
     document_set = db.scalar(statement)
@@ -67,6 +67,7 @@ def list_document_sets(
         .outerjoin(document_set_documents, DocumentSet.id == document_set_documents.c.document_set_id)
         .outerjoin(Document, Document.id == document_set_documents.c.document_id)
         .group_by(DocumentSet.id)
+        .where(DocumentSet.organization_id == user.organization_id)
         .order_by(DocumentSet.updated_at.desc())
     )
     allowed = accessible_set_ids(db, user)
@@ -87,6 +88,7 @@ def create_document_set(
         name=payload.name.strip(),
         description=payload.description.strip() if payload.description else None,
         created_by_id=user.id,
+        organization_id=user.organization_id,
     )
     try:
         db.add(item)
@@ -105,7 +107,7 @@ def get_document_set(
     user: User = Depends(get_current_user),
 ):
     require_set_access(db, user, set_id)
-    item = _get_set(db, set_id, with_documents=True)
+    item = _get_set(db, set_id, user, with_documents=True)
     return DocumentSetDetail(
         **_response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents)).model_dump(),
         documents=item.documents,
@@ -120,7 +122,7 @@ def update_document_set(
     user: User = Depends(get_current_user),
 ):
     require_set_access(db, user, set_id, "manage")
-    item = _get_set(db, set_id, with_documents=True)
+    item = _get_set(db, set_id, user, with_documents=True)
     if payload.name is not None:
         item.name = payload.name.strip()
     if "description" in payload.model_fields_set:
@@ -141,7 +143,7 @@ def delete_document_set(
     user: User = Depends(get_current_user),
 ):
     require_set_access(db, user, set_id, "manage")
-    item = _get_set(db, set_id)
+    item = _get_set(db, set_id, user)
     db.delete(item)
     db.commit()
 
@@ -154,8 +156,8 @@ def add_document_to_set(
     user: User = Depends(get_current_user),
 ):
     require_set_access(db, user, set_id, "edit")
-    item = _get_set(db, set_id, with_documents=True)
-    document = db.get(Document, payload.document_id)
+    item = _get_set(db, set_id, user, with_documents=True)
+    document = db.scalar(select(Document).where(Document.id == payload.document_id, Document.organization_id == user.organization_id))
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
     if all(existing.id != document.id for existing in item.documents):
@@ -176,7 +178,7 @@ def remove_document_from_set(
     user: User = Depends(get_current_user),
 ):
     require_set_access(db, user, set_id, "edit")
-    item = _get_set(db, set_id, with_documents=True)
+    item = _get_set(db, set_id, user, with_documents=True)
     document = next((doc for doc in item.documents if doc.id == document_id), None)
     if document is None:
         raise HTTPException(status_code=404, detail="Document is not in this set")

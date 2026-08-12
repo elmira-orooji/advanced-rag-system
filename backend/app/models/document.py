@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, String, func
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -16,6 +16,7 @@ class Document(Base):
     __tablename__ = "documents"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="RESTRICT"), index=True, nullable=False)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     content_type: Mapped[str | None] = mapped_column(String(100))
     storage_path: Mapped[str | None] = mapped_column(String(500))

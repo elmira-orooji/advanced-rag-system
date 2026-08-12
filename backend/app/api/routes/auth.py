@@ -9,6 +9,7 @@ from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REMEMBER_TOKEN_EXPIRE_D
 from app.core.security import create_access_token, decode_access_token, verify_password
 from app.db.database import get_db
 from app.models.user import User
+from app.models.organization import Organization
 from app.schemas.auth import AuthUser, LoginRequest, LoginResponse
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -41,7 +42,8 @@ def get_current_user(
 
 @router.post("/login", response_model=LoginResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.scalar(select(User).where(User.username == payload.username.strip()))
+    organization = db.scalar(select(Organization).where(Organization.slug == payload.organization.strip().lower()))
+    user = db.scalar(select(User).where(User.username == payload.username.strip(), User.organization_id == organization.id)) if organization else None
     if user is None or not verify_password(payload.password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -58,10 +60,11 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     return LoginResponse(
         access_token=create_access_token(str(user.id), user.role, expires_in),
         expires_in=expires_in,
-        user=AuthUser(id=user.id, username=user.username, role=user.role),
+        user=AuthUser(id=user.id, username=user.username, role=user.role, organization_id=organization.id, organization_name=organization.name, organization_slug=organization.slug),
     )
 
 
 @router.get("/me", response_model=AuthUser)
-def me(user: User = Depends(get_current_user)):
-    return AuthUser(id=user.id, username=user.username, role=user.role)
+def me(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    organization = db.get(Organization, user.organization_id)
+    return AuthUser(id=user.id, username=user.username, role=user.role, organization_id=user.organization_id, organization_name=organization.name, organization_slug=organization.slug)

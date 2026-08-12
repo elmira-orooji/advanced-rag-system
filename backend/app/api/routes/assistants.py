@@ -29,17 +29,17 @@ def _admin(user: User = Depends(get_current_user)) -> User:
     return user
 
 
-def _get(db: Session, assistant_id: uuid.UUID) -> Assistant:
-    item = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == assistant_id))
+def _get(db: Session, assistant_id: uuid.UUID, user: User) -> Assistant:
+    item = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == assistant_id, Assistant.organization_id == user.organization_id))
     if item is None:
         raise HTTPException(status_code=404, detail="Assistant not found")
     return item
 
 
-def _sets(db: Session, ids: list[uuid.UUID]) -> list[DocumentSet]:
+def _sets(db: Session, ids: list[uuid.UUID], user: User) -> list[DocumentSet]:
     if not ids:
         return []
-    items = list(db.scalars(select(DocumentSet).where(DocumentSet.id.in_(set(ids)))).all())
+    items = list(db.scalars(select(DocumentSet).where(DocumentSet.id.in_(set(ids)), DocumentSet.organization_id == user.organization_id)).all())
     if len(items) != len(set(ids)):
         raise HTTPException(status_code=422, detail="One or more knowledge sets do not exist")
     return items
@@ -58,7 +58,7 @@ def _response(item: Assistant, allowed_set_ids: set[uuid.UUID] | None = None) ->
 
 @router.get("", response_model=list[AssistantResponse])
 def list_assistants(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    statement = select(Assistant).options(selectinload(Assistant.document_sets)).order_by(Assistant.updated_at.desc())
+    statement = select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.organization_id == user.organization_id).order_by(Assistant.updated_at.desc())
     if user.role != "admin":
         statement = statement.where(Assistant.is_active.is_(True))
     items = list(db.scalars(statement).all())
@@ -70,41 +70,41 @@ def list_assistants(db: Session = Depends(get_db), user: User = Depends(get_curr
 
 @router.post("", response_model=AssistantResponse, status_code=status.HTTP_201_CREATED)
 def create_assistant(payload: AssistantCreate, db: Session = Depends(get_db), user: User = Depends(_admin)):
-    item = Assistant(name=payload.name.strip(), description=payload.description.strip() if payload.description else None,
+    item = Assistant(organization_id=user.organization_id, name=payload.name.strip(), description=payload.description.strip() if payload.description else None,
                      instructions=payload.instructions.strip(), is_active=payload.is_active, created_by_id=user.id)
-    item.document_sets = _sets(db, payload.document_set_ids)
+    item.document_sets = _sets(db, payload.document_set_ids, user)
     try:
         db.add(item); db.commit(); db.refresh(item)
     except IntegrityError as exc:
         db.rollback(); raise HTTPException(status_code=409, detail="An assistant with this name already exists") from exc
-    return _response(_get(db, item.id))
+    return _response(_get(db, item.id, user))
 
 
 @router.patch("/{assistant_id}", response_model=AssistantResponse)
-def update_assistant(assistant_id: uuid.UUID, payload: AssistantUpdate, db: Session = Depends(get_db), _: User = Depends(_admin)):
-    item = _get(db, assistant_id)
+def update_assistant(assistant_id: uuid.UUID, payload: AssistantUpdate, db: Session = Depends(get_db), user: User = Depends(_admin)):
+    item = _get(db, assistant_id, user)
     for field in ("name", "description", "instructions", "is_active"):
         if field in payload.model_fields_set:
             value = getattr(payload, field)
             if isinstance(value, str): value = value.strip()
             setattr(item, field, value or None if field == "description" else value)
     if payload.document_set_ids is not None:
-        item.document_sets = _sets(db, payload.document_set_ids)
+        item.document_sets = _sets(db, payload.document_set_ids, user)
     try:
         db.commit()
     except IntegrityError as exc:
         db.rollback(); raise HTTPException(status_code=409, detail="An assistant with this name already exists") from exc
-    return _response(_get(db, item.id))
+    return _response(_get(db, item.id, user))
 
 
 @router.delete("/{assistant_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_assistant(assistant_id: uuid.UUID, db: Session = Depends(get_db), _: User = Depends(_admin)):
-    db.delete(_get(db, assistant_id)); db.commit()
+def delete_assistant(assistant_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(_admin)):
+    db.delete(_get(db, assistant_id, user)); db.commit()
 
 
 @router.post("/{assistant_id}/answer", response_model=RagResponse)
 def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    item = _get(db, assistant_id)
+    item = _get(db, assistant_id, user)
     if not item.is_active:
         raise HTTPException(status_code=409, detail="Assistant is inactive")
     set_ids = [value.id for value in item.document_sets]

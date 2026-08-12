@@ -39,6 +39,7 @@ def create_document(payload: DocumentCreate, db: Session = Depends(get_db), user
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access is required")
     document = Document(
+        organization_id=user.organization_id,
         filename=payload.filename,
         content_type=payload.content_type,
     )
@@ -58,9 +59,9 @@ def list_documents(
 ):
     if user.role != "admin" and document_set_id is None:
         raise HTTPException(status_code=403, detail="A permitted knowledge set is required")
-    statement = select(Document)
+    statement = select(Document).where(Document.organization_id == user.organization_id)
     if document_set_id is not None:
-        if db.get(DocumentSet, document_set_id) is None:
+        if db.scalar(select(DocumentSet).where(DocumentSet.id == document_set_id, DocumentSet.organization_id == user.organization_id)) is None:
             raise HTTPException(status_code=404, detail="Document set not found")
         require_set_access(db, user, document_set_id)
         statement = statement.join(Document.document_sets).where(DocumentSet.id == document_set_id)
@@ -81,7 +82,7 @@ def list_documents(
 async def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_user),
+    user: User = Depends(get_current_user),
 ):
     content_type = file.content_type or ""
     expected_suffix = ALLOWED_FILE_TYPES.get(content_type)
@@ -111,6 +112,7 @@ async def upload_document(
 
         document = Document(
             id=document_id,
+            organization_id=user.organization_id,
             filename=safe_filename,
             content_type=content_type,
             storage_path=original_path.relative_to(BASE_DIR).as_posix(),
@@ -154,7 +156,8 @@ async def ingest_document(
         if user.role != "admin":
             raise HTTPException(status_code=403, detail="A permitted knowledge set is required")
     else:
-        if db.get(DocumentSet, document_set_id) is None:
+        target_set = db.scalar(select(DocumentSet).where(DocumentSet.id == document_set_id, DocumentSet.organization_id == user.organization_id))
+        if target_set is None:
             raise HTTPException(status_code=404, detail="Document set not found")
         require_set_access(db, user, document_set_id, "edit")
     try:
@@ -164,7 +167,7 @@ async def ingest_document(
 
     document: Document | None = None
     try:
-        document = await upload_document(file=file, db=db, _=user)
+        document = await upload_document(file=file, db=db, user=user)
         document = create_document_chunks(
             document_id=document.id,
             payload=chunking,
@@ -173,7 +176,7 @@ async def ingest_document(
         )
         document = index_document(document_id=document.id, db=db, user=None)
         if document_set_id is not None:
-            document.document_sets.append(db.get(DocumentSet, document_set_id))
+            document.document_sets.append(target_set)
         document.processing_error = None
         db.commit()
         db.refresh(document)
@@ -204,7 +207,7 @@ def _format_error_detail(detail: object) -> str:
 
 def _mark_document_failed(db: Session, document_id: uuid.UUID, message: str) -> None:
     db.rollback()
-    document = db.get(Document, document_id)
+    document = db.scalar(select(Document).where(Document.id == document_id, Document.organization_id == user.organization_id))
     if document is None:
         return
     document.status = "failed"
@@ -235,11 +238,9 @@ def create_document_chunks(
 ):
     if user is not None and user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access is required")
-    statement = (
-        select(Document)
-        .options(selectinload(Document.chunks))
-        .where(Document.id == document_id)
-    )
+    statement = select(Document).options(selectinload(Document.chunks)).where(Document.id == document_id)
+    if user is not None:
+        statement = statement.where(Document.organization_id == user.organization_id)
     document = db.scalar(statement)
 
     if document is None:
@@ -280,11 +281,9 @@ def create_document_chunks(
 def index_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: User | None = Depends(get_current_user)):
     if user is not None and user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access is required")
-    statement = (
-        select(Document)
-        .options(selectinload(Document.chunks))
-        .where(Document.id == document_id)
-    )
+    statement = select(Document).options(selectinload(Document.chunks)).where(Document.id == document_id)
+    if user is not None:
+        statement = statement.where(Document.organization_id == user.organization_id)
     document = db.scalar(statement)
 
     if document is None:
@@ -321,7 +320,7 @@ def index_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: 
 def delete_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin access is required")
-    document = db.get(Document, document_id)
+    document = db.scalar(select(Document).where(Document.id == document_id, Document.organization_id == user.organization_id))
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
 
@@ -377,7 +376,7 @@ def get_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: Us
     statement = (
         select(Document)
         .options(selectinload(Document.chunks))
-        .where(Document.id == document_id)
+        .where(Document.id == document_id, Document.organization_id == user.organization_id)
     )
     document = db.scalar(statement)
 

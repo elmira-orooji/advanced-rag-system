@@ -22,7 +22,7 @@ router = APIRouter(prefix="/research", tags=["deep-research"])
 @router.post("/run", response_model=ResearchResponse)
 def run_research(payload: ResearchRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     require_set_access(db, user, payload.document_set_id)
-    if db.get(DocumentSet, payload.document_set_id) is None: raise HTTPException(status_code=404, detail="Document set not found")
+    if db.scalar(select(DocumentSet).where(DocumentSet.id == payload.document_set_id, DocumentSet.organization_id == user.organization_id)) is None: raise HTTPException(status_code=404, detail="Document set not found")
     available = set(db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id == payload.document_set_id, Document.status == "indexed")).all())
     if payload.document_ids:
         requested = set(payload.document_ids)

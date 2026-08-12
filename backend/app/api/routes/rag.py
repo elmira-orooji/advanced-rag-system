@@ -47,7 +47,7 @@ def answer_question(
     document_ids: list[str] | None = None
     if payload.document_set_id:
         require_set_access(db, user, payload.document_set_id)
-        document_set = db.get(DocumentSet, payload.document_set_id)
+        document_set = db.scalar(select(DocumentSet).where(DocumentSet.id == payload.document_set_id, DocumentSet.organization_id == user.organization_id))
         if document_set is None:
             raise HTTPException(status_code=404, detail="Document set not found")
         available_ids = set(db.scalars(

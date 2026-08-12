@@ -45,10 +45,10 @@ def create_conversation(payload: ConversationCreate, db: Session = Depends(get_d
     if scopes != 1: raise HTTPException(status_code=422, detail="Choose exactly one document, knowledge set, or assistant")
     if payload.document_id: require_document_access(db, user, payload.document_id)
     if payload.document_set_id:
-        if db.get(DocumentSet, payload.document_set_id) is None: raise HTTPException(status_code=404, detail="Document set not found")
+        if db.scalar(select(DocumentSet).where(DocumentSet.id == payload.document_set_id, DocumentSet.organization_id == user.organization_id)) is None: raise HTTPException(status_code=404, detail="Document set not found")
         require_set_access(db, user, payload.document_set_id)
     if payload.assistant_id:
-        assistant = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == payload.assistant_id))
+        assistant = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == payload.assistant_id, Assistant.organization_id == user.organization_id))
         if assistant is None: raise HTTPException(status_code=404, detail="Assistant not found")
         _assistant_sets(db, assistant, user)
     conversation = Conversation(user_id=user.id, title=payload.title or "New conversation", document_id=payload.document_id, document_set_id=payload.document_set_id, assistant_id=payload.assistant_id)
@@ -90,7 +90,7 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
         require_set_access(db, user, conversation.document_set_id)
         document_ids = [str(value) for value in db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id == conversation.document_set_id, Document.status == "indexed")).all()]
     elif conversation.assistant_id:
-        assistant = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == conversation.assistant_id))
+        assistant = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == conversation.assistant_id, Assistant.organization_id == user.organization_id))
         if assistant is None: raise HTTPException(status_code=409, detail="Conversation assistant is unavailable")
         set_ids = _assistant_sets(db, assistant, user); instructions = assistant.instructions
         document_ids = [str(value) for value in db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()).all()]

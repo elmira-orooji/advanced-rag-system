@@ -21,27 +21,27 @@ def admin_only(user: User = Depends(get_current_user)) -> User:
 
 
 @router.get("", response_model=list[UserAdminResponse])
-def list_users(db: Session = Depends(get_db), _: User = Depends(admin_only)):
-    return db.scalars(select(User).order_by(User.created_at.desc())).all()
+def list_users(db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    return db.scalars(select(User).where(User.organization_id == admin.organization_id).order_by(User.created_at.desc())).all()
 
 
 @router.get("/{user_id}/document-set-permissions", response_model=list[SetPermissionItem])
-def get_permissions(user_id: uuid.UUID, db: Session = Depends(get_db), _: User = Depends(admin_only)):
-    if db.get(User, user_id) is None:
+def get_permissions(user_id: uuid.UUID, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    if db.scalar(select(User).where(User.id == user_id, User.organization_id == admin.organization_id)) is None:
         raise HTTPException(status_code=404, detail="User not found")
-    rows = db.execute(select(DocumentSetPermission, DocumentSet.name).join(DocumentSet, DocumentSet.id == DocumentSetPermission.document_set_id).where(DocumentSetPermission.user_id == user_id).order_by(DocumentSet.name)).all()
+    rows = db.execute(select(DocumentSetPermission, DocumentSet.name).join(DocumentSet, DocumentSet.id == DocumentSetPermission.document_set_id).where(DocumentSetPermission.user_id == user_id, DocumentSet.organization_id == admin.organization_id).order_by(DocumentSet.name)).all()
     return [SetPermissionItem(document_set_id=item.document_set_id, document_set_name=name, permission=item.permission) for item, name in rows]
 
 
 @router.put("/{user_id}/document-set-permissions", response_model=list[SetPermissionItem])
 def replace_permissions(user_id: uuid.UUID, payload: SetPermissionsUpdate, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
-    target = db.get(User, user_id)
+    target = db.scalar(select(User).where(User.id == user_id, User.organization_id == admin.organization_id))
     if target is None:
         raise HTTPException(status_code=404, detail="User not found")
     if target.role == "admin" and payload.permissions:
         raise HTTPException(status_code=422, detail="Admins already have access to all knowledge sets")
     set_ids = {item.document_set_id for item in payload.permissions}
-    existing_ids = set(db.scalars(select(DocumentSet.id).where(DocumentSet.id.in_(set_ids))).all()) if set_ids else set()
+    existing_ids = set(db.scalars(select(DocumentSet.id).where(DocumentSet.id.in_(set_ids), DocumentSet.organization_id == admin.organization_id)).all()) if set_ids else set()
     if existing_ids != set_ids:
         raise HTTPException(status_code=422, detail="One or more knowledge sets do not exist")
     db.execute(delete(DocumentSetPermission).where(DocumentSetPermission.user_id == user_id))

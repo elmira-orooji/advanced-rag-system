@@ -105,7 +105,7 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
     for external_id, title, text, source_url in sources:
         digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
         if item and item.content_hash == digest: unchanged += 1; continue
-        document = db.get(Document, item.document_id) if item else Document(filename=title, content_type="text/plain", status="chunked")
+        document = db.get(Document, item.document_id) if item else Document(organization_id=document_set.organization_id, filename=title, content_type="text/plain", status="chunked")
         if not item: db.add(document); db.flush(); document.document_sets.append(document_set)
         else:
             qdrant.delete_document(str(document.id))

@@ -48,9 +48,11 @@ def list_active_shares(db: Session = Depends(get_db), user: User = Depends(get_c
 
 
 @router.get("/shared/team/{token}", response_model=ChatShareView)
-def view_team_share(token: str, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+def view_team_share(token: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     item = _resolve(token, db)
     if item.visibility != "team": raise HTTPException(status_code=404, detail="Shared conversation not found")
+    owner = db.get(User, item.owner_id)
+    if owner is None or owner.organization_id != user.organization_id: raise HTTPException(status_code=404, detail="Shared conversation not found")
     return _view(item, db)
 
 
@@ -64,5 +66,6 @@ def view_public_share(token: str, db: Session = Depends(get_db)):
 @router.delete("/chat-shares/{share_id}", status_code=status.HTTP_204_NO_CONTENT)
 def revoke_share(share_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     item = db.get(ChatShare, share_id)
-    if item is None or (item.owner_id != user.id and user.role != "admin"): raise HTTPException(status_code=404, detail="Shared conversation not found")
+    owner = db.get(User, item.owner_id) if item else None
+    if item is None or owner is None or owner.organization_id != user.organization_id or (item.owner_id != user.id and user.role != "admin"): raise HTTPException(status_code=404, detail="Shared conversation not found")
     item.is_active = False; item.revoked_at = datetime.now(timezone.utc); db.commit()
