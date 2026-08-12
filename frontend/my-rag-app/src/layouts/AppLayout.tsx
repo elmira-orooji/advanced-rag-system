@@ -3,15 +3,17 @@ import { Menu, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import SidebarV2 from "../components/SidebarV2";
-import DashboardPage from "../pages/DashboardPage";
 import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import UsersPage from "../pages/UsersPage";
 import AssistantsPage from "../pages/AssistantsPage";
 import AnalyticsPage from "../pages/AnalyticsPage";
+import ConversationPage from "../pages/ConversationPage";
 import { authService } from "../services/authService";
+import { conversationService, type ConversationSummary } from "../services/conversationService";
+import toast from "react-hot-toast";
 
-export type AppPage = "home" | "upload" | "assistants" | "users" | "settings";
+export type AppPage = "home" | "chat" | "upload" | "assistants" | "users" | "settings";
 
 export default function AppLayout() {
   const navigate = useNavigate();
@@ -19,6 +21,14 @@ export default function AppLayout() {
   const [activePage, setActivePage] = useState<AppPage>("home");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+
+  const loadConversations = () => {
+    conversationService.list().then(setConversations).catch((error) => toast.error((error as Error).message));
+  };
+
+  useEffect(() => { loadConversations(); }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -35,6 +45,33 @@ export default function AppLayout() {
     navigate("/", { replace: true });
   };
 
+  const newConversation = () => {
+    setActiveConversationId(null);
+    selectPage("chat");
+  };
+
+  const selectConversation = (id: string) => {
+    setActiveConversationId(id);
+    selectPage("chat");
+  };
+
+  const renameConversation = async (item: ConversationSummary) => {
+    const title = window.prompt("Conversation title", item.title)?.trim();
+    if (!title || title === item.title) return;
+    try { await conversationService.rename(item.id, title); loadConversations(); }
+    catch (error) { toast.error((error as Error).message); }
+  };
+
+  const deleteConversation = async (item: ConversationSummary) => {
+    if (!window.confirm(`Delete “${item.title}”? This cannot be undone.`)) return;
+    try {
+      await conversationService.remove(item.id);
+      if (activeConversationId === item.id) { setActiveConversationId(null); setActivePage("chat"); }
+      loadConversations();
+      toast.success("Conversation deleted");
+    } catch (error) { toast.error((error as Error).message); }
+  };
+
   return (
     <div className="app-shell flex h-[100dvh] overflow-hidden bg-[#050507] text-white">
       <SidebarV2
@@ -44,6 +81,12 @@ export default function AppLayout() {
         onCloseMobile={() => setMobileMenuOpen(false)}
         onLogout={handleLogout}
         setActivePage={selectPage}
+        conversations={conversations}
+        activeConversationId={activeConversationId}
+        onNewConversation={newConversation}
+        onSelectConversation={selectConversation}
+        onRenameConversation={(item) => void renameConversation(item)}
+        onDeleteConversation={(item) => void deleteConversation(item)}
       />
 
       <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
@@ -74,7 +117,8 @@ export default function AppLayout() {
         </header>
 
         <main className="relative z-10 min-h-0 flex-1 overflow-hidden">
-          {activePage === "home" && (currentUser?.role === "admin" ? <AnalyticsPage /> : <DashboardPage username={currentUser?.username ?? "there"} />)}
+          {activePage === "home" && (currentUser?.role === "admin" ? <AnalyticsPage /> : <ConversationPage conversationId={activeConversationId} onConversationChange={setActiveConversationId} onConversationsUpdated={loadConversations} />)}
+          {activePage === "chat" && <ConversationPage conversationId={activeConversationId} onConversationChange={setActiveConversationId} onConversationsUpdated={loadConversations} />}
           {activePage === "upload" && <UploadFilesPage />}
           {activePage === "assistants" && <AssistantsPage />}
           {activePage === "users" && currentUser?.role === "admin" && <UsersPage />}

@@ -12,10 +12,13 @@ import {
   Sparkles,
   UserCog,
   X,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import type { AuthUser } from "../types/auth";
 import type { AppPage } from "../layouts/AppLayout";
 import { useTranslation } from "react-i18next";
+import type { ConversationSummary } from "../services/conversationService";
 
 interface SidebarV2Props {
   currentUser: AuthUser | null;
@@ -24,9 +27,13 @@ interface SidebarV2Props {
   setActivePage: (page: AppPage) => void;
   onCloseMobile: () => void;
   onLogout: () => void;
+  conversations: ConversationSummary[];
+  activeConversationId: string | null;
+  onNewConversation: () => void;
+  onSelectConversation: (id: string) => void;
+  onRenameConversation: (item: ConversationSummary) => void;
+  onDeleteConversation: (item: ConversationSummary) => void;
 }
-
-const recentChats = ["Quarterly report insights", "Product research summary", "Onboarding policy review"];
 
 export default function SidebarV2({
   activePage,
@@ -35,6 +42,12 @@ export default function SidebarV2({
   onCloseMobile,
   onLogout,
   setActivePage,
+  conversations,
+  activeConversationId,
+  onNewConversation,
+  onSelectConversation,
+  onRenameConversation,
+  onDeleteConversation,
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
   const { i18n } = useTranslation();
@@ -79,7 +92,7 @@ export default function SidebarV2({
         <div className="px-3">
           <button
             type="button"
-            onClick={() => setActivePage("home")}
+            onClick={onNewConversation}
             className={`flex h-12 w-full items-center rounded-xl bg-[#32127A] text-sm font-semibold shadow-[0_12px_32px_rgba(50,18,122,.3)] transition hover:bg-[#43208F] ${collapsed ? "md:justify-center md:px-0" : "gap-3 px-4"}`}
           >
             <MessageSquareText size={18} />
@@ -108,11 +121,14 @@ export default function SidebarV2({
             <ChevronLeft size={14} className="rotate-180 text-white/20" />
           </div>
           <div className="space-y-1">
-            {recentChats.map((chat) => (
-              <button key={chat} type="button" className="w-full truncate rounded-lg px-2 py-2.5 text-left text-xs text-white/40 transition hover:bg-white/[.04] hover:text-white/75">
-                {chat}
-              </button>
+            {conversations.map((chat) => (
+              <div key={chat.id} className={`group flex items-center rounded-lg transition ${activeConversationId === chat.id ? "bg-white/[.07]" : "hover:bg-white/[.04]"}`}>
+                <button onClick={() => onSelectConversation(chat.id)} type="button" title={chat.title} className="min-w-0 flex-1 truncate px-2 py-2.5 text-left text-xs text-white/45 transition group-hover:text-white/75">{chat.title}</button>
+                <button onClick={() => onRenameConversation(chat)} aria-label="Rename conversation" className="grid size-7 shrink-0 place-items-center text-white/0 transition group-hover:text-white/35 hover:!text-[#b6a7ef]"><Pencil size={12} /></button>
+                <button onClick={() => onDeleteConversation(chat)} aria-label="Delete conversation" className="grid size-7 shrink-0 place-items-center text-white/0 transition group-hover:text-white/35 hover:!text-rose-300"><Trash2 size={12} /></button>
+              </div>
             ))}
+            {!conversations.length && <p className="px-2 py-3 text-xs text-white/20">No conversations yet</p>}
           </div>
         </div>
 
