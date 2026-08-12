@@ -83,6 +83,13 @@ export default function UploadFilesPage() {
     const availableIds = new Set(documents.filter((item) => item.status === "indexed").map((item) => item.id));
     setSelectedDocumentIds((current) => current.filter((id) => availableIds.has(id)));
   }, [documents]);
+  useEffect(() => {
+    if (!selectedSetId || !documents.some((item) => ["queued", "processing"].includes(item.status))) return;
+    const timer = window.setInterval(() => {
+      knowledgeService.listDocuments(selectedSetId).then(setDocuments).catch(() => undefined);
+    }, 1500);
+    return () => window.clearInterval(timer);
+  }, [documents, selectedSetId]);
 
   const onDrop = useCallback(async (files: File[]) => {
     if (!selectedSetId || !files.length) return;
@@ -191,6 +198,9 @@ function ScopeSelector({ documents, selectedIds, open, copy, isFa, onToggle, onC
 
 function DocumentRow({ document, isAdmin, isFa, onRemove }: { document: KnowledgeDocument; isAdmin: boolean; isFa: boolean; onRemove: () => Promise<void> }) {
   const ready = document.status === "indexed";
+  const active = ["queued", "processing"].includes(document.status);
+  if (active) return <div className="group flex items-center gap-3 px-4 py-3.5 hover:bg-white/[.025]"><span className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/[.07] bg-white/[.035] text-[#a995eb]"><RefreshCw size={16} className="animate-spin" /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white/75">{document.filename}</p><div className="mt-2 max-w-sm"><div className="mb-1 flex justify-between text-[9px] text-white/30"><span className="capitalize">{document.processing_stage}</span><span>{document.processing_progress}%</span></div><div className="h-1 overflow-hidden rounded-full bg-white/[.06]"><div className="h-full rounded-full bg-gradient-to-r from-[#32127A] to-[#a995eb] transition-all duration-500" style={{ width: `${document.processing_progress}%` }} /></div></div></div><span className="rounded-full border border-amber-300/10 bg-amber-300/[.055] px-2.5 py-1 text-[10px] text-amber-200/60">{document.processing_progress}%</span>{isAdmin && <button onClick={() => void onRemove()} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/20 hover:text-rose-300"><X size={14} /></button>}</div>;
+  if (document.status === "failed") return <div className="group flex items-center gap-3 px-4 py-3.5 hover:bg-white/[.025]"><span className="grid size-10 shrink-0 place-items-center rounded-xl border border-rose-300/10 bg-rose-300/[.04] text-rose-200/60"><FileText size={17} /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white/75">{document.filename}</p><p className="mt-1 truncate text-[10px] text-rose-200/40">{document.processing_error || "Processing failed"}</p></div>{isAdmin && <button onClick={async () => { try { await knowledgeService.retryDocument(document.id); toast.success(isFa ? "پردازش مجدد آغاز شد" : "Processing restarted"); } catch (error) { toast.error((error as Error).message); } }} title="Retry processing" className="app-icon-button grid size-8 place-items-center rounded-lg text-amber-200/50 hover:text-amber-200"><RefreshCw size={13} /></button>}{isAdmin && <button onClick={() => void onRemove()} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/20 hover:text-rose-300"><X size={14} /></button>}</div>;
   return <div className="group flex items-center gap-3 px-4 py-3.5 hover:bg-white/[.025]"><span className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/[.07] bg-white/[.035] text-[#a995eb]"><FileText size={17} /></span><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-white/75">{document.filename}</p><p className="mt-1 text-[10px] text-white/25">{new Intl.DateTimeFormat(isFa ? "fa-IR" : "en", { dateStyle: "medium" }).format(new Date(document.created_at))}</p></div><span className={`rounded-full border px-2.5 py-1 text-[10px] ${ready ? "border-emerald-300/10 bg-emerald-300/[.055] text-emerald-200/60" : document.status === "failed" ? "border-rose-300/10 bg-rose-300/[.055] text-rose-200/60" : "border-amber-300/10 bg-amber-300/[.055] text-amber-200/60"}`}>{document.status}</span>{isAdmin && <button onClick={() => void onRemove()} title={isFa ? "خارج کردن از مجموعه" : "Remove from set"} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/20 opacity-100 hover:text-rose-300 md:opacity-0 md:group-hover:opacity-100"><X size={14} /></button>}</div>;
 }
 

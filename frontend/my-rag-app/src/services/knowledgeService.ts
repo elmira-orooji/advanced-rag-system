@@ -8,6 +8,8 @@ export interface KnowledgeDocument {
   content_type: string | null;
   status: string;
   processing_error: string | null;
+  processing_progress: number;
+  processing_stage: string;
   created_at: string;
   updated_at: string;
 }
@@ -84,6 +86,7 @@ export const knowledgeService = {
   removeDocumentFromSet: (setId: string, documentId: string) =>
     request(`/document-sets/${setId}/documents/${documentId}`, { method: "DELETE", headers: headers() }),
   deleteDocument: (documentId: string) => request(`/documents/${documentId}`, { method: "DELETE", headers: headers() }),
+  retryDocument: (documentId: string) => request<KnowledgeDocument>(`/documents/${documentId}/retry`, { method: "POST", headers: headers() }),
   ask: (question: string, documentSetId: string, documentIds?: string[]) =>
     request<RagResponse>("/rag/answer", {
       method: "POST",
