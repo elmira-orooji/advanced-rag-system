@@ -77,6 +77,34 @@ def _rerank(query: str, candidates: list[dict], limit: int) -> list[dict]:
     return reranked[:limit]
 
 
+def _expand_parents(rows: list[tuple[Chunk, str]], ranked_children: list[dict], limit: int) -> list[dict]:
+    chunks = {str(chunk.id): chunk for chunk, _ in rows}
+    seen_parents: set[tuple[str, int]] = set()
+    expanded = []
+    for child in ranked_children:
+        payload = child["payload"]
+        chunk = chunks.get(str(payload.get("chunk_id")))
+        if chunk is None:
+            continue
+        parent_key = (str(chunk.document_id), chunk.parent_index)
+        if parent_key in seen_parents:
+            continue
+        seen_parents.add(parent_key)
+        expanded.append({
+            **child,
+            "payload": {
+                **payload,
+                "content": chunk.parent_content,
+                "matched_child_content": chunk.content,
+                "parent_index": chunk.parent_index,
+            },
+            "retrieval": {**child.get("retrieval", {}), "expanded_to_parent": True},
+        })
+        if len(expanded) >= limit:
+            break
+    return expanded
+
+
 def hybrid_search(db: Session, query: str, limit: int, document_id: str | None = None, document_ids: list[str] | None = None) -> list[dict]:
     if document_id:
         scoped_ids = [uuid.UUID(document_id)]
@@ -106,4 +134,5 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
     ranked = sorted(fused.values(), key=lambda item: item["score"], reverse=True)
     maximum = 2 / (RRF_K + 1)
     candidates = [{**item["point"], "score": min(item["score"] / maximum, 1.0), "retrieval": {"method": "hybrid", "vector_rank": item["vector_rank"], "bm25_rank": item["lexical_rank"]}} for item in ranked]
-    return _rerank(query, candidates, limit)
+    reranked_children = _rerank(query, candidates, candidate_limit)
+    return _expand_parents(rows, reranked_children, limit)

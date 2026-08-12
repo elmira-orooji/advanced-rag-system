@@ -12,7 +12,7 @@ from app.models.document import Document
 from app.models.processing_job import ProcessingJob
 from app.services.document_extractor import extract_text
 from app.services.qdrant import QdrantClient
-from app.services.text_chunker import chunk_text
+from app.services.text_chunker import hierarchical_chunks
 
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="document-jobs")
 
@@ -63,13 +63,13 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int = 1000, overlap: int
             extracted_path.write_text(text, encoding="utf-8")
             document.extracted_text_path = extracted_path.relative_to(BASE_DIR).as_posix()
             _progress(db, document, job, 35, "chunking")
-            contents = chunk_text(text, chunk_size, overlap)
+            contents = hierarchical_chunks(text, child_size=min(chunk_size, 1000), child_overlap=min(overlap, 200))
             if not contents:
                 raise RuntimeError("Document contains no text to index")
             for chunk in list(document.chunks):
                 db.delete(chunk)
             db.flush()
-            document.chunks = [Chunk(chunk_index=index, content=content) for index, content in enumerate(contents)]
+            document.chunks = [Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent) for index, (child, parent_index, parent) in enumerate(contents)]
             db.flush()
             _progress(db, document, job, 65, "indexing")
             client = QdrantClient()

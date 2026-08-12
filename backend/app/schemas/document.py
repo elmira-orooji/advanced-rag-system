@@ -50,6 +50,8 @@ class ChunkResponse(BaseModel):
     id: uuid.UUID
     chunk_index: int
     content: str
+    parent_index: int
+    parent_content: str
     token_count: int | None
     created_at: datetime
 

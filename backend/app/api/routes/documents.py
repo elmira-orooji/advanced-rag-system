@@ -26,7 +26,7 @@ from app.schemas.document import (
 )
 from app.services.document_extractor import ExtractionError, extract_text
 from app.services.qdrant import QdrantClient, QdrantError
-from app.services.text_chunker import chunk_text
+from app.services.text_chunker import hierarchical_chunks
 from app.services.document_jobs import enqueue_document_job
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -272,7 +272,7 @@ def create_document_chunks(
         raise HTTPException(status_code=409, detail="Extracted text file is unavailable")
 
     text = extracted_path.read_text(encoding="utf-8")
-    contents = chunk_text(text, payload.chunk_size, payload.overlap)
+    contents = hierarchical_chunks(text, payload.chunk_size, payload.overlap)
     if not contents:
         raise HTTPException(status_code=422, detail="Document contains no text to chunk")
 
@@ -282,8 +282,8 @@ def create_document_chunks(
         db.flush()
         document.chunks.clear()
         document.chunks.extend(
-            Chunk(chunk_index=index, content=content)
-            for index, content in enumerate(contents)
+            Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent)
+            for index, (child, parent_index, parent) in enumerate(contents)
         )
         document.status = "chunked"
         document.processing_error = None
