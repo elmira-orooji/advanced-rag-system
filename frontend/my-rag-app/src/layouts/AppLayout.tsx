@@ -8,6 +8,7 @@ import SettingsPage from "../pages/SettingsPage";
 import UploadFilesPage from "../pages/UploadFilesPage";
 import UsersPage from "../pages/UsersPage";
 import AssistantsPage from "../pages/AssistantsPage";
+import AnalyticsPage from "../pages/AnalyticsPage";
 import { authService } from "../services/authService";
 
 export type AppPage = "home" | "upload" | "assistants" | "users" | "settings";
@@ -73,7 +74,7 @@ export default function AppLayout() {
         </header>
 
         <main className="relative z-10 min-h-0 flex-1 overflow-hidden">
-          {activePage === "home" && <DashboardPage username={currentUser?.username ?? "there"} />}
+          {activePage === "home" && (currentUser?.role === "admin" ? <AnalyticsPage /> : <DashboardPage username={currentUser?.username ?? "there"} />)}
           {activePage === "upload" && <UploadFilesPage />}
           {activePage === "assistants" && <AssistantsPage />}
           {activePage === "users" && currentUser?.role === "admin" && <UsersPage />}

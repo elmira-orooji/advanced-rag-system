@@ -1,0 +1,6 @@
+import { authService } from "./authService";
+const API = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
+export interface DailyMetric { date: string; queries: number; grounded: number; negative_feedback: number; }
+export interface RankedMetric { id: string | null; name: string; queries: number; grounded_rate: number; positive_rate: number | null; }
+export interface AnalyticsOverview { period_days: number; total_queries: number; active_users: number; grounded_rate: number; positive_feedback_rate: number | null; feedback_coverage: number; unanswered_queries: number; average_citations: number; indexed_documents: number; failed_documents: number; daily: DailyMetric[]; assistants: RankedMetric[]; knowledge_sets: RankedMetric[]; negative_reasons: Array<{ reason: string; count: number }>; recent_issues: Array<{ kind: string; name: string; detail: string; occurred_at: string }>; }
+export const analyticsService = { async overview(days: 7 | 30 | 90) { const response = await fetch(`${API}/analytics/overview?days=${days}`, { headers: { Authorization: `Bearer ${authService.getSession()?.accessToken || ""}` } }); const data = await response.json().catch(() => null); if (!response.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "Could not load analytics"); return data as AnalyticsOverview; } };
