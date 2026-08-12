@@ -1,0 +1,128 @@
+import re
+import uuid
+
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, selectinload
+
+from app.api.routes.auth import get_current_user
+from app.db.database import get_db
+from app.models.assistant import Assistant
+from app.models.document import Document
+from app.models.document_set import DocumentSet
+from app.models.user import User
+from app.schemas.assistant import AssistantAnswerRequest, AssistantCreate, AssistantResponse, AssistantUpdate
+from app.schemas.rag import Citation, RagResponse
+from app.schemas.search import SearchHit
+from app.services.openrouter import OpenRouterClient, OpenRouterError
+from app.services.qdrant import QdrantClient, QdrantError
+
+router = APIRouter(prefix="/assistants", tags=["assistants"])
+
+
+def _admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access is required")
+    return user
+
+
+def _get(db: Session, assistant_id: uuid.UUID) -> Assistant:
+    item = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == assistant_id))
+    if item is None:
+        raise HTTPException(status_code=404, detail="Assistant not found")
+    return item
+
+
+def _sets(db: Session, ids: list[uuid.UUID]) -> list[DocumentSet]:
+    if not ids:
+        return []
+    items = list(db.scalars(select(DocumentSet).where(DocumentSet.id.in_(set(ids)))).all())
+    if len(items) != len(set(ids)):
+        raise HTTPException(status_code=422, detail="One or more knowledge sets do not exist")
+    return items
+
+
+def _response(item: Assistant) -> AssistantResponse:
+    return AssistantResponse(
+        id=item.id, name=item.name, description=item.description, instructions=item.instructions,
+        is_active=item.is_active, created_by_id=item.created_by_id,
+        document_set_ids=[value.id for value in item.document_sets],
+        document_set_names=[value.name for value in item.document_sets],
+        created_at=item.created_at, updated_at=item.updated_at,
+    )
+
+
+@router.get("", response_model=list[AssistantResponse])
+def list_assistants(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    statement = select(Assistant).options(selectinload(Assistant.document_sets)).order_by(Assistant.updated_at.desc())
+    if user.role != "admin":
+        statement = statement.where(Assistant.is_active.is_(True))
+    return [_response(item) for item in db.scalars(statement).all()]
+
+
+@router.post("", response_model=AssistantResponse, status_code=status.HTTP_201_CREATED)
+def create_assistant(payload: AssistantCreate, db: Session = Depends(get_db), user: User = Depends(_admin)):
+    item = Assistant(name=payload.name.strip(), description=payload.description.strip() if payload.description else None,
+                     instructions=payload.instructions.strip(), is_active=payload.is_active, created_by_id=user.id)
+    item.document_sets = _sets(db, payload.document_set_ids)
+    try:
+        db.add(item); db.commit(); db.refresh(item)
+    except IntegrityError as exc:
+        db.rollback(); raise HTTPException(status_code=409, detail="An assistant with this name already exists") from exc
+    return _response(_get(db, item.id))
+
+
+@router.patch("/{assistant_id}", response_model=AssistantResponse)
+def update_assistant(assistant_id: uuid.UUID, payload: AssistantUpdate, db: Session = Depends(get_db), _: User = Depends(_admin)):
+    item = _get(db, assistant_id)
+    for field in ("name", "description", "instructions", "is_active"):
+        if field in payload.model_fields_set:
+            value = getattr(payload, field)
+            if isinstance(value, str): value = value.strip()
+            setattr(item, field, value or None if field == "description" else value)
+    if payload.document_set_ids is not None:
+        item.document_sets = _sets(db, payload.document_set_ids)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback(); raise HTTPException(status_code=409, detail="An assistant with this name already exists") from exc
+    return _response(_get(db, item.id))
+
+
+@router.delete("/{assistant_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_assistant(assistant_id: uuid.UUID, db: Session = Depends(get_db), _: User = Depends(_admin)):
+    db.delete(_get(db, assistant_id)); db.commit()
+
+
+@router.post("/{assistant_id}/answer", response_model=RagResponse)
+def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerRequest, db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    item = _get(db, assistant_id)
+    if not item.is_active:
+        raise HTTPException(status_code=409, detail="Assistant is inactive")
+    set_ids = [value.id for value in item.document_sets]
+    document_ids = [str(value) for value in db.scalars(
+        select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()
+    ).all()] if set_ids else []
+    try:
+        qdrant = QdrantClient(); qdrant.ensure_collection()
+        points = qdrant.search(payload.question, payload.limit, document_ids=document_ids)
+    except QdrantError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
+    if not sources:
+        return RagResponse(question=payload.question, answer="No relevant information was found in this assistant's knowledge.", grounded=False, citations=[], sources=[])
+    try:
+        answer = OpenRouterClient().answer(payload.question, [source.model_dump(mode="json") for source in sources], instructions=item.instructions)
+    except OpenRouterError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    used = set()
+    def replace(match: re.Match[str]) -> str:
+        number = int(match.group(1))
+        if 1 <= number <= len(sources): used.add(number); return f"[{number}]"
+        return ""
+    answer = re.sub(r"\[\s*(?:Source\s*)?(\d+)\s*\]", replace, answer, flags=re.I).strip()
+    citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename,
+                          chunk_index=source.chunk_index, excerpt=source.content, score=source.score)
+                 for index, source in enumerate(sources, 1) if index in used]
+    return RagResponse(question=payload.question, answer=answer, grounded=bool(citations), citations=citations, sources=sources)

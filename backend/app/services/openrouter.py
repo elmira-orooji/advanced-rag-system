@@ -24,6 +24,7 @@ class OpenRouterClient:
         question: str,
         contexts: list[dict[str, Any]],
         history: list[dict[str, str]] | None = None,
+        instructions: str | None = None,
     ) -> str:
         context_text = "\n\n".join(
             f"[Source {index}]\n{item['content']}"
@@ -45,7 +46,8 @@ class OpenRouterClient:
                 "role": "system",
                 "content": (
                     "You are a retrieval-augmented assistant. Be concise, factual, "
-                    "and grounded exclusively in the supplied sources."
+                    "and grounded exclusively in the supplied sources. "
+                    + (f"Follow these assistant-specific instructions: {instructions}" if instructions else "")
                 ),
             }
         ]
