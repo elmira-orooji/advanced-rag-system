@@ -95,10 +95,12 @@ export interface PipelineTraceResponse {
   stages: Array<{ key: "question" | "retrieval" | "rerank" | "answer"; duration_ms: number; input_count: number; output_count: number }>;
   results: PlaygroundResult[];
   citations: Array<{ id: number; chunk_id: string; filename: string }>;
+  usage: UsageMetrics | null;
 }
+export interface UsageMetrics { model: string; latency_ms: number; prompt_tokens: number; completion_tokens: number; total_tokens: number; estimated_cost_usd: number; }
 export interface EvaluationCase { id: string; document_set_id: string; question: string; expected_answer: string | null; expected_keywords: string[]; relevant_chunk_ids: string[]; created_at: string; updated_at: string; }
 export interface RetrieverConfig { name: string; vector_weight: number; bm25_weight: number; use_reranker: boolean; top_k: number; }
-export interface RetrieverVariant { config: RetrieverConfig; duration_ms: number; answer: string; grounded: boolean; results: PlaygroundResult[]; citations: Array<{ id: number; chunk_id: string; filename: string }>; }
+export interface RetrieverVariant { config: RetrieverConfig; duration_ms: number; answer: string; grounded: boolean; results: PlaygroundResult[]; citations: Array<{ id: number; chunk_id: string; filename: string }>; usage: UsageMetrics | null; }
 export interface RetrieverComparison { question: string; overlap_count: number; rank_changes: Record<string, number>; variant_a: RetrieverVariant; variant_b: RetrieverVariant; }
 
 function headers(json = false) {
