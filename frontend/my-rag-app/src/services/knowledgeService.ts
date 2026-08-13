@@ -90,6 +90,12 @@ export interface PlaygroundResult {
   diagnostics: { method: string; vector_rank: number | null; bm25_rank: number | null; hybrid_score: number; reranker_score: number; term_coverage: number; phrase_match: boolean; expanded_to_parent: boolean };
 }
 export interface PlaygroundResponse { query: string; scoped_document_count: number; result_count: number; results: PlaygroundResult[]; }
+export interface PipelineTraceResponse {
+  question: string; answer: string; grounded: boolean; total_duration_ms: number;
+  stages: Array<{ key: "question" | "retrieval" | "rerank" | "answer"; duration_ms: number; input_count: number; output_count: number }>;
+  results: PlaygroundResult[];
+  citations: Array<{ id: number; chunk_id: string; filename: string }>;
+}
 
 function headers(json = false) {
   const token = authService.getSession()?.accessToken;
@@ -143,6 +149,8 @@ export const knowledgeService = {
     request<KnowledgeDocument>(`/documents/${documentId}/metadata`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
   testRetrieval: (query: string, documentSetId: string, limit: number, documentIds?: string[], filters?: MetadataFilters) =>
     request<PlaygroundResponse>("/search/playground", { method: "POST", headers: headers(true), body: JSON.stringify({ query, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, limit, filters: filters && Object.keys(filters).length ? filters : null }) }),
+  tracePipeline: (query: string, documentSetId: string, limit: number, documentIds?: string[], filters?: MetadataFilters) =>
+    request<PipelineTraceResponse>("/search/trace", { method: "POST", headers: headers(true), body: JSON.stringify({ query, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, limit, filters: filters && Object.keys(filters).length ? filters : null }) }),
   ask: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters) =>
     request<RagResponse>("/rag/answer", {
       method: "POST",
