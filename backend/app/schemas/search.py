@@ -25,3 +25,27 @@ class SearchHit(BaseModel):
 class SearchResponse(BaseModel):
     query: str
     results: list[SearchHit]
+
+
+class RetrievalDiagnostics(BaseModel):
+    method: str
+    vector_rank: int | None = None
+    bm25_rank: int | None = None
+    hybrid_score: float
+    reranker_score: float
+    term_coverage: float
+    phrase_match: bool
+    expanded_to_parent: bool
+
+
+class PlaygroundHit(SearchHit):
+    parent_index: int
+    matched_child_content: str
+    diagnostics: RetrievalDiagnostics
+
+
+class PlaygroundResponse(BaseModel):
+    query: str
+    scoped_document_count: int
+    result_count: int
+    results: list[PlaygroundHit]
