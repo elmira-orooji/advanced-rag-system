@@ -63,6 +63,13 @@ export interface ResearchResponse extends RagResponse {
   evidence_reviewed: number;
 }
 
+export interface PlaygroundResult {
+  chunk_id: string; document_id: string; filename: string; chunk_index: number; parent_index: number;
+  content: string; matched_child_content: string; score: number;
+  diagnostics: { method: string; vector_rank: number | null; bm25_rank: number | null; hybrid_score: number; reranker_score: number; term_coverage: number; phrase_match: boolean; expanded_to_parent: boolean };
+}
+export interface PlaygroundResponse { query: string; scoped_document_count: number; result_count: number; results: PlaygroundResult[]; }
+
 function headers(json = false) {
   const token = authService.getSession()?.accessToken;
   return {
@@ -103,6 +110,8 @@ export const knowledgeService = {
   retryDocument: (documentId: string) => request<KnowledgeDocument>(`/documents/${documentId}/retry`, { method: "POST", headers: headers() }),
   updateMetadata: (documentId: string, data: { author?: string | null; language?: string | null; source_type?: string | null; document_date?: string | null; tags?: string[] }) =>
     request<KnowledgeDocument>(`/documents/${documentId}/metadata`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
+  testRetrieval: (query: string, documentSetId: string, limit: number, documentIds?: string[], filters?: MetadataFilters) =>
+    request<PlaygroundResponse>("/search/playground", { method: "POST", headers: headers(true), body: JSON.stringify({ query, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, limit, filters: filters && Object.keys(filters).length ? filters : null }) }),
   ask: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters) =>
     request<RagResponse>("/rag/answer", {
       method: "POST",

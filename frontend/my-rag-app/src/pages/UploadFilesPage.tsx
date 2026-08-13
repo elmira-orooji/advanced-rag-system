@@ -5,10 +5,11 @@ import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import {
   BookOpen, Check, ChevronDown, FileText, FolderKanban, GitBranch as Github, Globe2, Link2, MessageSquareText, MoreHorizontal,
-  PanelRightClose, Pencil, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Telescope, Trash2, UploadCloud, Zap, X, Filter,
+  FlaskConical, PanelRightClose, Pencil, Plus, RefreshCw, Search, SlidersHorizontal, Sparkles, Telescope, Trash2, UploadCloud, Zap, X, Filter,
 } from "lucide-react";
 import ChatInput from "../components/ChatInput";
 import ChatWindow from "../components/ChatWindow";
+import RetrievalPlayground from "../components/RetrievalPlayground";
 import { authService } from "../services/authService";
 import { knowledgeService, type DocumentSet, type KnowledgeDocument, type MetadataFilters, type ResearchResponse } from "../services/knowledgeService";
 import type { ChatMessage } from "../types/chat";
@@ -37,6 +38,7 @@ export default function UploadFilesPage() {
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [answerMode, setAnswerMode] = useState<"quick" | "research">("quick");
   const [metadataFilters, setMetadataFilters] = useState<MetadataFilters>({});
+  const [playgroundOpen, setPlaygroundOpen] = useState(false);
 
   const copy = isFa ? {
     eyebrow: "مدیریت منابع", title: "پایگاه دانش", subtitle: "اسناد را در مجموعه‌های موضوعی سازمان‌دهی کنید و پاسخ‌ها را به همان محدوده محدود کنید.",
@@ -152,7 +154,7 @@ export default function UploadFilesPage() {
       <div className="mx-auto flex h-full w-full max-w-[980px] flex-col gap-5">
         <header className="flex shrink-0 items-end justify-between gap-4">
           <div><div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-[#a995eb]"><span className="size-1.5 rounded-full bg-[#8f78d8]" />{copy.eyebrow}</div><h1 className="text-3xl font-semibold tracking-[-.045em] sm:text-4xl">{copy.title}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-white/35">{copy.subtitle}</p></div>
-          {!chatOpen && <button onClick={() => setChatOpen(true)} className="app-icon-button hidden h-11 items-center gap-2 rounded-xl px-4 text-sm text-white/65 sm:flex"><MessageSquareText size={17} />{copy.chatTitle}</button>}
+          <div className="flex items-center gap-2">{selectedSetId && <button onClick={() => setPlaygroundOpen(true)} className="app-icon-button flex h-11 items-center gap-2 rounded-xl px-3 text-xs text-[#b6a7ef] sm:px-4"><FlaskConical size={16} /><span className="hidden sm:inline">{isFa ? "آزمایش بازیابی" : "Playground"}</span></button>}{!chatOpen && <button onClick={() => setChatOpen(true)} className="app-icon-button hidden h-11 items-center gap-2 rounded-xl px-4 text-sm text-white/65 sm:flex"><MessageSquareText size={17} />{copy.chatTitle}</button>}</div>
         </header>
 
         <section className="shrink-0">
@@ -182,6 +184,7 @@ export default function UploadFilesPage() {
     <aside className={`knowledge-chat-panel fixed bottom-0 right-0 top-16 z-50 flex w-[min(100%,390px)] flex-col border-s border-white/[.09] transition duration-300 xl:relative xl:inset-auto xl:z-20 ${chatOpen ? "translate-x-0 xl:w-[370px]" : "translate-x-full xl:w-0 xl:translate-x-0 xl:overflow-hidden"}`}><div className="flex h-full w-[min(100vw,390px)] flex-col xl:w-[370px]"><header className="flex h-20 shrink-0 items-center justify-between border-b border-white/[.07] px-5"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl border border-[#8f78d8]/20 bg-[#32127A]/25 text-[#a995eb]"><MessageSquareText size={18} /></span><div><h2 className="text-sm font-semibold">{copy.chatTitle}</h2><p className="mt-1 max-w-56 truncate text-[10px] text-white/30">{selectedSet?.name || copy.chatSub}</p></div></div><button onClick={() => setChatOpen(false)} className="app-icon-button grid size-9 place-items-center rounded-xl text-white/40"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button></header><div className="relative min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="flex h-full flex-col items-center justify-center px-5 text-center"><span className="grid size-12 place-items-center rounded-2xl border border-[#8f78d8]/20 bg-[#32127A]/20 text-[#a995eb]"><Sparkles size={21} /></span><h3 className="mt-4 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-60 text-xs leading-5 text-white/30">{copy.chatHint}</p></div>}</div><div className="relative shrink-0 border-t border-white/[.07] p-4"><MetadataFilterBar documents={documents} filters={metadataFilters} onChange={setMetadataFilters} isFa={isFa} /><ScopeSelector documents={documents.filter((item) => item.status === "indexed")} selectedIds={selectedDocumentIds} open={scopeOpen} copy={copy} isFa={isFa} onToggle={() => setScopeOpen((value) => !value)} onChange={setSelectedDocumentIds} onClose={() => setScopeOpen(false)} /><ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} /></div></div></aside>
     {dialog && <SetDialog mode={dialog} item={dialog === "edit" ? selectedSet : undefined} isFa={isFa} copy={copy} onClose={() => setDialog(null)} onSaved={async () => { setDialog(null); await loadSets(); }} />}
     {connectorDialog && selectedSetId && <ConnectorDialog setId={selectedSetId} isFa={isFa} onClose={() => setConnectorDialog(false)} onSaved={async () => { setConnectorDialog(false); setConnectors(await connectorService.list(selectedSetId)); setDocuments(await knowledgeService.listDocuments(selectedSetId)); await loadSets(); }} />}
+    {playgroundOpen && selectedSetId && <RetrievalPlayground setId={selectedSetId} documentIds={selectedDocumentIds} filters={metadataFilters} isFa={isFa} onClose={() => setPlaygroundOpen(false)} />}
   </motion.div>;
 }
 
