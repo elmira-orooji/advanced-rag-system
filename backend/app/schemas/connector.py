@@ -30,6 +30,7 @@ class ConnectorResponse(BaseModel):
     schedule_enabled: bool
     schedule_interval: str
     next_sync_at: datetime | None
+    last_sync_summary: dict
     created_at: datetime
 
 
@@ -39,3 +40,4 @@ class SyncResponse(BaseModel):
     created: int
     updated: int
     unchanged: int
+    deleted: int

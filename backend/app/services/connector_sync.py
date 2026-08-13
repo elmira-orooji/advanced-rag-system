@@ -4,6 +4,7 @@ import ipaddress
 import json
 import re
 import socket
+import shutil
 import uuid
 from html.parser import HTMLParser
 from pathlib import Path
@@ -103,7 +104,8 @@ def _github(source_url: str) -> list[tuple[str, str, str, str]]:
 def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
     sources = _website(connector.source_url) if connector.connector_type == "website" else _github(connector.source_url)
     existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
-    created = updated = unchanged = 0; qdrant = QdrantClient(); qdrant.ensure_collection(); document_set = db.get(DocumentSet, connector.document_set_id)
+    created = updated = unchanged = deleted = 0; removed_directories: list[Path] = []; qdrant = QdrantClient(); qdrant.ensure_collection(); document_set = db.get(DocumentSet, connector.document_set_id)
+    discovered_ids = {source[0] for source in sources}
     for external_id, title, text, source_url in sources:
         digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
         if item and item.content_hash == digest: unchanged += 1; continue
@@ -118,4 +120,25 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
         db.flush(); sync_incremental(qdrant, document, changed_ids, removed_ids); document.status = "indexed"
         if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
         else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1
-    db.commit(); return {"discovered": len(sources), "created": created, "updated": updated, "unchanged": unchanged}
+    for external_id, item in existing.items():
+        if external_id in discovered_ids:
+            continue
+        document = db.get(Document, item.document_id)
+        if document is not None:
+            other_sets = [value for value in document.document_sets if value.id != connector.document_set_id]
+            if other_sets:
+                document.document_sets = other_sets
+                db.delete(item)
+            else:
+                qdrant.delete_document(str(document.id))
+                removed_directories.append(UPLOAD_DIR / str(document.id))
+                db.delete(document)
+        else:
+            db.delete(item)
+        deleted += 1
+    result = {"discovered": len(sources), "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted}
+    connector.last_sync_summary = result
+    db.commit()
+    for document_dir in removed_directories:
+        if document_dir.is_dir(): shutil.rmtree(document_dir, ignore_errors=True)
+    return result
