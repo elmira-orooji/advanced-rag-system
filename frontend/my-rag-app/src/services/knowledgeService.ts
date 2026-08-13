@@ -96,6 +96,7 @@ export interface PipelineTraceResponse {
   results: PlaygroundResult[];
   citations: Array<{ id: number; chunk_id: string; filename: string }>;
 }
+export interface EvaluationCase { id: string; document_set_id: string; question: string; expected_answer: string | null; expected_keywords: string[]; created_at: string; updated_at: string; }
 
 function headers(json = false) {
   const token = authService.getSession()?.accessToken;
@@ -151,6 +152,9 @@ export const knowledgeService = {
     request<PlaygroundResponse>("/search/playground", { method: "POST", headers: headers(true), body: JSON.stringify({ query, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, limit, filters: filters && Object.keys(filters).length ? filters : null }) }),
   tracePipeline: (query: string, documentSetId: string, limit: number, documentIds?: string[], filters?: MetadataFilters) =>
     request<PipelineTraceResponse>("/search/trace", { method: "POST", headers: headers(true), body: JSON.stringify({ query, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, limit, filters: filters && Object.keys(filters).length ? filters : null }) }),
+  listEvaluationCases: (setId: string) => request<EvaluationCase[]>(`/document-sets/${setId}/evaluation-cases`, { headers: headers() }),
+  createEvaluationCase: (setId: string, data: { question: string; expected_answer?: string | null; expected_keywords: string[] }) => request<EvaluationCase>(`/document-sets/${setId}/evaluation-cases`, { method: "POST", headers: headers(true), body: JSON.stringify(data) }),
+  deleteEvaluationCase: (setId: string, caseId: string) => request<void>(`/document-sets/${setId}/evaluation-cases/${caseId}`, { method: "DELETE", headers: headers() }),
   ask: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters) =>
     request<RagResponse>("/rag/answer", {
       method: "POST",
