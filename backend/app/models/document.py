@@ -21,6 +21,7 @@ class Document(Base):
     content_type: Mapped[str | None] = mapped_column(String(100))
     storage_path: Mapped[str | None] = mapped_column(String(500))
     extracted_text_path: Mapped[str | None] = mapped_column(String(500))
+    content_checksum: Mapped[str | None] = mapped_column(String(64), index=True)
     status: Mapped[str] = mapped_column(String(30), default="pending", nullable=False)
     processing_error: Mapped[str | None] = mapped_column(String(500))
     processing_progress: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

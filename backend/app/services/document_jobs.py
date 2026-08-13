@@ -7,13 +7,12 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import BASE_DIR
 from app.db.database import SessionLocal
-from app.models.chunk import Chunk
 from app.models.document import Document
 from app.models.processing_job import ProcessingJob
 from app.services.document_extractor import extract_text
 from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
-from app.services.chunk_enrichment import enrich_chunk
+from app.services.incremental_index import checksum, incremental_chunks, sync_incremental
 
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="document-jobs")
 
@@ -64,6 +63,11 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
                 raise RuntimeError("Document file is unavailable")
             source_path = BASE_DIR / document.storage_path
             text = extract_text(source_path, document.content_type or "")
+            text_checksum = checksum(text)
+            if document.content_checksum == text_checksum and document.chunks:
+                document.processing_error = None; job.status = "completed"; job.completed_at = datetime.now(timezone.utc)
+                _progress(db, document, job, 100, "unchanged")
+                return
             extracted_path = source_path.parent / "extracted.txt"
             extracted_path.write_text(text, encoding="utf-8")
             document.extracted_text_path = extracted_path.relative_to(BASE_DIR).as_posix()
@@ -71,15 +75,16 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
             if not contents:
                 raise RuntimeError("Document contains no text to index")
+            next_chunks, changed_ids, removed_ids = incremental_chunks(document, text, chunk_size, overlap, parent_size)
             for chunk in list(document.chunks):
-                db.delete(chunk)
-            db.flush()
-            document.chunks = [Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent, keywords=enrich_chunk(child)[0], suggested_questions=enrich_chunk(child)[1]) for index, (child, parent_index, parent) in enumerate(contents)]
+                if str(chunk.id) in removed_ids: db.delete(chunk)
+            document.chunks = next_chunks
             db.flush()
             _progress(db, document, job, 65, "indexing")
             client = QdrantClient()
             client.ensure_collection()
-            client.replace_document_chunks(str(document.id), document.filename, [{"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content} for chunk in document.chunks])
+            sync_incremental(client, document, changed_ids, removed_ids)
+            document.content_checksum = text_checksum
             document.processing_error = None
             job.status = "completed"
             job.completed_at = datetime.now(timezone.utc)

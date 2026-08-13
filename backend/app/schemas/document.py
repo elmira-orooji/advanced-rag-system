@@ -37,6 +37,7 @@ class DocumentResponse(BaseModel):
     tags: list[str]
     created_at: datetime
     updated_at: datetime
+    content_checksum: str | None
 
 
 class IngestResponse(DocumentResponse):
@@ -79,6 +80,7 @@ class ChunkResponse(BaseModel):
     is_active: bool
     keywords: list[str]
     suggested_questions: list[str]
+    content_checksum: str | None
 
 
 class ChunkUpdate(BaseModel):

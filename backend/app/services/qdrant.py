@@ -109,6 +109,21 @@ class QdrantClient:
             },
         )
 
+    def delete_points(self, point_ids: list[str]) -> None:
+        if not point_ids:
+            return
+        collection = quote(self.collection, safe="")
+        self._request("POST", f"/collections/{collection}/points/delete?wait=true", {"points": point_ids})
+
+    def upsert_chunks(self, document_id: str, filename: str, chunks: list[dict[str, Any]]) -> None:
+        if not chunks:
+            return
+        collection = quote(self.collection, safe="")
+        for start in range(0, len(chunks), 32):
+            batch = chunks[start:start + 32]
+            points = [{"id": chunk["id"], "vector": {VECTOR_NAME: {"text": chunk["content"], "model": self.model}}, "payload": {"chunk_id": chunk["id"], "document_id": document_id, "filename": filename, "chunk_index": chunk["chunk_index"], "content": chunk["content"]}} for chunk in batch]
+            self._request("PUT", f"/collections/{collection}/points?wait=true", {"points": points})
+
     def search(
         self,
         query: str,

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -29,6 +29,7 @@ class Chunk(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     keywords: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
     suggested_questions: Mapped[list[str]] = mapped_column(JSON, default=list, nullable=False)
+    content_checksum: Mapped[str | None] = mapped_column(String(64), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
