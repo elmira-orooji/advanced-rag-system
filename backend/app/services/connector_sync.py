@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import html
 import ipaddress
 import json
@@ -6,16 +7,19 @@ import re
 import socket
 import shutil
 import uuid
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlparse
+from urllib.parse import parse_qs, parse_qsl, quote, urlencode, urlparse
 from urllib.request import Request, urlopen
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import BASE_DIR, UPLOAD_DIR
+from app.core.config import AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SECRET_ACCESS_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_TENANT_ID
 from app.models.chunk import Chunk
 from app.models.connector import Connector, ConnectorItem
 from app.models.document import Document
@@ -70,6 +74,115 @@ def _fetch(url: str, accept: str = "text/plain,text/html,application/json") -> t
     return data, content_type, final_url
 
 
+def _authorized_json(url: str, token: str) -> dict:
+    _validate_public_url(url)
+    try:
+        with urlopen(Request(url, headers={"Authorization": f"Bearer {token}", "Accept": "application/json"}), timeout=30) as response:
+            return json.loads(response.read().decode())
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise ConnectorSyncError("Cloud provider request failed") from exc
+
+
+def _oauth_token(url: str, values: dict[str, str]) -> str:
+    try:
+        with urlopen(Request(url, data=urlencode(values).encode(), headers={"Content-Type": "application/x-www-form-urlencoded"}), timeout=30) as response:
+            token = json.loads(response.read().decode()).get("access_token")
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise ConnectorSyncError("Could not authenticate with the cloud provider") from exc
+    if not token: raise ConnectorSyncError("Cloud provider returned no access token")
+    return token
+
+
+def _bearer_download(url: str, token: str) -> bytes:
+    _validate_public_url(url)
+    try:
+        with urlopen(Request(url, headers={"Authorization": f"Bearer {token}"}), timeout=30) as response: data = response.read(MAX_REMOTE_BYTES + 1)
+    except (HTTPError, URLError, TimeoutError) as exc: raise ConnectorSyncError("Could not download cloud file") from exc
+    if len(data) > MAX_REMOTE_BYTES: raise ConnectorSyncError("Cloud file exceeds the 2 MB limit")
+    return data
+
+
+def _google_drive(source_url: str) -> list[tuple[str, str, str, str]]:
+    if not all((GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN)): raise ConnectorSyncError("Google Drive OAuth configuration is missing")
+    match = re.search(r"/folders/([\w-]+)", source_url); folder_id = match.group(1) if match else parse_qs(urlparse(source_url).query).get("id", [None])[0]
+    if not folder_id: raise ConnectorSyncError("Use a Google Drive folder URL")
+    token = _oauth_token("https://oauth2.googleapis.com/token", {"client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET, "refresh_token": GOOGLE_REFRESH_TOKEN, "grant_type": "refresh_token"})
+    query = quote(f"'{folder_id}' in parents and trashed=false")
+    data = _authorized_json(f"https://www.googleapis.com/drive/v3/files?q={query}&pageSize=1000&fields=files(id,name,mimeType,webViewLink,modifiedTime)", token)
+    results = []
+    for item in data.get("files", []):
+        mime = item.get("mimeType", ""); name = item.get("name", "Untitled")
+        if mime == "application/vnd.google-apps.document": url = f"https://www.googleapis.com/drive/v3/files/{item['id']}/export?mimeType=text/plain"
+        elif Path(name).suffix.lower() in ALLOWED_EXTENSIONS: url = f"https://www.googleapis.com/drive/v3/files/{item['id']}?alt=media"
+        else: continue
+        text = _bearer_download(url, token).decode("utf-8", errors="replace").strip()
+        if len(text) >= 20: results.append((item["id"], name[:255], text, item.get("webViewLink") or source_url))
+    return results
+
+
+def _sharepoint(source_url: str) -> list[tuple[str, str, str, str]]:
+    if not all((MICROSOFT_TENANT_ID, MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET)): raise ConnectorSyncError("SharePoint OAuth configuration is missing")
+    parsed = urlparse(source_url)
+    if parsed.hostname != "graph.microsoft.com" or "/children" not in parsed.path: raise ConnectorSyncError("Use a Microsoft Graph drive folder children URL")
+    token = _oauth_token(f"https://login.microsoftonline.com/{MICROSOFT_TENANT_ID}/oauth2/v2.0/token", {"client_id": MICROSOFT_CLIENT_ID, "client_secret": MICROSOFT_CLIENT_SECRET, "scope": "https://graph.microsoft.com/.default", "grant_type": "client_credentials"})
+    data = _authorized_json(source_url, token); results = []
+    for item in data.get("value", []):
+        name = item.get("name", ""); download = item.get("@microsoft.graph.downloadUrl")
+        if not download or Path(name).suffix.lower() not in ALLOWED_EXTENSIONS: continue
+        body, _, final = _fetch(download); text = body.decode("utf-8", errors="replace").strip()
+        if len(text) >= 20: results.append((item["id"], name[:255], text, item.get("webUrl") or final))
+    return results
+
+
+def _aws_signed_get(url: str) -> bytes:
+    if not all((AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION)):
+        raise ConnectorSyncError("S3 credentials or region are missing")
+    parsed = urlparse(url)
+    if parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith(".amazonaws.com"):
+        raise ConnectorSyncError("S3 requests must use an AWS HTTPS endpoint")
+    now = datetime.now(timezone.utc); amz_date = now.strftime("%Y%m%dT%H%M%SZ"); date_stamp = now.strftime("%Y%m%d")
+    payload_hash = hashlib.sha256(b"").hexdigest(); host = parsed.netloc
+    canonical_query = urlencode(sorted(parse_qsl(parsed.query, keep_blank_values=True)), quote_via=quote, safe="-_.~")
+    canonical_headers = f"host:{host}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{amz_date}\n"
+    signed_headers = "host;x-amz-content-sha256;x-amz-date"
+    canonical_request = "\n".join(("GET", quote(parsed.path or "/", safe="/-_.~"), canonical_query, canonical_headers, signed_headers, payload_hash))
+    scope = f"{date_stamp}/{AWS_REGION}/s3/aws4_request"
+    string_to_sign = "\n".join(("AWS4-HMAC-SHA256", amz_date, scope, hashlib.sha256(canonical_request.encode()).hexdigest()))
+    sign = lambda key, value: hmac.new(key, value.encode(), hashlib.sha256).digest()
+    signing_key = sign(sign(sign(sign(("AWS4" + AWS_SECRET_ACCESS_KEY).encode(), date_stamp), AWS_REGION), "s3"), "aws4_request")
+    signature = hmac.new(signing_key, string_to_sign.encode(), hashlib.sha256).hexdigest()
+    authorization = f"AWS4-HMAC-SHA256 Credential={AWS_ACCESS_KEY_ID}/{scope}, SignedHeaders={signed_headers}, Signature={signature}"
+    try:
+        with urlopen(Request(url, headers={"Authorization": authorization, "x-amz-date": amz_date, "x-amz-content-sha256": payload_hash}), timeout=30) as response:
+            data = response.read(MAX_REMOTE_BYTES + 1)
+    except (HTTPError, URLError, TimeoutError) as exc: raise ConnectorSyncError("S3 request failed") from exc
+    if len(data) > MAX_REMOTE_BYTES: raise ConnectorSyncError("S3 response or file exceeds the 2 MB limit")
+    return data
+
+
+def _s3(source_url: str) -> list[tuple[str, str, str, str]]:
+    parsed = urlparse(source_url); host = (parsed.hostname or "").lower(); path = parsed.path.lstrip("/")
+    virtual = re.fullmatch(r"([a-z0-9][a-z0-9.-]{1,61}[a-z0-9])\.s3(?:\.[a-z0-9-]+)?\.amazonaws\.com", host)
+    if virtual: bucket, prefix = virtual.group(1), path
+    else:
+        regional = re.fullmatch(r"s3(?:\.[a-z0-9-]+)?\.amazonaws\.com", host)
+        parts = path.split("/", 1)
+        if not regional or not parts[0]: raise ConnectorSyncError("Use an S3 HTTPS URL such as https://bucket.s3.region.amazonaws.com/prefix")
+        bucket, prefix = parts[0], parts[1] if len(parts) > 1 else ""
+    endpoint = f"https://{bucket}.s3.{AWS_REGION}.amazonaws.com"
+    listing = _aws_signed_get(f"{endpoint}/?{urlencode({'list-type': '2', 'prefix': prefix})}")
+    try: root = ET.fromstring(listing)
+    except ET.ParseError as exc: raise ConnectorSyncError("S3 returned invalid object metadata") from exc
+    results = []
+    for node in root.findall("{*}Contents")[:100]:
+        key = node.findtext("{*}Key") or ""
+        if Path(key).suffix.lower() not in ALLOWED_EXTENSIONS: continue
+        object_url = f"{endpoint}/{quote(key, safe='/')}"; body = _aws_signed_get(object_url)
+        text = body.decode("utf-8", errors="replace").strip()
+        if len(text) >= 20: results.append((key, Path(key).name[:255], text, object_url))
+    return results
+
+
 def _website(source_url: str) -> list[tuple[str, str, str, str]]:
     data, content_type, final_url = _fetch(source_url)
     text = data.decode("utf-8", errors="replace")
@@ -102,7 +215,10 @@ def _github(source_url: str) -> list[tuple[str, str, str, str]]:
 
 
 def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
-    sources = _website(connector.source_url) if connector.connector_type == "website" else _github(connector.source_url)
+    fetchers = {"website": _website, "github": _github, "google_drive": _google_drive, "s3": _s3, "sharepoint": _sharepoint}
+    fetcher = fetchers.get(connector.connector_type)
+    if fetcher is None: raise ConnectorSyncError("Unsupported connector type")
+    sources = fetcher(connector.source_url)
     existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
     created = updated = unchanged = deleted = 0; removed_directories: list[Path] = []; qdrant = QdrantClient(); qdrant.ensure_collection(); document_set = db.get(DocumentSet, connector.document_set_id)
     discovered_ids = {source[0] for source in sources}

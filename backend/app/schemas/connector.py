@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
 
 class ConnectorCreate(BaseModel):
-    connector_type: Literal["website", "github"]
+    connector_type: Literal["website", "github", "google_drive", "s3", "sharepoint"]
     name: str = Field(min_length=2, max_length=120)
     source_url: HttpUrl
     schedule_enabled: bool = False
