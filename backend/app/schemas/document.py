@@ -76,6 +76,20 @@ class ChunkResponse(BaseModel):
     token_count: int | None
     created_at: datetime
     page_number: int | None = None
+    is_active: bool
+
+
+class ChunkUpdate(BaseModel):
+    content: str | None = Field(default=None, min_length=20, max_length=12000)
+    is_active: bool | None = None
+
+    @model_validator(mode="after")
+    def require_change(self):
+        if self.content is None and self.is_active is None:
+            raise ValueError("At least one chunk field is required")
+        if self.content is not None:
+            self.content = self.content.strip()
+        return self
 
 
 class DocumentDetail(DocumentResponse):

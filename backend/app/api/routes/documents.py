@@ -20,6 +20,8 @@ from app.models.user import User
 from app.models.processing_job import ProcessingJob
 from app.schemas.document import (
     ChunkingRequest,
+    ChunkResponse,
+    ChunkUpdate,
     DeleteDocumentResponse,
     DocumentCreate,
     DocumentDetail,
@@ -37,6 +39,41 @@ ALLOWED_FILE_TYPES = {
     "application/pdf": ".pdf",
     "text/plain": ".txt",
 }
+
+
+def _sync_active_chunks(document: Document) -> None:
+    client = QdrantClient()
+    client.ensure_collection()
+    client.replace_document_chunks(str(document.id), document.filename, [{"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content} for chunk in document.chunks if chunk.is_active])
+
+
+@router.patch("/{document_id}/chunks/{chunk_id}", response_model=ChunkResponse)
+def update_chunk(document_id: uuid.UUID, chunk_id: uuid.UUID, payload: ChunkUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access is required")
+    document = db.scalar(select(Document).options(selectinload(Document.chunks)).where(Document.id == document_id, Document.organization_id == user.organization_id))
+    if document is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    chunk = next((item for item in document.chunks if item.id == chunk_id), None)
+    if chunk is None:
+        raise HTTPException(status_code=404, detail="Chunk not found")
+    if payload.content is not None:
+        chunk.content = payload.content
+        chunk.token_count = len(payload.content.split())
+    if payload.is_active is not None:
+        chunk.is_active = payload.is_active
+    try:
+        db.flush()
+        _sync_active_chunks(document)
+        db.commit()
+        db.refresh(chunk)
+    except QdrantError as exc:
+        db.rollback()
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Could not update chunk") from exc
+    return chunk
 
 
 @router.patch("/{document_id}/metadata", response_model=DocumentResponse)

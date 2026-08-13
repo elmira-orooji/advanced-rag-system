@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -26,6 +26,7 @@ class Chunk(Base):
     parent_index: Mapped[int] = mapped_column(default=0, nullable=False)
     parent_content: Mapped[str] = mapped_column(Text, nullable=False)
     token_count: Mapped[int | None]
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

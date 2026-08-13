@@ -116,7 +116,7 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
         raise ValueError("Hybrid search requires an explicit document scope")
     candidate_limit = min(max(limit * 4, 20), 80)
     vector_results = QdrantClient().search(query=query, limit=candidate_limit, document_id=document_id, document_ids=document_ids)
-    rows = list(db.execute(select(Chunk, Document.filename).join(Document, Document.id == Chunk.document_id).where(Chunk.document_id.in_(scoped_ids))).all())
+    rows = list(db.execute(select(Chunk, Document.filename).join(Document, Document.id == Chunk.document_id).where(Chunk.document_id.in_(scoped_ids), Chunk.is_active.is_(True))).all())
     lexical_results = _bm25(query, rows, candidate_limit)
     fused: dict[str, dict] = {}
     for source, source_name in ((vector_results, "vector"), (lexical_results, "bm25")):
