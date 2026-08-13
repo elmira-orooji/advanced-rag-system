@@ -30,6 +30,19 @@ class IssueItem(BaseModel):
     occurred_at: datetime
 
 
+class NegativeFeedbackItem(BaseModel):
+    feedback_id: uuid.UUID
+    answer_id: uuid.UUID
+    document_set_id: uuid.UUID | None
+    document_set_name: str | None
+    question: str
+    answer: str
+    reason: str | None
+    comment: str | None
+    evaluation_case_id: uuid.UUID | None
+    created_at: datetime
+
+
 class AnalyticsOverview(BaseModel):
     period_days: int
     total_queries: int

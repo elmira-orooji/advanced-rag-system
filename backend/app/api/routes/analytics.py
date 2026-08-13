@@ -1,7 +1,8 @@
 from collections import Counter, defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Query
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -13,9 +14,29 @@ from app.models.connector import Connector
 from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.models.user import User
-from app.schemas.analytics import AnalyticsOverview, DailyMetric, FeedbackBreakdown, IssueItem, RankedMetric
+from app.models.evaluation_case import EvaluationCase
+from app.schemas.analytics import AnalyticsOverview, DailyMetric, FeedbackBreakdown, IssueItem, NegativeFeedbackItem, RankedMetric
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
+
+
+@router.get("/negative-feedback", response_model=list[NegativeFeedbackItem])
+def negative_feedback(db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    rows = db.execute(select(AnswerFeedback, AnswerRecord, DocumentSet.name).join(AnswerRecord, AnswerRecord.id == AnswerFeedback.answer_id).join(User, User.id == AnswerRecord.user_id).outerjoin(DocumentSet, DocumentSet.id == AnswerRecord.document_set_id).where(AnswerFeedback.rating == -1, User.organization_id == admin.organization_id).order_by(AnswerFeedback.created_at.desc()).limit(100)).all()
+    return [NegativeFeedbackItem(feedback_id=feedback.id, answer_id=answer.id, document_set_id=answer.document_set_id, document_set_name=set_name, question=answer.question, answer=answer.answer, reason=feedback.reason, comment=feedback.comment, evaluation_case_id=feedback.evaluation_case_id, created_at=feedback.created_at) for feedback, answer, set_name in rows]
+
+
+@router.post("/negative-feedback/{feedback_id}/evaluation-case", response_model=NegativeFeedbackItem)
+def feedback_to_case(feedback_id: uuid.UUID, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    row = db.execute(select(AnswerFeedback, AnswerRecord, DocumentSet).join(AnswerRecord, AnswerRecord.id == AnswerFeedback.answer_id).join(User, User.id == AnswerRecord.user_id).outerjoin(DocumentSet, DocumentSet.id == AnswerRecord.document_set_id).where(AnswerFeedback.id == feedback_id, AnswerFeedback.rating == -1, User.organization_id == admin.organization_id)).first()
+    if row is None: raise HTTPException(status_code=404, detail="Negative feedback not found")
+    feedback, answer, document_set = row
+    if document_set is None: raise HTTPException(status_code=422, detail="Feedback is not associated with a knowledge base")
+    if feedback.evaluation_case_id is None:
+        keywords = [value.strip() for value in (feedback.comment or "").split(",") if len(value.strip()) >= 2][:20]
+        case = EvaluationCase(document_set_id=document_set.id, created_by_id=admin.id, question=answer.question, expected_answer=None, expected_keywords=keywords, relevant_chunk_ids=[])
+        db.add(case); db.flush(); feedback.evaluation_case_id = case.id; db.commit(); db.refresh(feedback)
+    return NegativeFeedbackItem(feedback_id=feedback.id, answer_id=answer.id, document_set_id=answer.document_set_id, document_set_name=document_set.name, question=answer.question, answer=answer.answer, reason=feedback.reason, comment=feedback.comment, evaluation_case_id=feedback.evaluation_case_id, created_at=feedback.created_at)
 
 
 def _rate(numerator: int, denominator: int) -> float:
