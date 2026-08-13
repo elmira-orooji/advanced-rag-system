@@ -75,6 +75,7 @@ class ChunkResponse(BaseModel):
     parent_content: str
     token_count: int | None
     created_at: datetime
+    page_number: int | None = None
 
 
 class DocumentDetail(DocumentResponse):

@@ -3,6 +3,8 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi.responses import FileResponse
+from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
@@ -402,6 +404,23 @@ def _get_document_directory(document: Document) -> Path | None:
     return document_dir
 
 
+def _document_source_path(document: Document) -> Path:
+    if not document.storage_path:
+        raise HTTPException(status_code=404, detail="Original document is unavailable")
+    _get_document_directory(document)
+    source_path = (BASE_DIR / document.storage_path).resolve()
+    if not source_path.is_file():
+        raise HTTPException(status_code=404, detail="Original document is unavailable")
+    return source_path
+
+
+@router.get("/{document_id}/content")
+def get_document_content(document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    document = require_document_access(db, user, document_id)
+    source_path = _document_source_path(document)
+    return FileResponse(source_path, media_type=document.content_type or "application/octet-stream", filename=document.filename, content_disposition_type="inline")
+
+
 @router.get("/{document_id}", response_model=DocumentDetail)
 def get_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     statement = (
@@ -429,4 +448,13 @@ def get_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: Us
         if not allowed:
             raise HTTPException(status_code=403, detail="You do not have access to this document")
 
+    if document.content_type == "application/pdf" and document.storage_path:
+        try:
+            pages = [" ".join((page.extract_text() or "").split()).lower() for page in PdfReader(_document_source_path(document)).pages]
+            for chunk in document.chunks:
+                needle = " ".join(chunk.content.split()).lower()[:180]
+                chunk.page_number = next((index for index, page in enumerate(pages, 1) if needle and needle in page), None)
+        except Exception:
+            for chunk in document.chunks:
+                chunk.page_number = None
     return document
