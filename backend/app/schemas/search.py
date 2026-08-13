@@ -49,3 +49,26 @@ class PlaygroundResponse(BaseModel):
     scoped_document_count: int
     result_count: int
     results: list[PlaygroundHit]
+
+
+class TraceStage(BaseModel):
+    key: str
+    duration_ms: float
+    input_count: int
+    output_count: int
+
+
+class TraceCitation(BaseModel):
+    id: int
+    chunk_id: uuid.UUID
+    filename: str
+
+
+class PipelineTraceResponse(BaseModel):
+    question: str
+    answer: str
+    grounded: bool
+    total_duration_ms: float
+    stages: list[TraceStage]
+    results: list[PlaygroundHit]
+    citations: list[TraceCitation]

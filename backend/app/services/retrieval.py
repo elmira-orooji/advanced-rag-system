@@ -1,6 +1,7 @@
 import math
 import re
 import uuid
+from time import perf_counter
 from collections import Counter
 
 from sqlalchemy import select
@@ -105,7 +106,7 @@ def _expand_parents(rows: list[tuple[Chunk, str]], ranked_children: list[dict], 
     return expanded
 
 
-def hybrid_search(db: Session, query: str, limit: int, document_id: str | None = None, document_ids: list[str] | None = None) -> list[dict]:
+def hybrid_search(db: Session, query: str, limit: int, document_id: str | None = None, document_ids: list[str] | None = None, trace: dict | None = None) -> list[dict]:
     if document_id:
         scoped_ids = [uuid.UUID(document_id)]
     elif document_ids is not None:
@@ -115,9 +116,13 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
     else:
         raise ValueError("Hybrid search requires an explicit document scope")
     candidate_limit = min(max(limit * 4, 20), 80)
+    started = perf_counter()
     vector_results = QdrantClient().search(query=query, limit=candidate_limit, document_id=document_id, document_ids=document_ids)
+    vector_ms = round((perf_counter() - started) * 1000, 2)
+    started = perf_counter()
     rows = list(db.execute(select(Chunk, Document.filename).join(Document, Document.id == Chunk.document_id).where(Chunk.document_id.in_(scoped_ids), Chunk.is_active.is_(True))).all())
     lexical_results = _bm25(query, rows, candidate_limit)
+    lexical_ms = round((perf_counter() - started) * 1000, 2)
     fused: dict[str, dict] = {}
     for source, source_name in ((vector_results, "vector"), (lexical_results, "bm25")):
         for rank, result in enumerate(source, 1):
@@ -134,5 +139,10 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
     ranked = sorted(fused.values(), key=lambda item: item["score"], reverse=True)
     maximum = 2 / (RRF_K + 1)
     candidates = [{**item["point"], "score": min(item["score"] / maximum, 1.0), "retrieval": {"method": "hybrid", "vector_rank": item["vector_rank"], "bm25_rank": item["lexical_rank"]}} for item in ranked]
+    started = perf_counter()
     reranked_children = _rerank(query, candidates, candidate_limit)
-    return _expand_parents(rows, reranked_children, limit)
+    rerank_ms = round((perf_counter() - started) * 1000, 2)
+    expanded = _expand_parents(rows, reranked_children, limit)
+    if trace is not None:
+        trace.update({"vector_ms": vector_ms, "bm25_ms": lexical_ms, "rerank_ms": rerank_ms, "vector_count": len(vector_results), "bm25_count": len(lexical_results), "fused_count": len(candidates), "reranked_count": len(reranked_children), "answer_context_count": len(expanded)})
+    return expanded
