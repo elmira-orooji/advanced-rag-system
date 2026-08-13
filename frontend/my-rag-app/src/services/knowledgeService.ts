@@ -19,6 +19,20 @@ export interface KnowledgeDocument {
   updated_at: string;
 }
 
+export interface DocumentChunk {
+  id: string;
+  chunk_index: number;
+  content: string;
+  parent_index: number;
+  parent_content: string;
+  token_count: number | null;
+  created_at: string;
+}
+
+export interface DocumentDetail extends KnowledgeDocument {
+  chunks: DocumentChunk[];
+}
+
 export interface MetadataFilters {
   authors?: string[];
   languages?: string[];
@@ -98,6 +112,7 @@ export const knowledgeService = {
   deleteSet: (id: string) => request<void>(`/document-sets/${id}`, { method: "DELETE", headers: headers() }),
   listDocuments: (setId?: string) =>
     request<KnowledgeDocument[]>(`/documents?limit=100${setId ? `&document_set_id=${encodeURIComponent(setId)}` : ""}`, { headers: headers() }),
+  getDocument: (documentId: string) => request<DocumentDetail>(`/documents/${documentId}`, { headers: headers() }),
   uploadDocument: async (file: File, setId: string) => {
     const form = new FormData();
     form.append("file", file);
