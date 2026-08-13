@@ -27,6 +27,7 @@ export interface DocumentChunk {
   parent_content: string;
   token_count: number | null;
   created_at: string;
+  page_number: number | null;
 }
 
 export interface DocumentDetail extends KnowledgeDocument {
@@ -113,6 +114,11 @@ export const knowledgeService = {
   listDocuments: (setId?: string) =>
     request<KnowledgeDocument[]>(`/documents?limit=100${setId ? `&document_set_id=${encodeURIComponent(setId)}` : ""}`, { headers: headers() }),
   getDocument: (documentId: string) => request<DocumentDetail>(`/documents/${documentId}`, { headers: headers() }),
+  getDocumentContent: async (documentId: string) => {
+    const response = await fetch(`${API_URL}/documents/${documentId}/content`, { headers: headers() });
+    if (!response.ok) throw new Error("Document preview is unavailable");
+    return response.blob();
+  },
   uploadDocument: async (file: File, setId: string) => {
     const form = new FormData();
     form.append("file", file);
