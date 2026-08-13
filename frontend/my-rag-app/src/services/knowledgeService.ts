@@ -97,6 +97,9 @@ export interface PipelineTraceResponse {
   citations: Array<{ id: number; chunk_id: string; filename: string }>;
 }
 export interface EvaluationCase { id: string; document_set_id: string; question: string; expected_answer: string | null; expected_keywords: string[]; relevant_chunk_ids: string[]; created_at: string; updated_at: string; }
+export interface RetrieverConfig { name: string; vector_weight: number; bm25_weight: number; use_reranker: boolean; top_k: number; }
+export interface RetrieverVariant { config: RetrieverConfig; duration_ms: number; answer: string; grounded: boolean; results: PlaygroundResult[]; citations: Array<{ id: number; chunk_id: string; filename: string }>; }
+export interface RetrieverComparison { question: string; overlap_count: number; rank_changes: Record<string, number>; variant_a: RetrieverVariant; variant_b: RetrieverVariant; }
 
 function headers(json = false) {
   const token = authService.getSession()?.accessToken;
@@ -152,6 +155,8 @@ export const knowledgeService = {
     request<PlaygroundResponse>("/search/playground", { method: "POST", headers: headers(true), body: JSON.stringify({ query, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, limit, filters: filters && Object.keys(filters).length ? filters : null }) }),
   tracePipeline: (query: string, documentSetId: string, limit: number, documentIds?: string[], filters?: MetadataFilters) =>
     request<PipelineTraceResponse>("/search/trace", { method: "POST", headers: headers(true), body: JSON.stringify({ query, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, limit, filters: filters && Object.keys(filters).length ? filters : null }) }),
+  compareRetrievers: (query: string, documentSetId: string, configA: RetrieverConfig, configB: RetrieverConfig, documentIds?: string[], filters?: MetadataFilters) =>
+    request<RetrieverComparison>("/search/compare", { method: "POST", headers: headers(true), body: JSON.stringify({ query, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, limit: Math.max(configA.top_k, configB.top_k), filters: filters && Object.keys(filters).length ? filters : null, config_a: configA, config_b: configB }) }),
   listEvaluationCases: (setId: string) => request<EvaluationCase[]>(`/document-sets/${setId}/evaluation-cases`, { headers: headers() }),
   createEvaluationCase: (setId: string, data: { question: string; expected_answer?: string | null; expected_keywords: string[]; relevant_chunk_ids: string[] }) => request<EvaluationCase>(`/document-sets/${setId}/evaluation-cases`, { method: "POST", headers: headers(true), body: JSON.stringify(data) }),
   deleteEvaluationCase: (setId: string, caseId: string) => request<void>(`/document-sets/${setId}/evaluation-cases/${caseId}`, { method: "DELETE", headers: headers() }),
