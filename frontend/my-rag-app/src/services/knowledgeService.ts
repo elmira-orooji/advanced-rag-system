@@ -29,6 +29,8 @@ export interface DocumentChunk {
   created_at: string;
   page_number: number | null;
   is_active: boolean;
+  keywords: string[];
+  suggested_questions: string[];
 }
 
 export interface DocumentDetail extends KnowledgeDocument {
@@ -125,6 +127,8 @@ export const knowledgeService = {
   },
   updateChunk: (documentId: string, chunkId: string, data: { content?: string; is_active?: boolean }) =>
     request<DocumentChunk>(`/documents/${documentId}/chunks/${chunkId}`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
+  enrichChunk: (documentId: string, chunkId: string) =>
+    request<DocumentChunk>(`/documents/${documentId}/chunks/${chunkId}/enrich`, { method: "POST", headers: headers() }),
   uploadDocument: async (file: File, setId: string) => {
     const form = new FormData();
     form.append("file", file);
