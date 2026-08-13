@@ -28,6 +28,7 @@ export interface DocumentChunk {
   token_count: number | null;
   created_at: string;
   page_number: number | null;
+  is_active: boolean;
 }
 
 export interface DocumentDetail extends KnowledgeDocument {
@@ -119,6 +120,8 @@ export const knowledgeService = {
     if (!response.ok) throw new Error("Document preview is unavailable");
     return response.blob();
   },
+  updateChunk: (documentId: string, chunkId: string, data: { content?: string; is_active?: boolean }) =>
+    request<DocumentChunk>(`/documents/${documentId}/chunks/${chunkId}`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
   uploadDocument: async (file: File, setId: string) => {
     const form = new FormData();
     form.append("file", file);
