@@ -33,6 +33,7 @@ from app.services.document_extractor import ExtractionError, extract_text
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
 from app.services.document_jobs import enqueue_document_job
+from app.services.chunk_enrichment import enrich_chunk
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 ALLOWED_FILE_TYPES = {
@@ -60,6 +61,7 @@ def update_chunk(document_id: uuid.UUID, chunk_id: uuid.UUID, payload: ChunkUpda
     if payload.content is not None:
         chunk.content = payload.content
         chunk.token_count = len(payload.content.split())
+        chunk.keywords, chunk.suggested_questions = enrich_chunk(payload.content)
     if payload.is_active is not None:
         chunk.is_active = payload.is_active
     try:
@@ -73,6 +75,18 @@ def update_chunk(document_id: uuid.UUID, chunk_id: uuid.UUID, payload: ChunkUpda
     except SQLAlchemyError as exc:
         db.rollback()
         raise HTTPException(status_code=500, detail="Could not update chunk") from exc
+    return chunk
+
+
+@router.post("/{document_id}/chunks/{chunk_id}/enrich", response_model=ChunkResponse)
+def regenerate_chunk_enrichment(document_id: uuid.UUID, chunk_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin access is required")
+    chunk = db.scalar(select(Chunk).join(Document, Document.id == Chunk.document_id).where(Chunk.id == chunk_id, Chunk.document_id == document_id, Document.organization_id == user.organization_id))
+    if chunk is None:
+        raise HTTPException(status_code=404, detail="Chunk not found")
+    chunk.keywords, chunk.suggested_questions = enrich_chunk(chunk.content)
+    db.commit(); db.refresh(chunk)
     return chunk
 
 
@@ -337,7 +351,7 @@ def create_document_chunks(
         db.flush()
         document.chunks.clear()
         document.chunks.extend(
-            Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent)
+            Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent, keywords=enrich_chunk(child)[0], suggested_questions=enrich_chunk(child)[1])
             for index, (child, parent_index, parent) in enumerate(contents)
         )
         document.status = "chunked"

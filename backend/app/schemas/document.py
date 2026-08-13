@@ -77,6 +77,8 @@ class ChunkResponse(BaseModel):
     created_at: datetime
     page_number: int | None = None
     is_active: bool
+    keywords: list[str]
+    suggested_questions: list[str]
 
 
 class ChunkUpdate(BaseModel):

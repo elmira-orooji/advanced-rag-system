@@ -21,6 +21,7 @@ from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
+from app.services.chunk_enrichment import enrich_chunk
 
 MAX_REMOTE_BYTES = 2 * 1024 * 1024
 MAX_GITHUB_FILES = 40
@@ -113,7 +114,7 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
         directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
         document.extracted_text_path = extracted.relative_to(BASE_DIR).as_posix(); document.filename = title; document.processing_error = None
         configured_chunks = hierarchical_chunks(text, child_size=document_set.child_chunk_size, child_overlap=document_set.chunk_overlap, parent_size=document_set.parent_chunk_size)
-        document.chunks = [Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent) for index, (child, parent_index, parent) in enumerate(configured_chunks)]
+        document.chunks = [Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent, keywords=enrich_chunk(child)[0], suggested_questions=enrich_chunk(child)[1]) for index, (child, parent_index, parent) in enumerate(configured_chunks)]
         db.flush(); qdrant.replace_document_chunks(str(document.id), document.filename, [{"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content} for chunk in document.chunks]); document.status = "indexed"
         if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
         else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1

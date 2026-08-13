@@ -13,6 +13,7 @@ from app.models.processing_job import ProcessingJob
 from app.services.document_extractor import extract_text
 from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
+from app.services.chunk_enrichment import enrich_chunk
 
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="document-jobs")
 
@@ -73,7 +74,7 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             for chunk in list(document.chunks):
                 db.delete(chunk)
             db.flush()
-            document.chunks = [Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent) for index, (child, parent_index, parent) in enumerate(contents)]
+            document.chunks = [Chunk(chunk_index=index, content=child, parent_index=parent_index, parent_content=parent, keywords=enrich_chunk(child)[0], suggested_questions=enrich_chunk(child)[1]) for index, (child, parent_index, parent) in enumerate(contents)]
             db.flush()
             _progress(db, document, job, 65, "indexing")
             client = QdrantClient()
