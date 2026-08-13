@@ -106,7 +106,7 @@ def _expand_parents(rows: list[tuple[Chunk, str]], ranked_children: list[dict], 
     return expanded
 
 
-def hybrid_search(db: Session, query: str, limit: int, document_id: str | None = None, document_ids: list[str] | None = None, trace: dict | None = None) -> list[dict]:
+def hybrid_search(db: Session, query: str, limit: int, document_id: str | None = None, document_ids: list[str] | None = None, trace: dict | None = None, vector_weight: float = 1.0, bm25_weight: float = 1.0, use_reranker: bool = True) -> list[dict]:
     if document_id:
         scoped_ids = [uuid.UUID(document_id)]
     elif document_ids is not None:
@@ -128,7 +128,7 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
         for rank, result in enumerate(source, 1):
             chunk_id = str(result.get("payload", {}).get("chunk_id") or result.get("id"))
             item = fused.setdefault(chunk_id, {"point": result, "score": 0.0, "vector_rank": None, "lexical_rank": None})
-            item["score"] += 1 / (RRF_K + rank)
+            item["score"] += (vector_weight if source_name == "vector" else bm25_weight) / (RRF_K + rank)
             if source_name == "vector":
                 item["vector_rank"] = rank
                 item["point"] = result
@@ -137,10 +137,10 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
                 if item["vector_rank"] is None:
                     item["point"] = result
     ranked = sorted(fused.values(), key=lambda item: item["score"], reverse=True)
-    maximum = 2 / (RRF_K + 1)
+    maximum = (vector_weight + bm25_weight) / (RRF_K + 1)
     candidates = [{**item["point"], "score": min(item["score"] / maximum, 1.0), "retrieval": {"method": "hybrid", "vector_rank": item["vector_rank"], "bm25_rank": item["lexical_rank"]}} for item in ranked]
     started = perf_counter()
-    reranked_children = _rerank(query, candidates, candidate_limit)
+    reranked_children = _rerank(query, candidates, candidate_limit) if use_reranker else candidates[:candidate_limit]
     rerank_ms = round((perf_counter() - started) * 1000, 2)
     expanded = _expand_parents(rows, reranked_children, limit)
     if trace is not None:

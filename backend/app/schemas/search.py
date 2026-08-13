@@ -72,3 +72,33 @@ class PipelineTraceResponse(BaseModel):
     stages: list[TraceStage]
     results: list[PlaygroundHit]
     citations: list[TraceCitation]
+
+
+class RetrieverConfig(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    vector_weight: float = Field(default=1.0, ge=0, le=3)
+    bm25_weight: float = Field(default=1.0, ge=0, le=3)
+    use_reranker: bool = True
+    top_k: int = Field(default=5, ge=1, le=8)
+
+
+class RetrieverComparisonRequest(SearchRequest):
+    config_a: RetrieverConfig
+    config_b: RetrieverConfig
+
+
+class RetrieverVariantResult(BaseModel):
+    config: RetrieverConfig
+    duration_ms: float
+    answer: str
+    grounded: bool
+    results: list[PlaygroundHit]
+    citations: list[TraceCitation]
+
+
+class RetrieverComparisonResponse(BaseModel):
+    question: str
+    overlap_count: int
+    rank_changes: dict[str, int]
+    variant_a: RetrieverVariantResult
+    variant_b: RetrieverVariantResult

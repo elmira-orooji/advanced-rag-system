@@ -12,7 +12,7 @@ from app.db.database import get_db
 from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.models.user import User
-from app.schemas.search import PipelineTraceResponse, PlaygroundHit, PlaygroundResponse, RetrievalDiagnostics, SearchHit, SearchRequest, SearchResponse, TraceCitation, TraceStage
+from app.schemas.search import PipelineTraceResponse, PlaygroundHit, PlaygroundResponse, RetrievalDiagnostics, RetrieverComparisonRequest, RetrieverComparisonResponse, RetrieverVariantResult, SearchHit, SearchRequest, SearchResponse, TraceCitation, TraceStage
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.retrieval import hybrid_search
@@ -115,3 +115,34 @@ def pipeline_trace(payload: SearchRequest, db: Session = Depends(get_db), user: 
         TraceStage(key="answer", duration_ms=answer_ms, input_count=len(results), output_count=len(citations)),
     ]
     return PipelineTraceResponse(question=payload.query, answer=answer, grounded=bool(citations), total_duration_ms=round((perf_counter() - total_started) * 1000, 2), stages=stages, results=results, citations=citations)
+
+
+def _run_variant(db: Session, payload: RetrieverComparisonRequest, document_id: str | None, document_ids: list[str] | None, config) -> RetrieverVariantResult:
+    started = perf_counter()
+    points = hybrid_search(db, payload.query, config.top_k, document_id=document_id, document_ids=document_ids, vector_weight=config.vector_weight, bm25_weight=config.bm25_weight, use_reranker=config.use_reranker)
+    results = [_playground_hit(point) for point in points]
+    if results:
+        answer = OpenRouterClient().answer(payload.query, [result.model_dump(mode="json") for result in results])
+    else:
+        answer = "No relevant information was found in the indexed documents."
+    used = {int(value) for value in re.findall(r"\[\s*(?:Source\s*)?(\d+)\s*\]", answer, flags=re.IGNORECASE) if 1 <= int(value) <= len(results)}
+    answer = re.sub(r"\[\s*Source\s*(\d+)\s*\]", r"[\1]", answer, flags=re.IGNORECASE)
+    citations = [TraceCitation(id=index, chunk_id=result.chunk_id, filename=result.filename) for index, result in enumerate(results, 1) if index in used]
+    return RetrieverVariantResult(config=config, duration_ms=round((perf_counter() - started) * 1000, 2), answer=answer, grounded=bool(citations), results=results, citations=citations)
+
+
+@router.post("/compare", response_model=RetrieverComparisonResponse)
+def compare_retrievers(payload: RetrieverComparisonRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if payload.config_a.vector_weight + payload.config_a.bm25_weight <= 0 or payload.config_b.vector_weight + payload.config_b.bm25_weight <= 0:
+        raise HTTPException(status_code=422, detail="At least one retrieval weight must be greater than zero")
+    document_id, document_ids, _ = _scope(payload, db, user)
+    try:
+        QdrantClient().ensure_collection()
+        variant_a = _run_variant(db, payload, document_id, document_ids, payload.config_a)
+        variant_b = _run_variant(db, payload, document_id, document_ids, payload.config_b)
+    except (QdrantError, OpenRouterError) as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    ranks_a = {str(item.chunk_id): index for index, item in enumerate(variant_a.results, 1)}
+    ranks_b = {str(item.chunk_id): index for index, item in enumerate(variant_b.results, 1)}
+    common = ranks_a.keys() & ranks_b.keys()
+    return RetrieverComparisonResponse(question=payload.query, overlap_count=len(common), rank_changes={chunk_id: ranks_a[chunk_id] - ranks_b[chunk_id] for chunk_id in common}, variant_a=variant_a, variant_b=variant_b)
