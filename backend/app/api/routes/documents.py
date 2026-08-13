@@ -249,7 +249,10 @@ async def ingest_document(
         db.commit()
         db.refresh(document)
         db.refresh(job)
-        background_tasks.add_task(enqueue_document_job, job.id, chunking.chunk_size, chunking.overlap)
+        if document_set_id is not None:
+            background_tasks.add_task(enqueue_document_job, job.id, target_set.child_chunk_size, target_set.chunk_overlap, target_set.parent_chunk_size)
+        else:
+            background_tasks.add_task(enqueue_document_job, job.id, chunking.chunk_size, chunking.overlap)
         return IngestResponse(
             **DocumentResponse.model_validate(document).model_dump(),
             job_id=job.id,

@@ -17,8 +17,8 @@ from app.services.text_chunker import hierarchical_chunks
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="document-jobs")
 
 
-def enqueue_document_job(job_id: uuid.UUID, chunk_size: int = 1000, overlap: int = 200) -> None:
-    _executor.submit(process_document_job, job_id, chunk_size, overlap)
+def enqueue_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overlap: int | None = None, parent_size: int | None = None) -> None:
+    _executor.submit(process_document_job, job_id, chunk_size, overlap, parent_size)
 
 
 def recover_document_jobs() -> int:
@@ -42,12 +42,12 @@ def _progress(db, document: Document, job: ProcessingJob, value: int, stage: str
     db.commit()
 
 
-def process_document_job(job_id: uuid.UUID, chunk_size: int = 1000, overlap: int = 200) -> None:
+def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overlap: int | None = None, parent_size: int | None = None) -> None:
     with SessionLocal() as db:
         job = db.get(ProcessingJob, job_id)
         if job is None or job.status not in {"queued", "retrying"}:
             return
-        document = db.scalar(select(Document).options(selectinload(Document.chunks)).where(Document.id == job.document_id))
+        document = db.scalar(select(Document).options(selectinload(Document.chunks), selectinload(Document.document_sets)).where(Document.id == job.document_id))
         if document is None:
             return
         job.status = "running"
@@ -55,6 +55,10 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int = 1000, overlap: int
         job.started_at = datetime.now(timezone.utc)
         _progress(db, document, job, 10, "extracting")
         try:
+            settings = document.document_sets[0] if document.document_sets else None
+            chunk_size = chunk_size or (settings.child_chunk_size if settings else 800)
+            overlap = overlap if overlap is not None else (settings.chunk_overlap if settings else 120)
+            parent_size = parent_size or (settings.parent_chunk_size if settings else 2400)
             if not document.storage_path:
                 raise RuntimeError("Document file is unavailable")
             source_path = BASE_DIR / document.storage_path
@@ -63,7 +67,7 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int = 1000, overlap: int
             extracted_path.write_text(text, encoding="utf-8")
             document.extracted_text_path = extracted_path.relative_to(BASE_DIR).as_posix()
             _progress(db, document, job, 35, "chunking")
-            contents = hierarchical_chunks(text, child_size=min(chunk_size, 1000), child_overlap=min(overlap, 200))
+            contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
             if not contents:
                 raise RuntimeError("Document contains no text to index")
             for chunk in list(document.chunks):

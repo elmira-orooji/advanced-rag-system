@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, String, Table, Column, UniqueConstraint, func
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Table, Column, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -28,6 +28,9 @@ class DocumentSet(Base):
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="RESTRICT"), index=True, nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False, index=True)
     description: Mapped[str | None] = mapped_column(String(500))
+    child_chunk_size: Mapped[int] = mapped_column(Integer, default=800, nullable=False)
+    chunk_overlap: Mapped[int] = mapped_column(Integer, default=120, nullable=False)
+    parent_chunk_size: Mapped[int] = mapped_column(Integer, default=2400, nullable=False)
     created_by_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=False, index=True
     )

@@ -48,6 +48,9 @@ def _response(document_set: DocumentSet, document_count: int, indexed_count: int
         document_count=document_count,
         indexed_document_count=indexed_count,
         access_level=access_level,
+        child_chunk_size=document_set.child_chunk_size,
+        chunk_overlap=document_set.chunk_overlap,
+        parent_chunk_size=document_set.parent_chunk_size,
         created_at=document_set.created_at,
         updated_at=document_set.updated_at,
     )
@@ -89,6 +92,9 @@ def create_document_set(
         description=payload.description.strip() if payload.description else None,
         created_by_id=user.id,
         organization_id=user.organization_id,
+        child_chunk_size=payload.child_chunk_size,
+        chunk_overlap=payload.chunk_overlap,
+        parent_chunk_size=payload.parent_chunk_size,
     )
     try:
         db.add(item)
@@ -127,6 +133,12 @@ def update_document_set(
         item.name = payload.name.strip()
     if "description" in payload.model_fields_set:
         item.description = payload.description.strip() if payload.description else None
+    for field in ("child_chunk_size", "chunk_overlap", "parent_chunk_size"):
+        value = getattr(payload, field)
+        if value is not None:
+            setattr(item, field, value)
+    if item.chunk_overlap >= item.child_chunk_size or item.parent_chunk_size < item.child_chunk_size:
+        raise HTTPException(status_code=422, detail="Invalid chunking settings")
     try:
         db.commit()
         db.refresh(item)
