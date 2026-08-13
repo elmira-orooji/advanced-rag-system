@@ -17,6 +17,7 @@ from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.retrieval import hybrid_search
+from app.services.usage_tracking import record_usage
 
 router = APIRouter(prefix="/rag", tags=["rag"])
 
@@ -111,7 +112,9 @@ def answer_question(
 
     contexts = [source.model_dump(mode="json") for source in sources]
     try:
-        answer = OpenRouterClient().answer(payload.question, contexts)
+        llm_result = OpenRouterClient().answer_with_usage(payload.question, contexts)
+        answer = llm_result.content
+        record_usage(db, user.id, payload.document_set_id, "rag_answer", llm_result)
     except OpenRouterError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

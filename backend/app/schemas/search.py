@@ -64,6 +64,15 @@ class TraceCitation(BaseModel):
     filename: str
 
 
+class UsageMetrics(BaseModel):
+    model: str
+    latency_ms: float
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    estimated_cost_usd: float
+
+
 class PipelineTraceResponse(BaseModel):
     question: str
     answer: str
@@ -72,6 +81,7 @@ class PipelineTraceResponse(BaseModel):
     stages: list[TraceStage]
     results: list[PlaygroundHit]
     citations: list[TraceCitation]
+    usage: UsageMetrics | None = None
 
 
 class RetrieverConfig(BaseModel):
@@ -94,6 +104,7 @@ class RetrieverVariantResult(BaseModel):
     grounded: bool
     results: list[PlaygroundHit]
     citations: list[TraceCitation]
+    usage: UsageMetrics | None = None
 
 
 class RetrieverComparisonResponse(BaseModel):

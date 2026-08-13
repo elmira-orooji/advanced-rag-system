@@ -12,10 +12,11 @@ from app.db.database import get_db
 from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.models.user import User
-from app.schemas.search import PipelineTraceResponse, PlaygroundHit, PlaygroundResponse, RetrievalDiagnostics, RetrieverComparisonRequest, RetrieverComparisonResponse, RetrieverVariantResult, SearchHit, SearchRequest, SearchResponse, TraceCitation, TraceStage
+from app.schemas.search import PipelineTraceResponse, PlaygroundHit, PlaygroundResponse, RetrievalDiagnostics, RetrieverComparisonRequest, RetrieverComparisonResponse, RetrieverVariantResult, SearchHit, SearchRequest, SearchResponse, TraceCitation, TraceStage, UsageMetrics
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.retrieval import hybrid_search
+from app.services.usage_tracking import record_usage
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -99,11 +100,13 @@ def pipeline_trace(payload: SearchRequest, db: Session = Depends(get_db), user: 
     answer_started = perf_counter()
     if results:
         try:
-            answer = OpenRouterClient().answer(payload.query, [result.model_dump(mode="json") for result in results])
+            llm_result = OpenRouterClient().answer_with_usage(payload.query, [result.model_dump(mode="json") for result in results])
+            answer = llm_result.content
+            record_usage(db, user.id, payload.document_set_id, "pipeline_trace", llm_result)
         except OpenRouterError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
     else:
-        answer = "No relevant information was found in the indexed documents."
+        answer = "No relevant information was found in the indexed documents."; llm_result = None
     answer_ms = round((perf_counter() - answer_started) * 1000, 2)
     used = {int(value) for value in re.findall(r"\[\s*(?:Source\s*)?(\d+)\s*\]", answer, flags=re.IGNORECASE) if 1 <= int(value) <= len(results)}
     answer = re.sub(r"\[\s*Source\s*(\d+)\s*\]", r"[\1]", answer, flags=re.IGNORECASE)
@@ -114,21 +117,24 @@ def pipeline_trace(payload: SearchRequest, db: Session = Depends(get_db), user: 
         TraceStage(key="rerank", duration_ms=metrics.get("rerank_ms", 0), input_count=metrics.get("fused_count", 0), output_count=len(results)),
         TraceStage(key="answer", duration_ms=answer_ms, input_count=len(results), output_count=len(citations)),
     ]
-    return PipelineTraceResponse(question=payload.query, answer=answer, grounded=bool(citations), total_duration_ms=round((perf_counter() - total_started) * 1000, 2), stages=stages, results=results, citations=citations)
+    db.commit()
+    return PipelineTraceResponse(question=payload.query, answer=answer, grounded=bool(citations), total_duration_ms=round((perf_counter() - total_started) * 1000, 2), stages=stages, results=results, citations=citations, usage=UsageMetrics(**llm_result.__dict__) if llm_result else None)
 
 
-def _run_variant(db: Session, payload: RetrieverComparisonRequest, document_id: str | None, document_ids: list[str] | None, config) -> RetrieverVariantResult:
+def _run_variant(db: Session, payload: RetrieverComparisonRequest, document_id: str | None, document_ids: list[str] | None, config, user: User) -> RetrieverVariantResult:
     started = perf_counter()
     points = hybrid_search(db, payload.query, config.top_k, document_id=document_id, document_ids=document_ids, vector_weight=config.vector_weight, bm25_weight=config.bm25_weight, use_reranker=config.use_reranker)
     results = [_playground_hit(point) for point in points]
     if results:
-        answer = OpenRouterClient().answer(payload.query, [result.model_dump(mode="json") for result in results])
+        llm_result = OpenRouterClient().answer_with_usage(payload.query, [result.model_dump(mode="json") for result in results])
+        answer = llm_result.content
+        record_usage(db, user.id, payload.document_set_id, "retriever_compare", llm_result)
     else:
-        answer = "No relevant information was found in the indexed documents."
+        answer = "No relevant information was found in the indexed documents."; llm_result = None
     used = {int(value) for value in re.findall(r"\[\s*(?:Source\s*)?(\d+)\s*\]", answer, flags=re.IGNORECASE) if 1 <= int(value) <= len(results)}
     answer = re.sub(r"\[\s*Source\s*(\d+)\s*\]", r"[\1]", answer, flags=re.IGNORECASE)
     citations = [TraceCitation(id=index, chunk_id=result.chunk_id, filename=result.filename) for index, result in enumerate(results, 1) if index in used]
-    return RetrieverVariantResult(config=config, duration_ms=round((perf_counter() - started) * 1000, 2), answer=answer, grounded=bool(citations), results=results, citations=citations)
+    return RetrieverVariantResult(config=config, duration_ms=round((perf_counter() - started) * 1000, 2), answer=answer, grounded=bool(citations), results=results, citations=citations, usage=UsageMetrics(**llm_result.__dict__) if llm_result else None)
 
 
 @router.post("/compare", response_model=RetrieverComparisonResponse)
@@ -138,11 +144,12 @@ def compare_retrievers(payload: RetrieverComparisonRequest, db: Session = Depend
     document_id, document_ids, _ = _scope(payload, db, user)
     try:
         QdrantClient().ensure_collection()
-        variant_a = _run_variant(db, payload, document_id, document_ids, payload.config_a)
-        variant_b = _run_variant(db, payload, document_id, document_ids, payload.config_b)
+        variant_a = _run_variant(db, payload, document_id, document_ids, payload.config_a, user)
+        variant_b = _run_variant(db, payload, document_id, document_ids, payload.config_b, user)
     except (QdrantError, OpenRouterError) as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     ranks_a = {str(item.chunk_id): index for index, item in enumerate(variant_a.results, 1)}
     ranks_b = {str(item.chunk_id): index for index, item in enumerate(variant_b.results, 1)}
     common = ranks_a.keys() & ranks_b.keys()
+    db.commit()
     return RetrieverComparisonResponse(question=payload.query, overlap_count=len(common), rank_changes={chunk_id: ranks_a[chunk_id] - ranks_b[chunk_id] for chunk_id in common}, variant_a=variant_a, variant_b=variant_b)

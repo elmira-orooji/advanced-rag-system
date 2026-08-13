@@ -1,15 +1,28 @@
 import json
+from dataclasses import dataclass
+from time import perf_counter
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
-from app.core.config import OPENROUTER_API_KEY, OPENROUTER_MODEL
+from app.core.config import OPENROUTER_API_KEY, OPENROUTER_INPUT_COST_PER_MILLION, OPENROUTER_MODEL, OPENROUTER_OUTPUT_COST_PER_MILLION
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 
 class OpenRouterError(RuntimeError):
     pass
+
+
+@dataclass
+class LLMResult:
+    content: str
+    model: str
+    latency_ms: float
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    estimated_cost_usd: float
 
 
 class OpenRouterClient:
@@ -26,6 +39,9 @@ class OpenRouterClient:
         history: list[dict[str, str]] | None = None,
         instructions: str | None = None,
     ) -> str:
+        return self.answer_with_usage(question, contexts, history, instructions).content
+
+    def answer_with_usage(self, question: str, contexts: list[dict[str, Any]], history: list[dict[str, str]] | None = None, instructions: str | None = None) -> LLMResult:
         context_text = "\n\n".join(
             f"[Source {index}]\n{item['content']}"
             for index, item in enumerate(contexts, start=1)
@@ -54,6 +70,7 @@ class OpenRouterClient:
         messages.extend((history or [])[-10:])
         messages.append({"role": "user", "content": prompt})
 
+        started = perf_counter()
         response = self._request(
             {
                 "model": self.model,
@@ -69,7 +86,12 @@ class OpenRouterClient:
             raise OpenRouterError("OpenRouter returned an invalid response") from exc
         if not isinstance(answer, str) or not answer.strip():
             raise OpenRouterError("OpenRouter returned an empty response")
-        return answer.strip()
+        usage = response.get("usage") or {}
+        prompt_tokens = int(usage.get("prompt_tokens") or 0)
+        completion_tokens = int(usage.get("completion_tokens") or 0)
+        total_tokens = int(usage.get("total_tokens") or prompt_tokens + completion_tokens)
+        cost = prompt_tokens * OPENROUTER_INPUT_COST_PER_MILLION / 1_000_000 + completion_tokens * OPENROUTER_OUTPUT_COST_PER_MILLION / 1_000_000
+        return LLMResult(content=answer.strip(), model=str(response.get("model") or self.model), latency_ms=round((perf_counter() - started) * 1000, 2), prompt_tokens=prompt_tokens, completion_tokens=completion_tokens, total_tokens=total_tokens, estimated_cost_usd=round(cost, 8))
 
     def rewrite_query(self, question: str, history: list[dict[str, str]]) -> str:
         recent = [item for item in history[-8:] if item.get("role") in {"user", "assistant"} and item.get("content")]
