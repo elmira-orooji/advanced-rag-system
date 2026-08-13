@@ -8,6 +8,7 @@ from app.api.routes import analytics_router, assistants_router, auth_router, cha
 from app.core.config import FRONTEND_ORIGINS
 from app.db.database import get_db
 from app.services.document_jobs import recover_document_jobs
+from app.services.connector_scheduler import start_connector_scheduler
 
 app = FastAPI(title="Advanced RAG API")
 app.add_middleware(
@@ -36,6 +37,7 @@ app.include_router(users_router, prefix="/api/v1")
 @app.on_event("startup")
 def resume_background_jobs() -> None:
     recover_document_jobs()
+    start_connector_scheduler()
 
 
 @app.get("/")
