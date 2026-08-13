@@ -1,5 +1,12 @@
 import argparse
 import getpass
+import sys
+from pathlib import Path
+
+# Allow this script to be executed directly from the backend directory.
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 from sqlalchemy import select
 
