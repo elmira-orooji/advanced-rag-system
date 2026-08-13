@@ -52,6 +52,9 @@ export interface DocumentSet {
   document_count: number;
   indexed_document_count: number;
   access_level: "view" | "edit" | "manage";
+  child_chunk_size: number;
+  chunk_overlap: number;
+  parent_chunk_size: number;
   created_at: string;
   updated_at: string;
 }
@@ -107,9 +110,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const knowledgeService = {
   listSets: () => request<DocumentSet[]>("/document-sets", { headers: headers() }),
-  createSet: (data: { name: string; description?: string }) =>
+  createSet: (data: { name: string; description?: string; child_chunk_size?: number; chunk_overlap?: number; parent_chunk_size?: number }) =>
     request<DocumentSet>("/document-sets", { method: "POST", headers: headers(true), body: JSON.stringify(data) }),
-  updateSet: (id: string, data: { name?: string; description?: string | null }) =>
+  updateSet: (id: string, data: { name?: string; description?: string | null; child_chunk_size?: number; chunk_overlap?: number; parent_chunk_size?: number }) =>
     request<DocumentSet>(`/document-sets/${id}`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
   deleteSet: (id: string) => request<void>(`/document-sets/${id}`, { method: "DELETE", headers: headers() }),
   listDocuments: (setId?: string) =>
