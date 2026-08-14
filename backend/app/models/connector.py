@@ -13,6 +13,7 @@ class Connector(Base):
     connector_type: Mapped[str] = mapped_column(String(20), nullable=False)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     source_url: Mapped[str] = mapped_column(String(1000), nullable=False)
+    webhook_secret_hash: Mapped[str | None] = mapped_column(String(64))
     status: Mapped[str] = mapped_column(String(30), default="pending", nullable=False)
     last_error: Mapped[str | None] = mapped_column(String(500))
     last_synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

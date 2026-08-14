@@ -258,3 +258,40 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
     for document_dir in removed_directories:
         if document_dir.is_dir(): shutil.rmtree(document_dir, ignore_errors=True)
     return result
+
+
+def ingest_webhook_event(db: Session, connector: Connector, action: str, external_id: str, title: str | None = None, content: str | None = None, source_url: str | None = None) -> str:
+    """Apply one webhook event without treating omitted remote items as deleted."""
+    if connector.connector_type != "webhook": raise ConnectorSyncError("Connector does not accept webhook events")
+    item = db.scalar(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id, ConnectorItem.external_id == external_id))
+    qdrant = QdrantClient(); qdrant.ensure_collection()
+    if action == "delete":
+        if item is None: return "not_found"
+        document = db.get(Document, item.document_id)
+        if document is not None:
+            other_sets = [value for value in document.document_sets if value.id != connector.document_set_id]
+            if other_sets: document.document_sets = other_sets; db.delete(item)
+            else: qdrant.delete_document(str(document.id)); directory = UPLOAD_DIR / str(document.id); db.delete(document); db.commit(); shutil.rmtree(directory, ignore_errors=True); return "deleted"
+        else: db.delete(item)
+        db.commit(); return "deleted"
+    text = (content or "").strip(); digest = hashlib.sha256(text.encode()).hexdigest()
+    if item and item.content_hash == digest: return "unchanged"
+    document_set = db.get(DocumentSet, connector.document_set_id)
+    if document_set is None: raise ConnectorSyncError("Knowledge base no longer exists")
+    created = item is None
+    document = db.get(Document, item.document_id) if item else None
+    if document is None:
+        document = Document(organization_id=document_set.organization_id, filename=(title or external_id)[:255], content_type="text/plain", status="chunked", source_type="webhook", tags=[])
+        db.add(document); db.flush(); document.document_sets.append(document_set)
+    directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
+    document.extracted_text_path = extracted.relative_to(BASE_DIR).as_posix(); document.filename = (title or external_id)[:255]; document.processing_error = None
+    next_chunks, changed_ids, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
+    for chunk in list(document.chunks):
+        if str(chunk.id) in removed_ids: db.delete(chunk)
+    document.chunks = next_chunks; document.content_checksum = checksum(text); db.flush(); sync_incremental(qdrant, document, changed_ids, removed_ids); document.status = "indexed"
+    resolved_source = source_url or f"webhook:{external_id}"
+    if item: item.content_hash = digest; item.source_url = resolved_source; item.title = document.filename
+    else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=resolved_source, title=document.filename))
+    connector.status = "ready"; connector.last_synced_at = datetime.now(timezone.utc); connector.last_error = None
+    connector.last_sync_summary = {"discovered": 1, "created": int(created), "updated": int(not created), "unchanged": 0, "deleted": 0}
+    db.commit(); return "created" if created else "updated"

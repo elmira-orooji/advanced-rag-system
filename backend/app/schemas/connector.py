@@ -17,6 +17,34 @@ class ConnectorScheduleUpdate(BaseModel):
     schedule_interval: Literal["hourly", "daily", "weekly"] = "daily"
 
 
+class WebhookConnectorCreate(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+
+
+class WebhookConnectorCreated(BaseModel):
+    connector: "ConnectorResponse"
+    endpoint: str
+    secret: str
+
+
+class WebhookEvent(BaseModel):
+    action: Literal["upsert", "delete"] = "upsert"
+    external_id: str = Field(min_length=1, max_length=1000)
+    title: str | None = Field(default=None, max_length=255)
+    content: str | None = Field(default=None, max_length=1_000_000)
+    source_url: str | None = Field(default=None, max_length=1500)
+
+    def model_post_init(self, __context) -> None:
+        if self.action == "upsert" and (not self.title or not self.content or len(self.content.strip()) < 20):
+            raise ValueError("title and at least 20 characters of content are required for upsert")
+
+
+class WebhookEventResponse(BaseModel):
+    connector_id: uuid.UUID
+    action: str
+    result: Literal["created", "updated", "unchanged", "deleted", "not_found"]
+
+
 class ConnectorResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID

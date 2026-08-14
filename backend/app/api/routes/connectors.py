@@ -1,6 +1,9 @@
 import uuid
+import hashlib
+import hmac
+import secrets
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,8 +13,8 @@ from app.db.database import get_db
 from app.models.connector import Connector
 from app.models.document_set import DocumentSet
 from app.models.user import User
-from app.schemas.connector import ConnectorCreate, ConnectorResponse, ConnectorScheduleUpdate, SyncResponse
-from app.services.connector_sync import ConnectorSyncError, sync_connector
+from app.schemas.connector import ConnectorCreate, ConnectorResponse, ConnectorScheduleUpdate, SyncResponse, WebhookConnectorCreate, WebhookConnectorCreated, WebhookEvent, WebhookEventResponse
+from app.services.connector_sync import ConnectorSyncError, ingest_webhook_event, sync_connector
 from app.services.qdrant import QdrantError
 
 router = APIRouter(prefix="/document-sets/{set_id}/connectors", tags=["connectors"])
@@ -33,6 +36,30 @@ def create_connector(set_id: uuid.UUID, payload: ConnectorCreate, db: Session = 
     require_set_access(db, user, set_id, "edit")
     item = Connector(document_set_id=set_id, created_by_id=user.id, connector_type=payload.connector_type, name=payload.name.strip(), source_url=str(payload.source_url), status="pending", schedule_enabled=payload.schedule_enabled, schedule_interval=payload.schedule_interval, next_sync_at=_next(payload.schedule_interval) if payload.schedule_enabled else None)
     db.add(item); db.commit(); db.refresh(item); return item
+
+
+@router.post("/webhook", response_model=WebhookConnectorCreated, status_code=status.HTTP_201_CREATED)
+def create_webhook_connector(set_id: uuid.UUID, payload: WebhookConnectorCreate, request: Request, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    if db.scalar(select(DocumentSet).where(DocumentSet.id == set_id, DocumentSet.organization_id == user.organization_id)) is None: raise HTTPException(status_code=404, detail="Document set not found")
+    require_set_access(db, user, set_id, "edit")
+    secret = secrets.token_urlsafe(32)
+    item = Connector(document_set_id=set_id, created_by_id=user.id, connector_type="webhook", name=payload.name.strip(), source_url="pending", webhook_secret_hash=hashlib.sha256(secret.encode()).hexdigest(), status="ready", schedule_enabled=False, schedule_interval="daily")
+    db.add(item); db.flush(); path = f"/api/v1/document-sets/{set_id}/connectors/{item.id}/events"; endpoint = f"{str(request.base_url).rstrip('/')}{path}"; item.source_url = endpoint
+    db.commit(); db.refresh(item)
+    return WebhookConnectorCreated(connector=item, endpoint=endpoint, secret=secret)
+
+
+@router.post("/{connector_id}/events", response_model=WebhookEventResponse)
+def receive_webhook_event(set_id: uuid.UUID, connector_id: uuid.UUID, payload: WebhookEvent, x_webhook_secret: str | None = Header(default=None, alias="X-Webhook-Secret"), db: Session = Depends(get_db)):
+    item = db.get(Connector, connector_id)
+    if item is None or item.document_set_id != set_id or item.connector_type != "webhook": raise HTTPException(status_code=404, detail="Webhook not found")
+    supplied = hashlib.sha256((x_webhook_secret or "").encode()).hexdigest()
+    if not item.webhook_secret_hash or not hmac.compare_digest(supplied, item.webhook_secret_hash): raise HTTPException(status_code=401, detail="Invalid webhook secret")
+    try: result = ingest_webhook_event(db, item, payload.action, payload.external_id, payload.title, payload.content, payload.source_url)
+    except (ConnectorSyncError, QdrantError) as exc:
+        db.rollback(); item = db.get(Connector, connector_id); item.status = "failed"; item.last_error = str(exc)[:500]; db.commit()
+        raise HTTPException(status_code=422 if isinstance(exc, ConnectorSyncError) else 502, detail=str(exc)) from exc
+    return WebhookEventResponse(connector_id=connector_id, action=payload.action, result=result)
 
 
 @router.post("/{connector_id}/sync", response_model=SyncResponse)
