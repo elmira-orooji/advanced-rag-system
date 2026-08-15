@@ -38,12 +38,12 @@ button {
 
 ::selection {
   color: white;
-  background: #2563eb;
+  background: #32127a;
 }
 
 button:focus-visible,
 a:focus-visible {
-  outline: 3px solid rgba(59, 130, 246, 0.3);
+  outline: 3px solid rgba(143, 120, 216, 0.34);
   outline-offset: 3px;
 }
 
@@ -53,12 +53,63 @@ input[aria-invalid="true"] {
 }
 
 .login-glow-button {
-  box-shadow: 0 12px 40px rgba(50, 18, 122, 0.32), 0 0 28px rgba(50, 18, 122, 0.2);
+  box-shadow: 0 12px 34px rgba(50, 18, 122, 0.3), inset 0 1px rgba(255,255,255,.14);
 }
 
 .login-glow-button:hover {
-  box-shadow: 0 16px 48px rgba(50, 18, 122, 0.44), 0 0 36px rgba(50, 18, 122, 0.28);
+  box-shadow: 0 16px 42px rgba(50, 18, 122, 0.4), inset 0 1px rgba(255,255,255,.18);
 }
+
+.login-input {
+  height: 3.25rem;
+  width: 100%;
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(0, 0, 0, 0.18);
+  padding-inline: 2.75rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
+  outline: none;
+  box-shadow: 0 0 0 4px transparent;
+  transition: border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+}
+.login-input::placeholder { color: rgba(255, 255, 255, 0.2); }
+.login-input:hover { border-color: rgba(255, 255, 255, 0.15); }
+.login-input:focus { border-color: rgba(143, 120, 216, 0.65); background: rgba(255, 255, 255, 0.045); box-shadow: 0 0 0 4px rgba(50, 18, 122, 0.2); }
+.login-input[aria-invalid="true"] { border-color: rgba(253, 164, 175, 0.45); }
+
+.login-page { transition: background-color 240ms ease, color 240ms ease; }
+.login-panel { background: rgba(13, 12, 16, 0.88); box-shadow: 0 24px 64px rgba(0,0,0,.34); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.login-panel header > div:first-child > div:first-child > span {
+  background: url('/brand/nexora-symbol.svg') center / contain no-repeat;
+}
+.login-panel header > div:first-child > div:first-child > span > svg { display: none; }
+.login-panel header > div:first-child > div:first-child > div > p:first-child { font-size: 0; }
+.login-panel header > div:first-child > div:first-child > div > p:first-child::after { content: 'Nexora'; font-size: .875rem; }
+.login-light { color: #1d1825; }
+.login-light .login-main { background: linear-gradient(145deg, rgba(250,248,252,.96), rgba(239,234,246,.94)); }
+.login-light .login-backdrop { background: radial-gradient(circle at 50% 45%, rgba(50,18,122,.11), transparent 44%); }
+.login-light .login-hero { border-color: rgba(50,18,122,.08); background: #eeebf3; }
+.login-light .login-hero-image { opacity: .62; filter: grayscale(.12) saturate(.72) brightness(1.38) contrast(.72); }
+.login-light .login-hero-horizontal { background: linear-gradient(90deg, rgba(245,242,248,.1), rgba(245,242,248,.2) 55%, #f3f0f7 100%); }
+.login-light .login-hero-vertical { background: linear-gradient(180deg, rgba(248,246,250,.12), rgba(248,246,250,.02) 45%, rgba(243,240,247,.65) 100%); }
+.login-light .login-hero-bottom { background: linear-gradient(to top, rgba(243,240,247,.9), transparent); }
+.login-light .login-mobile-hero { opacity: .1; filter: grayscale(.15) brightness(1.45) contrast(.7); }
+.login-light .login-panel {
+  border-color: rgba(50, 18, 122, 0.12);
+  background: rgba(255,255,255,.86);
+  box-shadow: 0 22px 60px rgba(35, 20, 55, 0.12);
+}
+.login-light .login-control { border-color: rgba(50,18,122,.12); background: rgba(255,255,255,.65); color: rgba(39,27,51,.62); box-shadow: 0 8px 24px rgba(35,20,55,.07); }
+.login-light .login-control:hover { border-color: rgba(50,18,122,.22); background: rgba(255,255,255,.9); color: #24182f; }
+.login-light .login-panel [class*="text-white/"] { color: rgba(37, 28, 46, 0.52); }
+.login-light .login-panel h1, .login-light .login-panel header p:first-child { color: #19141f; }
+.login-light .login-panel label { color: rgba(31, 23, 40, 0.68); }
+.login-light .login-input { border-color: rgba(50,18,122,.13); background: rgba(255,255,255,.66); color: #1b1521; }
+.login-light .login-input::placeholder { color: rgba(35,25,44,.34); }
+.login-light .login-input:hover { border-color: rgba(50,18,122,.24); }
+.login-light .login-input:focus { border-color: rgba(80,47,153,.62); background: rgba(255,255,255,.9); box-shadow: 0 0 0 4px rgba(50,18,122,.1); }
+.login-light .login-panel footer { border-color: rgba(50,18,122,.09); color: rgba(35,25,44,.4); }
 
 .app-shell {
   background: radial-gradient(circle at 72% 14%, rgba(50, 18, 122, 0.14), transparent 28%), linear-gradient(145deg, #050507 0%, #09070d 52%, #050507 100%);
