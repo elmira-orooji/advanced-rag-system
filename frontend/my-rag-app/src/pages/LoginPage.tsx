@@ -4,18 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AnimatePresence, motion } from "framer-motion";
-import toast from "react-hot-toast";
 import {
   Building2,
   Check,
   CircleAlert,
+  CircleCheck,
   Eye,
   EyeOff,
   Languages,
   LoaderCircle,
   LockKeyhole,
-  Moon,
-  Sun,
   UserRound,
   WifiOff,
 } from "lucide-react";
@@ -31,7 +29,7 @@ export default function LoginPage() {
   const { language, changeLanguage } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [showWorkspace, setShowWorkspace] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">(
+  const [theme] = useState<"dark" | "light">(
     () =>
       (localStorage.getItem("knowledgeflow.login-theme") as "dark" | "light" | null) ||
       "dark",
@@ -40,6 +38,7 @@ export default function LoginPage() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const t = translations[language];
   const isRtl = language === "fa";
 
@@ -72,15 +71,9 @@ export default function LoginPage() {
   const updateCapsLock = (event: KeyboardEvent<HTMLInputElement>) =>
     setCapsLock(event.getModifierState("CapsLock"));
 
-  const toggleTheme = () =>
-    setTheme((current) => {
-      const next = current === "dark" ? "light" : "dark";
-      localStorage.setItem("knowledgeflow.login-theme", next);
-      return next;
-    });
-
   const onSubmit = async (data: LoginSchemaType) => {
     setServerError("");
+    setSuccessMessage("");
     if (!navigator.onLine) {
       setServerError(isRtl ? "اتصال اینترنت در دسترس نیست." : "You appear to be offline.");
       return;
@@ -88,7 +81,8 @@ export default function LoginPage() {
     try {
       setIsLoading(true);
       const session = await authService.login(data);
-      toast.success(t.success);
+      setSuccessMessage(t.success);
+      await new Promise((resolve) => window.setTimeout(resolve, 650));
       navigate("/home", { replace: true, state: { role: session.user.role } });
     } catch (error) {
       setServerError(
@@ -130,6 +124,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => changeLanguage(language === "en" ? "fa" : "en")}
               aria-label={t.changeLanguage}
+              className="nexora-login__language-toggle"
             >
               <Languages size={15} />
               <span>{language === "en" ? "FA" : "EN"}</span>
@@ -172,6 +167,8 @@ export default function LoginPage() {
                         id="organization"
                         type="text"
                         autoComplete="organization"
+                        aria-invalid={Boolean(errors.organization)}
+                        aria-describedby={errors.organization ? "organization-error" : undefined}
                         {...register("organization")}
                         placeholder="default"
                       />
@@ -199,6 +196,7 @@ export default function LoginPage() {
                   autoComplete="username"
                   autoFocus
                   aria-invalid={Boolean(errors.username)}
+                  aria-describedby={errors.username ? "username-error" : undefined}
                   {...register("username")}
                   placeholder={t.usernamePlaceholder}
                 />
@@ -232,6 +230,7 @@ export default function LoginPage() {
                   type={showPassword ? "text" : "password"}
                   autoComplete="current-password"
                   aria-invalid={Boolean(errors.password)}
+                  aria-describedby={errors.password ? "password-error" : undefined}
                   {...register("password")}
                   onKeyUp={updateCapsLock}
                   onKeyDown={updateCapsLock}
@@ -241,13 +240,13 @@ export default function LoginPage() {
               </LoginField>
 
               {capsLock && (
-                <p className="nexora-login__notice">
+                <p role="status" className="nexora-login__notice nexora-login__notice--warning">
                   <CircleAlert size={13} />
                   {isRtl ? "Caps Lock روشن است." : "Caps Lock is on."}
                 </p>
               )}
               {!isOnline && (
-                <p className="nexora-login__notice">
+                <p role="alert" className="nexora-login__notice nexora-login__notice--warning">
                   <WifiOff size={13} />
                   {isRtl ? "اتصال شبکه قطع است." : "Network connection is unavailable."}
                 </p>
@@ -261,6 +260,18 @@ export default function LoginPage() {
                 >
                   <CircleAlert size={14} />
                   {serverError}
+                </motion.p>
+              )}
+              {successMessage && (
+                <motion.p
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  role="status"
+                  aria-live="polite"
+                  className="nexora-login__success"
+                >
+                  <CircleCheck size={16} />
+                  <span>{successMessage}</span>
                 </motion.p>
               )}
 

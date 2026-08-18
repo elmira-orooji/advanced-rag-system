@@ -270,9 +270,8 @@ input[aria-invalid="true"] {
   right: 28px;
   display: flex;
   gap: 7px;
+  direction: ltr;
 }
-
-[dir="rtl"] .nexora-login__toolbar { right: auto; left: 28px; }
 
 .nexora-login__toolbar button {
   display: flex;
@@ -293,6 +292,25 @@ input[aria-invalid="true"] {
   color: white;
   border-color: rgba(255, 255, 255, .28);
   background: rgba(255, 255, 255, .06);
+}
+
+.nexora-login__language-toggle {
+  direction: ltr;
+  width: 64px;
+  min-width: 64px !important;
+  padding-inline: 10px !important;
+}
+
+.nexora-login__language-toggle > svg {
+  flex: 0 0 auto;
+  order: 1;
+}
+
+.nexora-login__language-toggle > span {
+  width: 20px;
+  order: 2;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
 }
 
 .nexora-login__form-wrap {
@@ -396,21 +414,58 @@ input[aria-invalid="true"] {
 
 .nexora-login__field > p,
 .nexora-login__notice,
-.nexora-login__error {
+.nexora-login__error,
+.nexora-login__success {
   display: flex;
   align-items: center;
   gap: 6px;
   margin-top: 6px;
-  color: rgba(253, 164, 175, .9);
-  font-size: 10px;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.nexora-login__field > p {
+  color: #fda4af;
+}
+
+.nexora-login__field > p svg,
+.nexora-login__notice svg,
+.nexora-login__error svg,
+.nexora-login__success svg {
+  flex: 0 0 auto;
+}
+
+.nexora-login__notice {
+  margin: -4px 0 0;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+}
+
+.nexora-login__notice--warning {
+  color: #fcd38d;
+  border-color: rgba(245, 158, 11, .2);
+  background: rgba(120, 53, 15, .14);
 }
 
 .nexora-login__error {
   margin: -4px 0 0;
-  padding: 9px 11px;
-  border: 1px solid rgba(251, 113, 133, .18);
-  border-radius: 7px;
-  background: rgba(127, 29, 29, .12);
+  padding: 11px 12px;
+  color: #fecdd3;
+  border: 1px solid rgba(251, 113, 133, .22);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(127, 29, 29, .2), rgba(76, 5, 25, .12));
+  box-shadow: inset 3px 0 0 rgba(251, 113, 133, .62);
+}
+
+.nexora-login__success {
+  margin: -4px 0 0;
+  padding: 11px 12px;
+  color: #bbf7d0;
+  border: 1px solid rgba(74, 222, 128, .22);
+  border-radius: 10px;
+  background: linear-gradient(90deg, rgba(20, 83, 45, .22), rgba(5, 46, 22, .12));
+  box-shadow: inset 3px 0 0 rgba(74, 222, 128, .62);
 }
 
 .nexora-login__options {
@@ -494,6 +549,9 @@ input[aria-invalid="true"] {
 .nexora-login--light .nexora-login__options { color: rgba(35,20,48,.6); }
 .nexora-login--light .nexora-login__form-wrap footer { color: rgba(35,20,48,.4); }
 .nexora-login--light .nexora-login__form-wrap footer span { background: rgba(35,20,48,.12); }
+.nexora-login--light .nexora-login__notice--warning { color: #854d0e; border-color: rgba(217, 119, 6, .2); background: rgba(254, 243, 199, .68); }
+.nexora-login--light .nexora-login__error { color: #9f1239; border-color: rgba(225, 29, 72, .18); background: rgba(255, 228, 230, .72); }
+.nexora-login--light .nexora-login__success { color: #166534; border-color: rgba(22, 163, 74, .18); background: rgba(220, 252, 231, .72); }
 
 @media (max-width: 900px) {
   .nexora-login { height: auto; min-height: 100dvh; overflow-y: auto; padding: 0; }
@@ -522,7 +580,6 @@ input[aria-invalid="true"] {
 @media (max-width: 480px) {
   .nexora-login__main { align-items: flex-start; padding-inline: 20px; }
   .nexora-login__toolbar { top: 22px; right: 20px; }
-  [dir="rtl"] .nexora-login__toolbar { left: 20px; }
   .nexora-login__heading h1 { font-size: 27px; }
   .nexora-login__form { gap: 15px; margin-top: 24px; }
 }
@@ -669,6 +726,43 @@ input[aria-invalid="true"] {
 
 html[dir="rtl"] body {
   font-family: "Vazirmatn", sans-serif;
+  font-feature-settings: "kern" 1, "ss01" 1;
+  font-variation-settings: "wght" 430;
+  text-rendering: optimizeLegibility;
+}
+
+html[dir="rtl"] .nexora-login__form-wrap {
+  font-family: "Vazirmatn", sans-serif;
+}
+
+html[dir="rtl"] .nexora-login__heading > span {
+  margin-bottom: 11px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+html[dir="rtl"] .nexora-login__heading h1 {
+  line-height: 1.34;
+  font-weight: 720;
+  letter-spacing: -.025em;
+}
+
+html[dir="rtl"] .nexora-login__heading p {
+  line-height: 1.9;
+  font-weight: 400;
+}
+
+html[dir="rtl"] .nexora-login__field > label {
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+html[dir="rtl"] .nexora-login__field input,
+html[dir="rtl"] .nexora-login__options,
+html[dir="rtl"] .nexora-login__submit {
+  font-weight: 480;
+  letter-spacing: 0;
 }
 
 .knowledge-motion {
