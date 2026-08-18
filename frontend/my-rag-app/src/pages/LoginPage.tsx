@@ -116,7 +116,7 @@ export default function LoginPage() {
         className="nexora-login__shell"
       >
         <aside className="nexora-login__visual" aria-label="Nexora artificial intelligence visual">
-          <img src="/assets/nexora-ai-hero-transparent.png" alt="Nexora artificial intelligence portrait" />
+          <img src="/assets/nexora-rag-hero-transparent-v2.png" alt="Nexora retrieval augmented generation knowledge network" />
           <div className="nexora-login__visual-shade" />
           <div className="nexora-login__brand">
             <img src="/brand/nexora-horizontal-light.svg" alt="Nexora" />

@@ -512,7 +512,7 @@ input[aria-invalid="true"] {
     position: absolute;
     inset: 0;
     opacity: .12;
-    background: url('/assets/nexora-ai-hero-transparent.png') center 38% / contain no-repeat;
+    background: url('/assets/nexora-rag-hero-transparent-v2.png') center 38% / contain no-repeat;
     filter: blur(2px);
   }
   .nexora-login__mobile-brand { display: block; width: 128px; height: 34px; margin-bottom: 40px; }
