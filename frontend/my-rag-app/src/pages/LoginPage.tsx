@@ -128,13 +128,6 @@ export default function LoginPage() {
           <div className="nexora-login__toolbar">
             <button
               type="button"
-              onClick={toggleTheme}
-              aria-label={theme === "dark" ? "Enable light mode" : "Enable dark mode"}
-            >
-              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
-            </button>
-            <button
-              type="button"
               onClick={() => changeLanguage(language === "en" ? "fa" : "en")}
               aria-label={t.changeLanguage}
             >
