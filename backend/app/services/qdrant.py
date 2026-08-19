@@ -2,7 +2,7 @@ import json
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import Request, urlopen
+from urllib.request import ProxyHandler, Request, build_opener
 
 from app.core.config import (
     QDRANT_API_KEY,
@@ -29,6 +29,10 @@ class QdrantClient:
         self.api_key = QDRANT_API_KEY
         self.collection = QDRANT_COLLECTION
         self.model = QDRANT_EMBEDDING_MODEL
+        # Qdrant is an explicitly configured trusted endpoint. Bypass inherited
+        # desktop/dev proxy variables, which may point at an unavailable local
+        # proxy and otherwise surface as a misleading connection failure.
+        self._opener = build_opener(ProxyHandler({}))
 
     def ensure_collection(self) -> None:
         collection = quote(self.collection, safe="")
@@ -178,7 +182,7 @@ class QdrantClient:
             },
         )
         try:
-            with urlopen(request, timeout=60) as response:
+            with self._opener.open(request, timeout=60) as response:
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
             error_message = f"Qdrant returned HTTP {exc.code}"
