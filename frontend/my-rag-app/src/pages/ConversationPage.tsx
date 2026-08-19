@@ -4,7 +4,7 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import ChatInput from "../components/ChatInput";
-import ChatWindow from "../components/ChatWindow";
+import OnyxChatWindow from "../components/OnyxChatWindow";
 import { conversationService, type ConversationDetail, type PersistedMessage } from "../services/conversationService";
 import { knowledgeService, type DocumentSet } from "../services/knowledgeService";
 import type { ChatMessage } from "../types/chat";
@@ -22,6 +22,7 @@ function toChatMessage(message: PersistedMessage): ChatMessage {
     content: message.content.replace(/\[Source\s+(\d+)\]/gi, "[$1]"),
     createdAt: message.created_at,
     grounded: Boolean(message.sources?.length),
+    responseId: message.answer_id || undefined,
     sources: message.sources?.map((source, index) => ({
       id: source.chunk_id,
       citationId: index + 1,
@@ -169,7 +170,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
     </header>
 
     <section className="app-glass-panel mt-5 min-h-0 flex-1 overflow-hidden rounded-[24px] p-4 sm:p-6">
-      {messages.length ? <ChatWindow messages={messages} isThinking={sending} /> : <div className="flex h-full flex-col items-center justify-center text-center">
+      {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} onRegenerate={send} /> : <div className="flex h-full flex-col items-center justify-center text-center">
         <span className="grid size-14 place-items-center rounded-2xl border border-[#8f78d8]/25 bg-[#32127A]/25 text-[#b6a7ef]"><MessageSquareText size={23} /></span>
         <h2 className="mt-5 text-xl font-semibold">Start a source-grounded conversation</h2>
         <p className="mt-2 max-w-md text-sm leading-6 text-white/35">Choose the knowledge base this conversation should use. Your messages and answers will remain available in Recent chats.</p>

@@ -26,6 +26,7 @@ export interface PersistedMessage {
     page?: number | null;
     section?: string | null;
   }> | null;
+  answer_id: string | null;
   created_at: string;
 }
 
