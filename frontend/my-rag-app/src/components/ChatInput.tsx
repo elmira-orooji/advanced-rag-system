@@ -5,12 +5,14 @@ import { useTranslation } from "react-i18next";
 interface ChatInputProps {
   disabled: boolean;
   onSend: (message: string) => void;
+  initialValue?: string;
+  prominent?: boolean;
 }
 
-export default function ChatInput({ disabled, onSend }: ChatInputProps) {
+export default function ChatInput({ disabled, onSend, initialValue = "", prominent = false }: ChatInputProps) {
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
-  const [value, setValue] = useState("");
+  const [value, setValue] = useState(initialValue);
 
   const handleSend = () => {
     const message = value.trim();
@@ -20,7 +22,7 @@ export default function ChatInput({ disabled, onSend }: ChatInputProps) {
   };
 
   return (
-    <div className="app-composer mx-auto flex w-full max-w-3xl items-end gap-2 rounded-[22px] p-2 sm:p-2.5">
+    <div className={`app-composer mx-auto flex w-full items-end gap-2 rounded-[22px] p-2 sm:p-2.5 ${prominent ? "max-w-4xl" : "max-w-3xl"}`}>
       <button type="button" aria-label={isFa ? "پیوست سند" : "Attach a document"} className="app-icon-button mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl text-white/35 hover:text-white/75">
         <Paperclip size={18} />
       </button>
