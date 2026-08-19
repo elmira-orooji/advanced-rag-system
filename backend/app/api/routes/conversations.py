@@ -9,6 +9,7 @@ from app.api.routes.auth import get_current_user
 from app.core.document_set_access import accessible_set_ids, require_document_access, require_set_access
 from app.db.database import get_db
 from app.models.assistant import Assistant
+from app.models.answer_feedback import AnswerRecord
 from app.models.conversation import Conversation
 from app.models.document import Document
 from app.models.document_set import DocumentSet
@@ -113,7 +114,23 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
         except OpenRouterError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     else: answer = _no_results_message(payload.content)
     user_message = Message(role="user", content=payload.content)
-    assistant_message = Message(role="assistant", content=answer, sources=[source.model_dump(mode="json") for source in sources] or None)
+    answer_record = AnswerRecord(
+        user_id=user.id,
+        assistant_id=conversation.assistant_id,
+        document_set_id=conversation.document_set_id,
+        question=payload.content,
+        answer=answer,
+        grounded=bool(sources),
+        citation_count=len(sources),
+    )
+    db.add(answer_record)
+    db.flush()
+    assistant_message = Message(
+        role="assistant",
+        content=answer,
+        sources=[source.model_dump(mode="json") for source in sources] or None,
+        answer_id=answer_record.id,
+    )
     conversation.messages.extend([user_message, assistant_message])
     if conversation.title == "New conversation": conversation.title = payload.content[:200]
     conversation.updated_at = datetime.now(timezone.utc); db.commit(); db.refresh(assistant_message); return assistant_message

@@ -41,6 +41,7 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     sources: list[SearchHit] | None
+    answer_id: uuid.UUID | None
     created_at: datetime
 
 

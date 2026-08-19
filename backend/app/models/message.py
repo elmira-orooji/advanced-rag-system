@@ -24,6 +24,9 @@ class Message(Base):
     role: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     sources: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON)
+    answer_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("answer_records.id", ondelete="SET NULL"), index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
