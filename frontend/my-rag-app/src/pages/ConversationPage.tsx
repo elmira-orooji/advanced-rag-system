@@ -43,6 +43,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
   const [selectedSetId, setSelectedSetId] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [pendingPrompt, setPendingPrompt] = useState("");
   const [suggestedPrompt, setSuggestedPrompt] = useState({ value: "", revision: 0 });
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
@@ -61,10 +62,15 @@ export default function ConversationPage({ conversationId, onConversationChange,
     return () => { active = false; };
   }, [conversationId]);
 
-  const messages = useMemo(() => detail?.messages.map(toChatMessage) ?? [], [detail]);
+  const messages = useMemo(() => {
+    const persisted = detail?.messages.map(toChatMessage) ?? [];
+    if (!pendingPrompt) return persisted;
+    return [...persisted, { id: "pending-user-message", role: "user" as const, content: pendingPrompt, createdAt: new Date().toISOString() }];
+  }, [detail, pendingPrompt]);
   const selectedSet = sets.find((item) => item.id === selectedSetId);
 
   const send = async (content: string) => {
+    setPendingPrompt(content);
     setSending(true);
     try {
       let id = conversationId;
@@ -81,6 +87,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
     } catch (error) {
       toast.error((error as Error).message);
     } finally {
+      setPendingPrompt("");
       setSending(false);
     }
   };
@@ -160,16 +167,17 @@ export default function ConversationPage({ conversationId, onConversationChange,
     </div>;
   }
 
-  return <div className="mx-auto flex h-full w-full max-w-[1120px] flex-col px-4 py-5 sm:px-6 sm:py-7 lg:px-10 lg:py-9">
-    <header className="flex shrink-0 items-center justify-between gap-4">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[.2em] text-[#a995eb]"><span className="size-1.5 rounded-full bg-[#8f78d8]" />Persistent conversation</div>
-        <h1 className="mt-2 truncate text-2xl font-semibold tracking-[-.04em]">{detail?.title || "New conversation"}</h1>
+  return <div dir={isFa ? "rtl" : "ltr"} className="relative mx-auto flex h-full w-full max-w-[1180px] flex-col overflow-hidden px-4 sm:px-7 lg:px-10">
+    <div aria-hidden="true" className="pointer-events-none absolute left-1/2 top-1/3 size-[34rem] -translate-x-1/2 rounded-full bg-[#32127A]/[.055] blur-[140px]" />
+    <header className="relative z-10 flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-white/[.045]">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="grid size-8 shrink-0 place-items-center rounded-xl border border-[#9f8be8]/15 bg-[#32127A]/20"><img src="/brand/nexora-symbol.svg" alt="Nexora" className="size-[18px]" /></span>
+        <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] text-white/80">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1><p className="mt-0.5 text-[9px] text-white/24">{isFa ? "پاسخ‌گویی مبتنی بر منابع" : "Source-grounded conversation"}</p></div>
       </div>
-      <span className="hidden items-center gap-2 rounded-xl border border-emerald-300/10 bg-emerald-300/[.05] px-3 py-2 text-[11px] text-emerald-200/60 sm:flex"><span className="size-1.5 rounded-full bg-emerald-300" />Saved automatically</span>
+      <span className="hidden items-center gap-2 text-[9px] text-emerald-200/40 sm:flex"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span>
     </header>
 
-    <section className="app-glass-panel mt-5 min-h-0 flex-1 overflow-hidden rounded-[24px] p-4 sm:p-6">
+    <section className="relative z-10 min-h-0 flex-1 overflow-hidden px-0 sm:px-3">
       {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} onRegenerate={send} /> : <div className="flex h-full flex-col items-center justify-center text-center">
         <span className="grid size-14 place-items-center rounded-2xl border border-[#8f78d8]/25 bg-[#32127A]/25 text-[#b6a7ef]"><MessageSquareText size={23} /></span>
         <h2 className="mt-5 text-xl font-semibold">Start a source-grounded conversation</h2>
@@ -182,6 +190,6 @@ export default function ConversationPage({ conversationId, onConversationChange,
         </label>}
       </div>}
     </section>
-    <div className="mt-4 shrink-0"><ChatInput disabled={sending || (!conversationId && !selectedSetId)} onSend={send} /><div className="mt-2 flex items-center justify-center gap-1.5 text-[10px] text-white/20"><FileText size={11} />Messages and RAG answers are saved securely to your account.</div></div>
+    <div className="relative z-20 shrink-0 border-t border-white/[.035] bg-[linear-gradient(180deg,rgba(10,8,14,0),rgba(10,8,14,.72)_24%)] px-0 pb-4 pt-3 sm:px-3 sm:pb-5"><ChatInput prominent disabled={sending || (!conversationId && !selectedSetId)} onSend={send} /><div className="mt-2 flex items-center justify-center gap-1.5 text-[9px] text-white/18"><FileText size={10} />{isFa ? "پاسخ‌ها ممکن است خطا داشته باشند؛ منابع را بررسی کنید." : "AI can make mistakes. Verify important details in the cited sources."}</div></div>
   </div>;
 }
