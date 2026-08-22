@@ -71,8 +71,8 @@ export default function DashboardPage({ username }: DashboardPageProps) {
     >
       <header className="flex shrink-0 items-start justify-between gap-5">
         <div>
-          <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-[#a995eb]">
-            <span className="size-1.5 rounded-full bg-[#8f78d8] shadow-[0_0_12px_#8f78d8]" />
+          <div className="mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.2em] text-[#c43cff]">
+            <span className="size-1.5 rounded-full bg-[#18c7f4] shadow-[0_0_12px_#18c7f4]" />
             {copy.eyebrow}
           </div>
           <h1 className="text-2xl font-semibold tracking-[-.04em] text-white sm:text-3xl">
@@ -94,7 +94,7 @@ export default function DashboardPage({ username }: DashboardPageProps) {
         ) : (
           <div className="flex h-full flex-col justify-center py-4">
             <div className="mx-auto w-full max-w-3xl text-center">
-              <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-[#8f78d8]/25 bg-[#32127A]/25 text-[#b6a7ef] shadow-[0_0_40px_rgba(50,18,122,.26)]">
+              <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-[#18c7f4]/25 bg-[#7c27ff]/25 text-[#d9a6ff] shadow-[0_0_40px_rgba(124,39,255,.26)]">
                 <Sparkles size={24} />
               </div>
               <h2 className="mt-5 text-xl font-semibold tracking-[-.03em] sm:text-2xl">{copy.discover}</h2>
@@ -109,7 +109,7 @@ export default function DashboardPage({ username }: DashboardPageProps) {
                   onClick={() => handleSendMessage(title)}
                   className="app-suggestion-card group rounded-2xl p-4 text-left sm:min-h-36"
                 >
-                  <span className="grid size-9 place-items-center rounded-xl border border-white/[.09] bg-white/[.05] text-[#a995eb] transition group-hover:bg-[#32127A]/25">
+                  <span className="grid size-9 place-items-center rounded-xl border border-white/[.09] bg-white/[.05] text-[#c43cff] transition group-hover:bg-[#7c27ff]/25">
                     <Icon size={17} />
                   </span>
                   <p className="mt-4 text-sm font-semibold text-white/85">{title}</p>
@@ -131,3 +131,4 @@ export default function DashboardPage({ username }: DashboardPageProps) {
     </motion.div>
   );
 }
+

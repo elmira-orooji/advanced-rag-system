@@ -48,10 +48,11 @@ export default function ChatInput({ disabled, onSend, initialValue = "", promine
         onClick={handleSend}
         disabled={disabled || !value.trim()}
         aria-label={isFa ? "ارسال پیام" : "Send message"}
-        className="mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-[#32127A] text-white shadow-[0_8px_24px_rgba(50,18,122,.35)] transition hover:-translate-y-0.5 hover:bg-[#43208F] disabled:translate-y-0 disabled:bg-white/[.06] disabled:text-white/20 disabled:shadow-none"
+        className="mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-[#7c27ff] text-white shadow-[0_8px_24px_rgba(124,39,255,.35)] transition hover:-translate-y-0.5 hover:bg-[#9238ff] disabled:translate-y-0 disabled:bg-white/[.06] disabled:text-white/20 disabled:shadow-none"
       >
         <ArrowUp size={18} />
       </button>
     </div>
   );
 }
+

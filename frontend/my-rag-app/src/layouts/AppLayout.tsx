@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Menu, Sparkles } from "lucide-react";
+import { Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 import SidebarV2 from "../components/SidebarV2";
@@ -73,7 +73,7 @@ export default function AppLayout() {
   };
 
   return (
-    <div className="app-shell flex h-[100dvh] overflow-hidden bg-[#050507] text-white">
+    <div className="app-shell flex h-[100dvh] overflow-hidden text-white">
       <SidebarV2
         activePage={activePage}
         currentUser={currentUser}
@@ -91,12 +91,12 @@ export default function AppLayout() {
 
       <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-          <div className="app-orb absolute -right-24 -top-28 size-[28rem] rounded-full bg-[#32127A]/25 blur-[120px]" />
-          <div className="app-orb app-orb-delayed absolute -bottom-36 left-[12%] size-[30rem] rounded-full bg-[#8f78d8]/10 blur-[140px]" />
+          <div className="app-orb absolute -right-24 -top-28 size-[30rem] rounded-full bg-[#7c27ff]/15 blur-[130px]" />
+          <div className="app-orb app-orb-delayed absolute -bottom-36 left-[12%] size-[32rem] rounded-full bg-[#18c7f4]/10 blur-[150px]" />
           <div className="app-grid absolute inset-0" />
         </div>
 
-        <header className="relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-white/[.07] bg-black/20 px-4 backdrop-blur-xl md:hidden">
+        <header className="relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-[#213157] bg-[#09132a]/80 px-4 backdrop-blur-xl md:hidden">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(true)}
@@ -106,10 +106,10 @@ export default function AppLayout() {
             <Menu size={20} />
           </button>
           <div className="flex items-center gap-2 text-sm font-semibold">
-            <span className="grid size-8 place-items-center rounded-lg bg-[#32127A] shadow-[0_0_24px_rgba(50,18,122,.45)]">
-              <Sparkles size={16} />
+            <span className="grid size-8 place-items-center rounded-lg border border-[#c43cff]/20 bg-[#15123a] shadow-[0_0_24px_rgba(124,39,255,.3)]">
+              <img src="/brand/nexora-symbol.svg" alt="" className="size-5" />
             </span>
-            KnowledgeFlow
+            Nexora
           </div>
           <span className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[.06] text-xs font-bold uppercase">
             {currentUser?.username.slice(0, 2) ?? "U"}

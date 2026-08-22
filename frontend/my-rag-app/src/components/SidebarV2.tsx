@@ -9,7 +9,6 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
-  Sparkles,
   UserCog,
   X,
   Pencil,
@@ -72,16 +71,16 @@ export default function SidebarV2({
         className={`fixed inset-0 z-40 bg-black/70 backdrop-blur-sm transition-opacity md:hidden ${mobileOpen ? "visible opacity-100" : "invisible opacity-0"}`}
       />
       <aside
-        className={`app-sidebar fixed inset-y-0 left-0 z-50 flex h-[100dvh] flex-col border-r border-white/[.09] transition-[width,transform] duration-300 md:relative md:z-30 ${collapsed ? "md:w-[88px]" : "md:w-[272px]"} w-[286px] ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
+        className={`app-sidebar fixed inset-y-0 left-0 z-50 flex h-[100dvh] flex-col border-r border-[#213157] transition-[width,transform] duration-300 md:relative md:z-30 ${collapsed ? "md:w-[88px]" : "md:w-[272px]"} w-[286px] ${mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`}
       >
         <div className={`flex h-20 shrink-0 items-center ${collapsed ? "md:justify-center md:px-3" : "justify-between px-5"}`}>
           <div className="flex min-w-0 items-center gap-3">
-            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#8f78d8]/30 bg-[#32127A] shadow-[0_0_28px_rgba(50,18,122,.4)]">
-              <Sparkles size={19} />
+            <span className="grid size-10 shrink-0 place-items-center rounded-xl border border-[#c43cff]/25 bg-[#15123a] shadow-[0_0_28px_rgba(124,39,255,.28)]">
+              <img src="/brand/nexora-symbol.svg" alt="" className="size-6" />
             </span>
             <div className={`${collapsed ? "md:hidden" : "block"} min-w-0`}>
-              <p className="truncate text-sm font-semibold tracking-[-.02em]">KnowledgeFlow</p>
-              <p className="mt-0.5 text-[10px] uppercase tracking-[.16em] text-white/35">RAG Workspace</p>
+              <p className="truncate text-sm font-semibold tracking-[-.02em]">Nexora</p>
+              <p className="mt-0.5 text-[10px] uppercase tracking-[.16em] text-[#7f8eaf]">AI knowledge workspace</p>
             </div>
           </div>
           <button type="button" onClick={onCloseMobile} className="app-icon-button grid size-9 place-items-center rounded-lg md:hidden" aria-label="Close navigation">
@@ -93,7 +92,7 @@ export default function SidebarV2({
           <button
             type="button"
             onClick={onNewConversation}
-            className={`flex h-12 w-full items-center rounded-xl bg-[#32127A] text-sm font-semibold shadow-[0_12px_32px_rgba(50,18,122,.3)] transition hover:bg-[#43208F] ${collapsed ? "md:justify-center md:px-0" : "gap-3 px-4"}`}
+            className={`sidebar-primary-action flex h-12 w-full items-center rounded-xl text-sm font-semibold transition ${collapsed ? "md:justify-center md:px-0" : "gap-3 px-4"}`}
           >
             <MessageSquareText size={18} />
             <span className={collapsed ? "md:hidden" : "block"}>{labels.newChat}</span>
@@ -107,9 +106,9 @@ export default function SidebarV2({
               type="button"
               title={collapsed ? label : undefined}
               onClick={() => setActivePage(id)}
-              className={`group flex h-11 w-full items-center rounded-xl text-sm transition ${collapsed ? "md:justify-center md:px-0" : "gap-3 px-4"} ${activePage === id ? "border border-white/[.1] bg-white/[.09] text-white shadow-[inset_0_1px_rgba(255,255,255,.07)]" : "border border-transparent text-white/45 hover:bg-white/[.05] hover:text-white/85"}`}
+              className={`sidebar-nav-item group flex h-11 w-full items-center rounded-xl text-sm transition ${collapsed ? "md:justify-center md:px-0" : "gap-3 px-4"} ${activePage === id ? "is-active text-white" : "border border-transparent text-[#7f8eaf] hover:text-white"}`}
             >
-              <Icon size={18} className={activePage === id ? "text-[#a995eb]" : "transition group-hover:text-[#a995eb]"} />
+              <Icon size={18} className={activePage === id ? "text-[#18c7f4]" : "transition group-hover:text-[#c43cff]"} />
               <span className={collapsed ? "md:hidden" : "block"}>{label}</span>
             </button>
           ))}
@@ -124,7 +123,7 @@ export default function SidebarV2({
             {conversations.map((chat) => (
               <div key={chat.id} className={`group flex items-center rounded-lg transition ${activeConversationId === chat.id ? "bg-white/[.07]" : "hover:bg-white/[.04]"}`}>
                 <button onClick={() => onSelectConversation(chat.id)} type="button" title={chat.title} className="min-w-0 flex-1 truncate px-2 py-2.5 text-left text-xs text-white/45 transition group-hover:text-white/75">{chat.title}</button>
-                <button onClick={() => onRenameConversation(chat)} aria-label="Rename conversation" className="grid size-7 shrink-0 place-items-center text-white/0 transition group-hover:text-white/35 hover:!text-[#b6a7ef]"><Pencil size={12} /></button>
+                <button onClick={() => onRenameConversation(chat)} aria-label="Rename conversation" className="grid size-7 shrink-0 place-items-center text-white/0 transition group-hover:text-white/35 hover:!text-[#d9a6ff]"><Pencil size={12} /></button>
                 <button onClick={() => onDeleteConversation(chat)} aria-label="Delete conversation" className="grid size-7 shrink-0 place-items-center text-white/0 transition group-hover:text-white/35 hover:!text-rose-300"><Trash2 size={12} /></button>
               </div>
             ))}
@@ -134,7 +133,7 @@ export default function SidebarV2({
 
         <div className="mt-auto border-t border-white/[.07] p-3">
           <div className={`mb-2 flex items-center rounded-xl border border-white/[.07] bg-white/[.035] p-2 ${collapsed ? "md:justify-center" : "gap-3"}`}>
-            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#5b35b8] to-[#241052] text-xs font-bold uppercase">
+            <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-gradient-to-br from-[#c43cff] via-[#7c27ff] to-[#1b4dff] text-xs font-bold uppercase shadow-[0_8px_24px_rgba(124,39,255,.24)]">
               {currentUser?.username.slice(0, 2) ?? "U"}
             </span>
             <div className={`${collapsed ? "md:hidden" : "block"} min-w-0 flex-1`}>
@@ -158,3 +157,4 @@ export default function SidebarV2({
     </>
   );
 }
+
