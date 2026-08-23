@@ -612,10 +612,10 @@ input[aria-invalid="true"] {
 }
 
 .app-sidebar {
-  background: linear-gradient(180deg, rgba(14,26,59,.98), rgba(7,13,32,.98));
-  box-shadow: 20px 0 60px rgba(1,6,20,.32), inset -1px 0 rgba(33,49,87,.65);
-  -webkit-backdrop-filter: blur(28px) saturate(135%);
-  backdrop-filter: blur(28px) saturate(135%);
+  background: #08122d;
+  box-shadow: 18px 0 48px rgba(1,6,20,.24), inset -1px 0 #1b2a4d;
+  -webkit-backdrop-filter: blur(24px) saturate(125%);
+  backdrop-filter: blur(24px) saturate(125%);
 }
 
 .app-grid {
@@ -647,16 +647,17 @@ input[aria-invalid="true"] {
 .app-icon-button:hover { border-color: rgba(24,199,244,.38); background: rgba(24,199,244,.07); }
 .sidebar-primary-action {
   border: 1px solid rgba(196,60,255,.3);
-  background: linear-gradient(135deg, #7c27ff, #1b4dff);
-  box-shadow: 0 14px 34px rgba(124,39,255,.24), inset 0 1px rgba(255,255,255,.16);
-}
-.sidebar-primary-action:hover { filter: brightness(1.1); transform: translateY(-1px); }
-.sidebar-nav-item:hover { background: rgba(24,199,244,.055); }
-.sidebar-nav-item.is-active {
-  border: 1px solid rgba(24,199,244,.18);
-  background: linear-gradient(90deg, rgba(124,39,255,.2), rgba(24,199,244,.07));
+  background: linear-gradient(105deg, rgba(196,60,255,.18), rgba(124,39,255,.2));
   box-shadow: inset 3px 0 #c43cff, inset 0 1px rgba(255,255,255,.05);
 }
+.sidebar-primary-action:hover { border-color: rgba(196,60,255,.48); background: linear-gradient(105deg, rgba(196,60,255,.24), rgba(124,39,255,.25)); }
+.sidebar-nav-item:hover { background: #0c1938; }
+.sidebar-nav-item.is-active {
+  border: 1px solid transparent;
+  background: #0d1a3a;
+  box-shadow: inset 3px 0 #c43cff;
+}
+.sidebar-search input:focus { border-color: rgba(196,60,255,.48) !important; box-shadow: 0 0 0 3px rgba(196,60,255,.08) !important; }
 .enterprise-side-panel {
   background: linear-gradient(165deg, rgba(14,26,59,.985), rgba(7,13,32,.985));
   box-shadow: -24px 0 64px rgba(1,6,20,.34), inset 1px 0 rgba(33,49,87,.55);
@@ -699,7 +700,7 @@ html:not(.dark) .app-shell {
 html:not(.dark) .app-sidebar {
   color: #172033;
   border-color: #dfe4ed !important;
-  background: linear-gradient(180deg, rgba(239,241,245,.98), rgba(232,235,241,.98));
+  background: #eef0f4;
   box-shadow: 14px 0 40px rgba(38,50,74,.08), inset -1px 0 #fff;
 }
 html:not(.dark) .app-grid {
@@ -733,10 +734,10 @@ html:not(.dark) .app-icon-button:hover {
   background: #fff;
 }
 html:not(.dark) .sidebar-primary-action {
-  color: #fff;
-  border-color: transparent;
-  background: linear-gradient(135deg, #7c27ff, #5b32dc);
-  box-shadow: 0 10px 24px rgba(124,39,255,.18);
+  color: #4d267f;
+  border-color: rgba(124,39,255,.14);
+  background: rgba(255,255,255,.88);
+  box-shadow: inset 3px 0 #7c27ff, 0 4px 14px rgba(38,50,74,.05);
 }
 html:not(.dark) .sidebar-nav-item { color: #5e687d; }
 html:not(.dark) .sidebar-nav-item:hover { color: #252f43; background: rgba(255,255,255,.66); }
@@ -746,6 +747,8 @@ html:not(.dark) .sidebar-nav-item.is-active {
   background: rgba(255,255,255,.92);
   box-shadow: inset 3px 0 #7c27ff, 0 5px 14px rgba(38,50,74,.055);
 }
+html:not(.dark) .sidebar-search input { color: #263148; border-color: #d9dee8; background: rgba(255,255,255,.72); }
+html:not(.dark) .sidebar-search input::placeholder { color: #8993a8; }
 html:not(.dark) .enterprise-side-panel,
 html:not(.dark) .knowledge-chat-panel,
 html:not(.dark) .team-member-panel {
