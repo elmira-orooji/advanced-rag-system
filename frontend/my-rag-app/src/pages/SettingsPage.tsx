@@ -90,10 +90,10 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
         </header>
 
         <div className="mt-5 grid min-h-0 flex-1 gap-5 overflow-y-auto overscroll-contain pb-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 lg:grid-cols-[280px_minmax(0,1fr)] lg:overflow-hidden">
-          <aside className="app-glass-panel h-fit rounded-[24px] p-5 lg:h-full">
+          <aside className="app-glass-panel h-fit rounded-[22px] p-5 lg:sticky lg:top-0">
             <div className="flex items-center gap-3 border-b border-white/[.07] pb-5 lg:block lg:text-center">
               <div className="relative shrink-0 lg:mx-auto lg:w-fit">
-                <span className="grid size-14 overflow-hidden place-items-center rounded-2xl bg-gradient-to-br from-[#7c27ff] to-[#1b2454] text-sm font-bold uppercase shadow-[0_10px_30px_rgba(124,39,255,.3)] lg:size-16 lg:text-base">{profileImage ? <img src={profileImage} alt="" className="size-full object-cover" /> : currentUser?.username.slice(0, 2) ?? "U"}</span>
+                <span className="grid size-14 overflow-hidden place-items-center rounded-2xl bg-gradient-to-br from-[#7c27ff] to-[#1b2454] text-sm font-bold uppercase text-white shadow-[0_10px_30px_rgba(124,39,255,.3)] lg:size-16 lg:text-base">{profileImage ? <img src={profileImage} alt="" className="size-full object-cover" /> : currentUser?.username.slice(0, 2) ?? "U"}</span>
                 <label title={copy.changePhoto} className="absolute -bottom-1.5 -end-1.5 grid size-7 cursor-pointer place-items-center rounded-lg border border-white/15 bg-[#7c27ff] text-white shadow-lg transition hover:bg-[#9238ff] focus-within:ring-4 focus-within:ring-[#7c27ff]/30">
                   <Camera size={13} />
                   <input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => changeProfileImage(event.target.files?.[0])} className="sr-only" aria-label={copy.changePhoto} />
@@ -156,7 +156,7 @@ function SegmentButton({ active, label, onClick }: { active: boolean; label: str
 }
 
 function ThemeButton({ active, icon: Icon, label, onClick }: { active: boolean; icon: typeof Sun; label: string; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className={`relative flex h-20 flex-col items-center justify-center gap-2 rounded-xl border text-xs font-semibold transition ${active ? "border-[#18c7f4]/35 bg-[#7c27ff]/18 text-white" : "border-white/[.07] bg-white/[.025] text-white/35 hover:border-white/[.13] hover:text-white/65"}`}><Icon size={18} className={active ? "text-[#d9a6ff]" : ""} />{label}{active && <span className="absolute end-2.5 top-2.5 grid size-4 place-items-center rounded-full bg-[#7c27ff]"><Check size={10} /></span>}</button>;
+  return <button type="button" onClick={onClick} className={`settings-theme-option relative flex h-20 flex-col items-center justify-center gap-2 rounded-xl border text-xs font-semibold transition ${active ? "is-active border-[#18c7f4]/35 bg-[#7c27ff]/18 text-white" : "border-white/[.07] bg-white/[.025] text-white/35 hover:border-white/[.13] hover:text-white/65"}`}><Icon size={18} className={active ? "text-[#d9a6ff]" : ""} />{label}{active && <span className="absolute end-2.5 top-2.5 grid size-4 place-items-center rounded-full bg-[#7c27ff] text-white"><Check size={10} /></span>}</button>;
 }
 
 function ActionRow({ icon: Icon, title, description, action, onClick, danger = false, confirm = false }: { icon: typeof Download; title: string; description: string; action: string; onClick: () => void; danger?: boolean; confirm?: boolean }) {

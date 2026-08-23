@@ -47,9 +47,9 @@ export default function AnalyticsPage() {
     const anchor = document.createElement("a"); anchor.href = url; anchor.download = `nexora-analytics-${days}d.csv`; anchor.click(); URL.revokeObjectURL(url);
   };
 
-  if (loading && !data) return <div className="grid h-full place-items-center bg-[#070d20]"><span className="size-7 animate-spin rounded-full border-2 border-white/10 border-t-[#c43cff]" /></div>;
+  if (loading && !data) return <div className="analytics-page grid h-full place-items-center bg-[#070d20]"><span className="size-7 animate-spin rounded-full border-2 border-white/10 border-t-[#c43cff]" /></div>;
 
-  return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} dir={fa ? "rtl" : "ltr"} className="h-full overflow-y-auto bg-[radial-gradient(circle_at_78%_8%,rgba(66,38,148,.14),transparent_30%),#070d20] px-4 py-5 text-[#eef2ff] scrollbar-thin scrollbar-thumb-white/10 sm:px-6 lg:px-8">
+  return <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} dir={fa ? "rtl" : "ltr"} className="analytics-page h-full overflow-y-auto bg-[radial-gradient(circle_at_78%_8%,rgba(66,38,148,.14),transparent_30%),#070d20] px-4 py-5 text-[#eef2ff] scrollbar-thin scrollbar-thumb-white/10 sm:px-6 lg:px-8">
     <div className="mx-auto w-full max-w-[1380px] pb-8">
       <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div><p className="text-[10px] font-semibold uppercase tracking-[.22em] text-[#18c7f4]">Nexora intelligence</p><h1 className="mt-2 text-2xl font-semibold tracking-[-.04em] sm:text-[30px]">{c.welcome}, <span className="text-white">{user?.username ?? (fa ? "کاربر" : "User")}</span></h1><p className="mt-1.5 text-[11px] text-[#8290b2] sm:text-xs">{c.subtitle}</p></div>
@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
   </motion.div>;
 }
 
-function Card({ children, className = "" }: { children: ReactNode; className?: string }) { return <div className={`rounded-xl border border-[#213157] bg-[linear-gradient(145deg,#0e1a3b,#0a1530)] shadow-[0_16px_45px_rgba(0,0,0,.16)] ${className}`}>{children}</div>; }
+function Card({ children, className = "" }: { children: ReactNode; className?: string }) { return <div className={`analytics-card rounded-xl border border-[#213157] bg-[linear-gradient(145deg,#0e1a3b,#0a1530)] shadow-[0_16px_45px_rgba(0,0,0,.16)] ${className}`}>{children}</div>; }
 function Metric({ icon: Icon, label, value, detail, accent }: { icon: ComponentType<{ size?: number; className?: string }>; label: string; value: string; detail: string; accent: string }) { return <Card className="relative overflow-hidden p-4"><span className="absolute inset-x-0 top-0 h-px opacity-70" style={{ background: `linear-gradient(90deg,transparent,${accent},transparent)` }} /><div className="flex items-center justify-between"><div className="flex items-center gap-2 text-[10px] text-[#95a2c2]"><Icon size={13} /><span>{label}</span></div><MoreHorizontal size={14} className="text-[#546386]" /></div><div className="mt-4 flex items-end justify-between gap-3"><p className="text-[25px] font-semibold tracking-[-.04em] text-white">{value}</p><span className="mb-1 rounded bg-[#142446] px-2 py-1 text-[8px] text-[#7f8eaf]">{detail}</span></div></Card>; }
 
 function TrendChart({ daily, fa }: { daily: DailyMetric[]; fa: boolean }) {
@@ -106,3 +106,4 @@ function Ranking({ title, icon: Icon, items, empty }: { title: string; icon: Com
 function Empty({ text }: { text: string }) { return <div className="grid min-h-28 place-items-center text-[9px] text-[#536285]">{text}</div>; }
 function health(data: AnalyticsOverview) { const total = data.indexed_documents + data.failed_documents; return total ? data.indexed_documents / total * 100 : 0; }
 function fmt(value: number) { return Intl.NumberFormat("en", { notation: value >= 1000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value); }
+
