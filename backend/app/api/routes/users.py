@@ -1,15 +1,17 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import delete, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
+from app.core.security import hash_password
 from app.db.database import get_db
 from app.models.document_set import DocumentSet
 from app.models.document_set_permission import DocumentSetPermission
 from app.models.user import User
-from app.schemas.user_management import SetPermissionItem, SetPermissionsUpdate, UserAdminResponse
+from app.schemas.user_management import SetPermissionItem, SetPermissionsUpdate, UserAdminCreate, UserAdminResponse
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -23,6 +25,27 @@ def admin_only(user: User = Depends(get_current_user)) -> User:
 @router.get("", response_model=list[UserAdminResponse])
 def list_users(db: Session = Depends(get_db), admin: User = Depends(admin_only)):
     return db.scalars(select(User).where(User.organization_id == admin.organization_id).order_by(User.created_at.desc())).all()
+
+
+@router.post("", response_model=UserAdminResponse, status_code=status.HTTP_201_CREATED)
+def create_user(payload: UserAdminCreate, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    username = payload.username.strip()
+    item = User(
+        organization_id=admin.organization_id,
+        username=username,
+        job_title=payload.job_title.strip() if payload.job_title and payload.job_title.strip() else None,
+        password_hash=hash_password(payload.password),
+        role=payload.role,
+        is_active=payload.is_active,
+    )
+    db.add(item)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="A member with this username already exists") from exc
+    db.refresh(item)
+    return item
 
 
 @router.get("/{user_id}/document-set-permissions", response_model=list[SetPermissionItem])

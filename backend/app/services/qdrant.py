@@ -1,4 +1,5 @@
 import json
+import socket
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
@@ -194,5 +195,20 @@ class QdrantClient:
             except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
                 pass
             raise QdrantError(error_message, status_code=exc.code) from exc
-        except (URLError, TimeoutError, json.JSONDecodeError) as exc:
+        except URLError as exc:
+            reason = exc.reason
+            if isinstance(reason, socket.gaierror):
+                raise QdrantError(
+                    "Qdrant endpoint could not be resolved. Verify that the cloud cluster is active and QDRANT_URL matches its current endpoint."
+                ) from exc
+            if isinstance(reason, (TimeoutError, socket.timeout)):
+                raise QdrantError(
+                    "Qdrant connection timed out. Verify the cluster status and network access."
+                ) from exc
             raise QdrantError("Could not communicate with Qdrant") from exc
+        except TimeoutError as exc:
+            raise QdrantError(
+                "Qdrant connection timed out. Verify the cluster status and network access."
+            ) from exc
+        except json.JSONDecodeError as exc:
+            raise QdrantError("Qdrant returned an invalid response") from exc
