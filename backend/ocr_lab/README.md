@@ -44,6 +44,29 @@ With known ground truth:
 
 Results are written to `output/<filename>/report.json` and `text.txt`.
 
+## Optional Gemini handwriting probe
+
+This sends only selected PDF pages to Google and does not require another
+Python package. The API key is read from the process environment or the local
+ignored `.env` file and is never written to the report.
+
+Temporary PowerShell environment variable:
+
+```powershell
+$env:GEMINI_API_KEY = "your-key"
+.\.venv\Scripts\python.exe gemini_handwriting_probe.py path\to\notes.pdf --pages 1,20,38
+Remove-Item Env:GEMINI_API_KEY
+```
+
+Alternatively, copy `.env.example` to `.env`, replace the placeholder, and keep
+that file local. `.env` is ignored by Git.
+
+Validate rendering without uploading any page:
+
+```powershell
+.\.venv\Scripts\python.exe gemini_handwriting_probe.py path\to\notes.pdf --dry-run
+```
+
 Run the dependency-free unit tests with:
 
 ```powershell
