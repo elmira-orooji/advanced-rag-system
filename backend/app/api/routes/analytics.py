@@ -48,7 +48,8 @@ def overview(days: int = Query(default=30, ge=7, le=90), db: Session = Depends(g
     today = datetime.now(timezone.utc).date()
     start_date = today - timedelta(days=days - 1)
     start = datetime.combine(start_date, time.min, tzinfo=timezone.utc)
-    answers = list(db.scalars(select(AnswerRecord).join(User, User.id == AnswerRecord.user_id).where(AnswerRecord.created_at >= start, User.organization_id == admin.organization_id).order_by(AnswerRecord.created_at)).all())
+    end = datetime.combine(today + timedelta(days=1), time.min, tzinfo=timezone.utc)
+    answers = list(db.scalars(select(AnswerRecord).join(User, User.id == AnswerRecord.user_id).where(AnswerRecord.created_at >= start, AnswerRecord.created_at < end, User.organization_id == admin.organization_id).order_by(AnswerRecord.created_at)).all())
     answer_ids = [item.id for item in answers]
     feedback = list(db.scalars(select(AnswerFeedback).where(AnswerFeedback.answer_id.in_(answer_ids))).all()) if answer_ids else []
     feedback_by_answer = {item.answer_id: item for item in feedback}
@@ -56,7 +57,7 @@ def overview(days: int = Query(default=30, ge=7, le=90), db: Session = Depends(g
     assistant_groups: dict[object, list[AnswerRecord]] = defaultdict(list)
     set_groups: dict[object, list[AnswerRecord]] = defaultdict(list)
     for answer in answers:
-        bucket = daily[answer.created_at.date()]
+        bucket = daily[answer.created_at.astimezone(timezone.utc).date()]
         bucket["queries"] += 1; bucket["grounded"] += int(answer.grounded)
         bucket["negative"] += int(feedback_by_answer.get(answer.id) is not None and feedback_by_answer[answer.id].rating == -1)
         if answer.assistant_id: assistant_groups[answer.assistant_id].append(answer)
