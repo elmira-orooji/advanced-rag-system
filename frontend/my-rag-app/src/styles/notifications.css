@@ -1,0 +1,39 @@
+.nexora-toast {
+  --notice-bg: #111b2e;
+  --notice-text: #e7eaf3;
+  --notice-muted: #a4afc2;
+  --notice-border: #ffffff1a;
+  --notice-accent: #bda0f4;
+  display: flex; align-items: flex-start; gap: 12px;
+  width: min(380px, calc(100vw - 32px)); padding: 15px;
+  border: 1px solid var(--notice-border); border-radius: 11px;
+  color: var(--notice-text); background: var(--notice-bg);
+  box-shadow: 0 8px 28px #00000018;
+  pointer-events: auto; font-family: inherit;
+}
+html:not(.dark) .nexora-toast {
+  --notice-bg: #ffffff;
+  --notice-text: #252c3e;
+  --notice-muted: #687287;
+  --notice-border: #e0e5ed;
+  --notice-accent: #7950bb;
+}
+.nexora-toast--success { --notice-accent: #70c5ac; }
+.nexora-toast--error { --notice-accent: #ed91a1; }
+.nexora-toast--warning { --notice-accent: #dfb671; }
+html:not(.dark) .nexora-toast--success { --notice-accent: #298369; }
+html:not(.dark) .nexora-toast--error { --notice-accent: #bb435b; }
+html:not(.dark) .nexora-toast--warning { --notice-accent: #9a6819; }
+.nexora-toast__icon { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; color: var(--notice-accent); border: 1px solid var(--notice-border); border-radius: 8px; }
+.nexora-toast__content { min-width: 0; flex: 1; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.nexora-toast__content strong { display: block; color: var(--notice-text); font-size: 12px; font-weight: 600; }
+.nexora-toast__content > div { margin-top: 2px; color: var(--notice-muted); white-space: pre-wrap; max-height: 40vh; overflow-y: auto; }
+.nexora-toast__close { display: grid; place-items: center; flex-shrink: 0; width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--notice-muted); cursor: pointer; }
+.nexora-toast__close:hover { color: var(--notice-text); background: #a78bfa12; }
+.nexora-toast__close:focus-visible { outline: 2px solid var(--notice-accent); outline-offset: 2px; }
+.nexora-toast.is-visible { animation: notice-enter 160ms ease-out both; }
+.nexora-toast.is-leaving { opacity: 0; transition: opacity 120ms ease; }
+.nexora-toast--loading .nexora-toast__icon svg { animation: notice-spin 1s linear infinite; }
+@keyframes notice-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes notice-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .nexora-notifications *, .nexora-toast { animation: none !important; transition: none !important; } }

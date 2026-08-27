@@ -113,7 +113,7 @@ export default function UploadFilesPage() {
   const { getInputProps, getRootProps, isDragActive, open } = useDropzone({
     onDrop, noClick: true, disabled: !selectedSetId || uploading, maxSize: 10 * 1024 * 1024,
     accept: { "application/pdf": [".pdf"], "text/plain": [".txt"] },
-    onDropRejected: () => toast.error(isFa ? "نوع یا حجم فایل مجاز نیست" : "Unsupported file type or size"),
+    onDropRejected: () => toast(isFa ? "فایل PDF یا TXT با حجم حداکثر ۱۰ مگابایت انتخاب کنید." : "Choose a PDF or TXT file up to 10 MB.", { className: "nexora-toast--warning", duration: 6000 }),
   });
 
   const filtered = useMemo(() => documents.filter((item) =>
