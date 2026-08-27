@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
 from app.api.routes.auth import get_current_user
-from app.core.document_set_access import accessible_set_ids, require_set_access
+from app.core.document_set_access import accessible_set_ids, require_document_access, require_set_access
 from app.db.database import get_db
 from app.models.document import Document
 from app.models.document_set import DocumentSet, document_set_documents
@@ -169,9 +169,14 @@ def add_document_to_set(
 ):
     require_set_access(db, user, set_id, "edit")
     item = _get_set(db, set_id, user, with_documents=True)
-    document = db.scalar(select(Document).where(Document.id == payload.document_id, Document.organization_id == user.organization_id))
-    if document is None:
-        raise HTTPException(status_code=404, detail="Document not found")
+    if user.role == "admin":
+        # Organization admins may also organize documents not yet in any set.
+        document = db.scalar(select(Document).where(Document.id == payload.document_id, Document.organization_id == user.organization_id))
+        if document is None:
+            raise HTTPException(status_code=404, detail="Document not found")
+    else:
+        # Attaching a document grants the destination's members access to it.
+        document = require_document_access(db, user, payload.document_id, "manage")
     if all(existing.id != document.id for existing in item.documents):
         item.documents.append(document)
         db.commit()
