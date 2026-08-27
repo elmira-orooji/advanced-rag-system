@@ -1,0 +1,33 @@
+.team-page { --tm-bg: #0a1122; --tm-panel: #10192c; --tm-text: #e7eaf3; --tm-muted: #99a5ba; --tm-line: #ffffff14; --tm-accent: #bda0f4; --tm-tint: #a78bfa12; --tm-success: #70c5ac; color: var(--tm-text); background: var(--tm-bg); }
+html:not(.dark) .team-page { --tm-bg: #f5f7fa; --tm-panel: #ffffff; --tm-text: #252c3e; --tm-muted: #687287; --tm-line: #dfe4ed; --tm-accent: #7950bb; --tm-tint: #7c3aed0b; --tm-success: #298369; }
+.team-page .tm-text { color: var(--tm-text); }
+.team-page .tm-muted { color: var(--tm-muted); }
+.team-header { flex-wrap: wrap; }
+.team-header h1 { font-size: 26px; line-height: 1.5; }
+.team-eyebrow { margin-bottom: 6px; color: var(--tm-muted); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.team-primary { border: 1px solid var(--tm-line); border-radius: 8px; color: var(--tm-accent); background: var(--tm-tint); }
+.team-primary:hover { border-color: var(--tm-accent); }
+.app-shell .team-page .app-glass-panel { background: var(--tm-panel); border-color: var(--tm-line); border-radius: 12px; box-shadow: none; backdrop-filter: none; }
+.team-member-row { display: flex; width: 100%; align-items: center; gap: 12px; padding: 16px; text-align: start; transition: background-color 140ms ease; }
+.team-member-row:hover, .team-member-row:focus-visible { background: var(--tm-tint); }
+.team-avatar { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid var(--tm-line); border-radius: 10px; background: var(--tm-tint); color: var(--tm-accent); font-size: 11px; font-weight: 600; text-transform: uppercase; }
+.team-role { padding: 4px 9px; border: 1px solid var(--tm-line); border-radius: 6px; color: var(--tm-muted); font-size: 10px; }
+.team-role.is-admin { background: var(--tm-tint); color: var(--tm-accent); }
+.team-status { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--tm-muted); }
+.team-status.is-active { background: var(--tm-success); }
+.team-empty { padding: 48px 20px; text-align: center; color: var(--tm-muted); font-size: 12px; }
+.app-shell .team-page input, .app-shell .team-page select, .app-shell .team-page textarea { color: var(--tm-text); background: var(--tm-panel); border-color: var(--tm-line); border-radius: 8px; }
+.app-shell .team-page input::placeholder { color: var(--tm-muted); }
+.app-shell .team-page input:focus, .app-shell .team-page select:focus { border-color: var(--tm-accent) !important; box-shadow: 0 0 0 3px var(--tm-tint); }
+.app-shell .team-page button:focus-visible { outline: 2px solid var(--tm-accent); outline-offset: -2px; }
+.app-shell .team-page .app-icon-button { background: var(--tm-panel); border-color: var(--tm-line); color: var(--tm-muted); border-radius: 8px; backdrop-filter: none; }
+.app-shell .team-page .enterprise-side-panel { background: var(--tm-panel); border-color: var(--tm-line) !important; box-shadow: none; backdrop-filter: none; }
+.team-page .enterprise-side-panel header { height: 68px; }
+.team-page .enterprise-side-panel button[aria-pressed="true"] { background: var(--tm-tint); border-color: var(--tm-accent); color: var(--tm-accent); }
+.team-page .enterprise-side-panel > div:last-child > button, .team-page .team-member-form footer > button:last-child { border-radius: 8px; background: #8050cc; color: white; box-shadow: none; }
+.team-page .team-member-form [role="alert"] { color: #bc435b; }
+html.dark .team-page .team-member-form [role="alert"] { color: #ee91a0; }
+.team-page button { cursor: pointer; }
+.team-page button:disabled { cursor: not-allowed; }
+@media (max-width: 640px) { .team-header h1 { font-size: 23px; } .team-member-row { padding: 12px; gap: 8px; } }
+@media (prefers-reduced-motion: reduce) { .team-page *, .team-page button { transition: none !important; animation: none !important; } }
