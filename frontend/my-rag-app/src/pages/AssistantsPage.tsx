@@ -1,5 +1,5 @@
 import { confirmAction } from "../services/confirmation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Bot, Check, FileStack, Pencil, Plus, Power, Sparkles, Trash2, X } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
@@ -33,11 +33,17 @@ export default function AssistantsPage() {
 }
 
 function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAssistant; sets: DocumentSet[]; fa: boolean; onClose: () => void; onSaved: () => void }) {
+  const modalRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const modal = modalRef.current;
+    modal?.showModal();
+    return () => modal?.close();
+  }, []);
   const [name, setName] = useState(item?.name || ""); const [description, setDescription] = useState(item?.description || ""); const [instructions, setInstructions] = useState(item?.instructions || ""); const [selectedSets, setSelectedSets] = useState<string[]>(item?.document_set_ids || []); const [active, setActive] = useState(item?.is_active ?? true); const [saving, setSaving] = useState(false);
   const valid = name.trim().length >= 2 && instructions.trim().length >= 10;
   const submit = async (e: React.FormEvent) => { e.preventDefault(); if (!valid) return; setSaving(true); const payload: AssistantPayload = { name: name.trim(), description: description.trim(), instructions: instructions.trim(), document_set_ids: selectedSets, is_active: active }; try { item ? await assistantService.update(item.id, payload) : await assistantService.create(payload); toast.success(fa ? "دستیار ذخیره شد" : "Assistant saved"); onSaved(); } catch (error) { toast.error((error as Error).message); } finally { setSaving(false); } };
-  return <div className="assistant-form-overlay" onMouseDown={onClose}>
-    <form onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="assistant-dialog assistant-form" dir={fa ? "rtl" : "ltr"} role="dialog" aria-modal="true" aria-labelledby="assistant-form-title">
+  return <dialog ref={modalRef} className="assistant-form-overlay" aria-labelledby="assistant-form-title" onCancel={(event) => { event.preventDefault(); onClose(); }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <form onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="assistant-dialog assistant-form" dir={fa ? "rtl" : "ltr"}>
       <header className="assistant-form-header">
         <span className="assistant-emblem"><Bot size={20} /></span>
         <div><h2 id="assistant-form-title">{fa ? (item ? "ویرایش دستیار" : "ساخت دستیار") : (item ? "Edit assistant" : "Create assistant")}</h2>
@@ -68,8 +74,7 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
         <button type="submit" disabled={!valid || saving} className="assistant-form-save">{saving ? (fa ? "در حال ذخیره…" : "Saving…") : fa ? "ذخیره دستیار" : "Save assistant"}</button>
       </footer>
     </form>
-  </div>;
+  </dialog>;
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="assistant-form-field">{label}<div className="mt-2">{children}</div></label>; }
-
 
