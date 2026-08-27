@@ -64,7 +64,7 @@ def list_assistants(db: Session = Depends(get_db), user: User = Depends(get_curr
         statement = statement.where(Assistant.is_active.is_(True))
     items = list(db.scalars(statement).all())
     allowed = accessible_set_ids(db, user)
-    if allowed is not None:
+    if user.role != "admin" and allowed is not None:
         items = [item for item in items if any(value.id in allowed for value in item.document_sets)]
     return [_response(item, allowed) for item in items]
 
