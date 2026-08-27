@@ -85,12 +85,15 @@ export default function SidebarV2({
         aria-label={isFa ? "منوی اصلی" : "Main sidebar"}
         className={`nexora-sidebar ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "is-open" : ""}`}
       >
-        <header className="nexora-sidebar__brand">
+        <header className="nexora-sidebar__brand" dir="ltr">
           <img src="/brand/nexora-symbol.svg" alt="Nexora" width={30} height={30} />
           <div className="nexora-sidebar__expanded nexora-sidebar__wordmark">
             <strong>Nexora</strong>
             <span>{isFa ? "هوشمندی دانش" : "Knowledge intelligence"}</span>
           </div>
+          <button type="button" onClick={() => { setCollapsed((value) => !value); setMenuQuery(""); }} aria-label={collapsed ? expandLabel : labels.collapse} aria-expanded={!collapsed} title={collapsed ? expandLabel : labels.collapse} className="nexora-sidebar__collapse">
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+          </button>
           <button type="button" onClick={onCloseMobile} className="nexora-sidebar__icon-button nexora-sidebar__mobile-close" aria-label={closeLabel}>
             <X size={18} />
           </button>
@@ -129,6 +132,7 @@ export default function SidebarV2({
               <h2 className="nexora-sidebar__section-label">{labels.recent}</h2>
               <span className="nexora-sidebar__count">{visibleConversations.length.toLocaleString(isFa ? "fa" : "en")}</span>
             </div>
+            <div className="nexora-sidebar__recent-list" tabIndex={0} role="region" aria-label={labels.recent}>
             {visibleConversations.map((chat) => (
               <div key={chat.id} className={`nexora-sidebar__conversation ${activePage === "chat" && activeConversationId === chat.id ? "is-active" : ""}`}>
                 <button onClick={() => onSelectConversation(chat.id)} type="button" title={chat.title} aria-current={activePage === "chat" && activeConversationId === chat.id ? "page" : undefined} className="nexora-sidebar__conversation-link">
@@ -142,6 +146,7 @@ export default function SidebarV2({
               </div>
             ))}
             {!visibleConversations.length && <p className="nexora-sidebar__empty">{normalizedQuery ? (isFa ? "نتیجه‌ای پیدا نشد" : "No results found") : (isFa ? "هنوز گفتگویی وجود ندارد" : "No conversations yet")}</p>}
+            </div>
           </section>
         </div>
 
@@ -154,10 +159,6 @@ export default function SidebarV2({
             </div>
             <button type="button" onClick={onLogout} aria-label={isFa ? "خروج از حساب" : "Log out"} title={isFa ? "خروج از حساب" : "Log out"} className="nexora-sidebar__icon-button nexora-sidebar__logout"><LogOut size={16} /></button>
           </div>
-          <button type="button" onClick={() => { setCollapsed((value) => !value); setMenuQuery(""); }} aria-label={collapsed ? expandLabel : labels.collapse} aria-expanded={!collapsed} title={collapsed ? expandLabel : labels.collapse} className="nexora-sidebar__collapse">
-            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
-            <span className="nexora-sidebar__expanded">{labels.collapse}</span>
-          </button>
         </footer>
       </aside>
     </>
