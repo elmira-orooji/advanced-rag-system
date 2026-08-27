@@ -1,3 +1,4 @@
+import { confirmAction } from "../services/confirmation";
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -67,7 +68,7 @@ export default function AppLayout() {
   };
 
   const deleteConversation = async (item: ConversationSummary) => {
-    if (!window.confirm(`Delete “${item.title}”? This cannot be undone.`)) return;
+    if (!await confirmAction(`Delete “${item.title}”? This cannot be undone.`)) return;
     try {
       await conversationService.remove(item.id);
       if (activeConversationId === item.id) { setActiveConversationId(null); setActivePage("chat"); }

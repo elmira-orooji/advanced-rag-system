@@ -37,3 +37,21 @@ html:not(.dark) .nexora-toast--warning { --notice-accent: #9a6819; }
 @keyframes notice-enter { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes notice-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .nexora-notifications *, .nexora-toast { animation: none !important; transition: none !important; } }
+
+.nexora-message-dialog:not([open]) { display: none; }
+.nexora-message-dialog[open] { display: flex; }
+.nexora-message-dialog {
+  position: fixed; inset: 0; margin: auto; flex-direction: column;
+  align-items: stretch; width: min(420px, calc(100vw - 32px));
+  max-height: calc(100dvh - 40px); padding: 24px; gap: 16px;
+  overflow-y: auto; text-align: start;
+}
+.nexora-message-dialog::backdrop { background: #03081770; }
+.nexora-message-dialog .nexora-toast__icon { width: 40px; height: 40px; border-radius: 11px; }
+.nexora-message-dialog h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; color: var(--notice-text); }
+.nexora-message-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
+.nexora-message-actions button { min-height: 38px; padding: 8px 16px; border: 1px solid var(--notice-border); border-radius: 8px; background: transparent; color: var(--notice-text); font-family: inherit; font-size: 12px; cursor: pointer; }
+.nexora-message-actions .is-primary { background: #8050cc; border-color: #8050cc; color: white; }
+.nexora-message-actions .is-confirm { color: var(--notice-accent); }
+.nexora-message-actions button:hover { filter: brightness(1.08); }
+.nexora-message-actions button:focus-visible { outline: 2px solid var(--notice-accent); outline-offset: 3px; }

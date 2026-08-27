@@ -1,3 +1,4 @@
+import { confirmAction } from "../services/confirmation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useDropzone } from "react-dropzone";
@@ -113,7 +114,7 @@ export default function UploadFilesPage() {
   const { getInputProps, getRootProps, isDragActive, open } = useDropzone({
     onDrop, noClick: true, disabled: !selectedSetId || uploading, maxSize: 10 * 1024 * 1024,
     accept: { "application/pdf": [".pdf"], "text/plain": [".txt"] },
-    onDropRejected: () => toast(isFa ? "فایل PDF یا TXT با حجم حداکثر ۱۰ مگابایت انتخاب کنید." : "Choose a PDF or TXT file up to 10 MB.", { className: "nexora-toast--warning", duration: 6000 }),
+    onDropRejected: () => toast(isFa ? "فایل PDF یا TXT با حجم حداکثر ۱۰ مگابایت انتخاب کنید." : "Choose a PDF or TXT file up to 10 MB.", { className: "nexora-toast--warning" }),
   });
 
   const filtered = useMemo(() => documents.filter((item) =>
@@ -148,7 +149,7 @@ export default function UploadFilesPage() {
   };
 
   const deleteSet = async () => {
-    if (!selectedSet || !confirm(isFa ? `مجموعه «${selectedSet.name}» حذف شود؟ اسناد حذف نمی‌شوند.` : `Delete “${selectedSet.name}”? Documents will be kept.`)) return;
+    if (!selectedSet || !await confirmAction(isFa ? `مجموعه «${selectedSet.name}» حذف شود؟ اسناد حذف نمی‌شوند.` : `Delete “${selectedSet.name}”? Documents will be kept.`)) return;
     try { await knowledgeService.deleteSet(selectedSet.id); setMenuOpen(false); toast.success(isFa ? "مجموعه حذف شد" : "Set deleted"); await loadSets(); }
     catch (error) { toast.error((error as Error).message); }
   };
@@ -176,7 +177,7 @@ export default function UploadFilesPage() {
           <section className="kb-library app-glass-panel flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="kb-library-toolbar flex shrink-0 flex-col gap-3 border-b border-white/[.07] p-4 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-sm font-semibold">{copy.library}</h2><div className="flex gap-2"><label className="relative flex-1 sm:w-56"><Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 kb-muted" /><input value={query} onChange={(e) => setQuery(e.target.value)} aria-label={copy.search} placeholder={copy.search} className="h-9 w-full rounded-xl border border-white/[.09] bg-white/[.035] ps-9 pe-3 text-xs outline-none placeholder:text-white/20" /></label><label className="relative"><select aria-label={copy.allStatuses} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 appearance-none rounded-xl border border-white/[.09] bg-[#0a1530] ps-3 pe-8 text-xs kb-muted"><option value="all">{copy.allStatuses}</option><option value="indexed">Indexed</option><option value="failed">Failed</option></select><ChevronDown size={13} className="absolute end-2.5 top-1/2 -translate-y-1/2 kb-muted" /></label></div></div>
             <div className="min-h-0 flex-1 divide-y divide-white/[.055] overflow-y-auto">
-              {loading ? <div className="grid h-full place-items-center"><span className="size-5 animate-spin rounded-full border-2 border-white/10 border-t-[#c43cff]" /></div> : filtered.length ? filtered.map((doc) => <DocumentRow key={doc.id} document={doc} isAdmin={isAdmin || selectedSet?.access_level === "edit" || selectedSet?.access_level === "manage"} isFa={isFa} onRemove={async () => { if (!selectedSetId) return; await knowledgeService.removeDocumentFromSet(selectedSetId, doc.id); setDocuments((items) => items.filter((item) => item.id !== doc.id)); await loadSets(); toast.success(isFa ? "سند از مجموعه خارج شد" : "Document removed from set"); }} />) : <div className="grid h-full min-h-28 place-items-center text-xs kb-muted">{selectedSet ? copy.empty : (isFa ? "یک مجموعه انتخاب کنید" : "Select a knowledge set")}</div>}
+              {loading ? <div className="grid h-full place-items-center"><span className="size-5 animate-spin rounded-full border-2 border-white/10 border-t-[#c43cff]" /></div> : filtered.length ? filtered.map((doc) => <DocumentRow key={doc.id} document={doc} isAdmin={isAdmin || selectedSet?.access_level === "edit" || selectedSet?.access_level === "manage"} isFa={isFa} onRemove={async () => { if (!selectedSetId || !await confirmAction(isFa ? `سند «${doc.filename}» از مجموعه خارج شود؟` : `Remove “${doc.filename}” from this set?`)) return; try { await knowledgeService.removeDocumentFromSet(selectedSetId, doc.id); setDocuments((items) => items.filter((item) => item.id !== doc.id)); await loadSets(); toast.success(isFa ? "سند از مجموعه خارج شد" : "Document removed from set"); } catch (error) { toast.error((error as Error).message); } }} />) : <div className="grid h-full min-h-28 place-items-center text-xs kb-muted">{selectedSet ? copy.empty : (isFa ? "یک مجموعه انتخاب کنید" : "Select a knowledge set")}</div>}
             </div>
           </section>
         </div>

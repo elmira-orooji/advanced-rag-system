@@ -1,3 +1,4 @@
+import { confirmAction } from "../services/confirmation";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import toast from "react-hot-toast";
@@ -43,9 +44,10 @@ const onDrop = useCallback(
     },
   });
 
-const removeFile = (
+const removeFile = async (
   fileName: string
 ) => {
+  if (!await confirmAction(`Remove “${fileName}”?`)) return;
   setFiles((prev) =>
     prev.filter(
       (file) =>
@@ -140,7 +142,7 @@ const removeFile = (
                 onClick={() =>
                   removeFile(
                     file.name
-                    
+
                   )
                 }
                 className="
