@@ -3,6 +3,7 @@ import { Check, CheckCircle2, ChevronDown, Copy, FileText, Layers3, Quote, Rotat
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import "../styles/processing-status.css";
+import "../styles/chat-answer.css";
 
 import { feedbackService, type FeedbackReason } from "../services/feedbackService";
 import type { ChatMessage, Source } from "../types/chat";
@@ -24,22 +25,22 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
       <div className="mx-auto flex w-full max-w-[880px] flex-col gap-8 py-4 sm:py-7">
         {messages.map((message, index) => message.role === "user" ? <article key={message.id} className="flex justify-end ps-8 sm:ps-20">
           <div className="max-w-[86%] rounded-[20px] rounded-se-md border border-white/[.08] bg-white/[.055] px-4 py-3 text-[13px] leading-6 text-white/78 shadow-[0_12px_34px_rgba(0,0,0,.12)] sm:max-w-[74%] sm:px-5">{message.content}</div>
-        </article> : <article key={message.id} className="group/answer flex items-start gap-3.5 sm:gap-4">
+        </article> : <article key={message.id} className="chat-answer">
           <NexoraMark />
           <div className="min-w-0 flex-1 pt-0.5">
             {message.research && <details className="mb-4 overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.025]"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-[11px] font-semibold text-white/58"><Telescope size={14} className="text-[#c43cff]" />{isFa ? "فعالیت بازیابی" : "Retrieval activity"}<span className="ms-auto text-[10px] font-normal text-white/25">{message.research.steps.length} {isFa ? "جست‌وجو" : "searches"} · {message.research.evidenceReviewed} {isFa ? "منبع" : "sources"}</span><ChevronDown size={13} className="text-white/25" /></summary><div className="space-y-2 border-t border-white/[.06] px-4 py-3">{message.research.steps.map((step, stepIndex) => <div key={stepIndex} className="flex items-center gap-2 text-[10px] leading-4 text-white/38"><Check size={11} className="text-emerald-300/55" /><span className="min-w-0 flex-1 truncate">{step.query}</span><span className="shrink-0 text-white/20">{step.evidence_count}</span></div>)}</div></details>}
 
-            <div className="whitespace-pre-wrap text-[14px] leading-7 text-white/76 sm:text-[15px] sm:leading-[1.9]"><CitedText content={message.content} sources={message.sources || []} onOpen={setEvidence} /></div>
-            <div className={`mt-4 flex items-center gap-1.5 text-[10px] ${message.grounded ? "text-emerald-200/48" : "text-amber-200/45"}`}>{message.grounded ? <><CheckCircle2 size={12} />{isFa ? "پاسخ مستند به منابع" : "Grounded in your sources"}</> : <><ShieldAlert size={12} />{isFa ? "منبع مرتبطی پیدا نشد" : "No relevant source found"}</>}</div>
+            <div className="chat-answer-text" dir="auto"><CitedText content={message.content} sources={message.sources || []} onOpen={setEvidence} /></div>
+            <div className={`chat-answer-grounding ${message.grounded ? "is-grounded" : "is-ungrounded"}`}>{message.grounded ? <><CheckCircle2 size={12} />{isFa ? "پاسخ مستند به منابع" : "Grounded in your sources"}</> : <><ShieldAlert size={12} />{isFa ? "منبع مرتبطی پیدا نشد" : "No relevant source found"}</>}</div>
 
-            {message.sources?.length ? <div className="mt-3 flex flex-wrap gap-2">{message.sources.slice(0, 4).map((source) => <button key={`${source.id}-${source.citationId}`} onClick={() => setEvidence(source)} className="flex max-w-full items-center gap-1.5 rounded-lg border border-white/[.07] bg-white/[.025] px-2.5 py-1.5 text-[10px] text-white/38 transition hover:border-[#18c7f4]/30 hover:bg-[#7c27ff]/15 hover:text-white/68"><span className="grid size-4 shrink-0 place-items-center rounded bg-[#7c27ff]/45 text-[9px] text-[#e6c7ff]">{source.citationId}</span><span className="max-w-40 truncate">{source.title}</span></button>)}</div> : null}
+            {message.sources?.length ? <div className="mt-3 flex flex-wrap gap-2">{message.sources.slice(0, 4).map((source) => <button key={`${source.id}-${source.citationId}`} onClick={() => setEvidence(source)} className="chat-answer-source"><span className="chat-answer-source-number">{source.citationId}</span><span className="chat-answer-source-title" dir="auto">{source.title}</span></button>)}</div> : null}
 
-            <div className="mt-4 flex flex-wrap items-center gap-1 border-t border-white/[.045] pt-2.5 opacity-75 transition group-hover/answer:opacity-100">
+            <div className="chat-answer-actions">
               <Action label={isFa ? "کپی" : "Copy"} onClick={() => { void navigator.clipboard.writeText(message.content); toast.success(isFa ? "پاسخ کپی شد" : "Response copied"); }}><Copy size={13} /></Action>
               {message.responseId && <Feedback responseId={message.responseId} isFa={isFa} />}
               {onRegenerate && previousPrompt(index) && <Action label={isFa ? "تولید دوباره" : "Regenerate"} onClick={() => onRegenerate(previousPrompt(index)!)}><RotateCcw size={13} /></Action>}
               <Action label={isFa ? "اشتراک" : "Share"} onClick={() => { void navigator.clipboard.writeText(message.content); toast.success(isFa ? "متن پاسخ برای اشتراک کپی شد" : "Answer copied for sharing"); }}><Share2 size={13} /></Action>
-              {message.sources?.length ? <button onClick={() => setEvidence(message.sources![0])} className="ms-1 flex h-8 items-center gap-1.5 rounded-lg px-2 text-[10px] font-medium text-white/35 transition hover:bg-white/[.05] hover:text-white/70"><Layers3 size={13} />{message.sources.length} {isFa ? "منبع" : "Sources"}</button> : null}
+              {message.sources?.length ? <button onClick={() => setEvidence(message.sources![0])} className="chat-answer-source-count"><Layers3 size={13} />{message.sources.length} {isFa ? "منبع" : "Sources"}</button> : null}
             </div>
           </div>
         </article>)}
@@ -51,11 +52,11 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
 }
 
 function NexoraMark() {
-  return <span className="grid size-9 shrink-0 place-items-center rounded-xl border border-[#9f8be8]/20 bg-[linear-gradient(145deg,rgba(124,39,255,.5),rgba(24,199,244,.12))] shadow-[0_10px_30px_rgba(124,39,255,.2)]"><img src="/brand/nexora-symbol.svg" alt="Nexora" className="size-5" /></span>;
+  return <span className="chat-answer-mark"><img src="/brand/nexora-symbol.svg" alt="Nexora" className="size-5" /></span>;
 }
 
 function Action({ label, onClick, children }: { label: string; onClick: () => void; children: ReactNode }) {
-  return <button type="button" aria-label={label} title={label} onClick={onClick} className="grid size-8 place-items-center rounded-lg text-white/30 transition hover:bg-white/[.06] hover:text-white/75">{children}</button>;
+  return <button type="button" aria-label={label} title={label} onClick={onClick} className="chat-answer-action">{children}</button>;
 }
 
 function Thinking({ isFa }: { isFa: boolean }) {
@@ -84,7 +85,7 @@ function Feedback({ responseId, isFa }: { responseId: string; isFa: boolean }) {
 }
 
 function CitedText({ content, sources, onOpen }: { content: string; sources: Source[]; onOpen: (source: Source) => void }) {
-  return <>{content.split(/(\[\d+\])/g).map((part, index) => { const match = part.match(/^\[(\d+)\]$/); const source = match ? sources.find((item) => item.citationId === Number(match[1])) : undefined; return source ? <button key={index} onClick={() => onOpen(source)} className="mx-0.5 inline-grid min-w-5 place-items-center rounded-md border border-[#18c7f4]/25 bg-[#7c27ff]/35 px-1 text-[10px] font-bold leading-5 text-[#e6c7ff] align-text-top hover:bg-[#7c27ff]/60">{source.citationId}</button> : <span key={index}>{part}</span>; })}</>;
+  return <>{content.split(/(\[\d+\])/g).map((part, index) => { const match = part.match(/^\[(\d+)\]$/); const source = match ? sources.find((item) => item.citationId === Number(match[1])) : undefined; return source ? <button key={index} onClick={() => onOpen(source)} className="chat-answer-citation" aria-label={`Source ${source.citationId}: ${source.title}`}>{source.citationId}</button> : <span key={index}>{part}</span>; })}</>;
 }
 
 function Evidence({ source, isFa, onClose }: { source: Source; isFa: boolean; onClose: () => void }) {
