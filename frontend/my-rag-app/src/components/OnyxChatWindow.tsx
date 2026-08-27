@@ -1,7 +1,8 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Check, CheckCircle2, ChevronDown, Copy, FileText, Layers3, Quote, RotateCcw, Share2, ShieldAlert, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
+import "../styles/processing-status.css";
 
 import { feedbackService, type FeedbackReason } from "../services/feedbackService";
 import type { ChatMessage, Source } from "../types/chat";
@@ -58,12 +59,19 @@ function Action({ label, onClick, children }: { label: string; onClick: () => vo
 }
 
 function Thinking({ isFa }: { isFa: boolean }) {
-  const [step, setStep] = useState(0);
-  const steps = isFa ? ["در حال جست‌وجو در پایگاه دانش", "در حال ارزیابی و رتبه‌بندی منابع", "در حال تدوین پاسخ مستند"] : ["Searching your knowledge base", "Evaluating and reranking sources", "Composing a grounded response"];
-  useEffect(() => { const timer = window.setInterval(() => setStep((value) => Math.min(value + 1, steps.length - 1)), 1400); return () => window.clearInterval(timer); }, [steps.length]);
-  return <article className="flex items-start gap-3.5 sm:gap-4" aria-live="polite"><NexoraMark /><details open className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-[#18c7f4]/16 bg-[linear-gradient(135deg,rgba(124,39,255,.14),rgba(255,255,255,.018))]"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3.5 text-[11px] font-semibold text-white/62"><span className="relative size-3"><span className="absolute inset-0 animate-ping rounded-full bg-[#c43cff]/30" /><span className="absolute inset-[3px] rounded-full bg-[#d9a6ff]" /></span>{isFa ? "در حال پردازش" : "Thinking"}<ChevronDown size={13} className="ms-auto text-white/25" /></summary><div className="border-t border-white/[.055] px-4 py-3.5"><div className="space-y-2.5">{steps.map((label, index) => <div key={label} className={`flex items-center gap-2 text-[10px] transition ${index <= step ? "text-white/48" : "text-white/18"}`}>{index < step ? <Check size={12} className="text-emerald-300/60" /> : index === step ? <span className="size-3 animate-spin rounded-full border border-[#d9a6ff]/25 border-t-[#d9a6ff]" /> : <span className="size-3 rounded-full border border-white/10" />}<span>{label}</span></div>)}</div><p className="mt-3 text-[9px] leading-4 text-white/18">{isFa ? "این بخش وضعیت پردازش را نشان می‌دهد و شامل زنجیره‌فکر خصوصی مدل نیست." : "This displays processing status, not the model's private chain of thought."}</p></div></details></article>;
+  return <article className="processing-status" dir={isFa ? "rtl" : "ltr"}>
+    <span className="processing-status-mark" aria-hidden="true">
+      <img src="/brand/nexora-symbol.svg" alt="" />
+    </span>
+    <div className="processing-status-card" role="status" aria-live="polite" aria-atomic="true">
+      <div className="processing-status-heading">
+        <span className="processing-status-spinner" aria-hidden="true" />
+        <span>{isFa ? "در حال آماده‌سازی پاسخ" : "Preparing your answer"}</span>
+      </div>
+      <p>{isFa ? "درخواست شما در حال پردازش است. پاسخ اینجا نمایش داده می‌شود." : "Your request is being processed. The answer will appear here."}</p>
+    </div>
+  </article>;
 }
-
 function Feedback({ responseId, isFa }: { responseId: string; isFa: boolean }) {
   const [rating, setRating] = useState<1 | -1 | null>(null);
   const [open, setOpen] = useState(false);
