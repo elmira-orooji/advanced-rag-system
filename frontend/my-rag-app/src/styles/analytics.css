@@ -1,0 +1,78 @@
+.analytics-dashboard {
+  --an-bg: #0a1122;
+  --an-panel: #10192c;
+  --an-surface: #ffffff04;
+  --an-text: #e7eaf3;
+  --an-muted: #99a5ba;
+  --an-line: #ffffff12;
+  --an-track: #ffffff0d;
+  --an-violet: #b194ef;
+  --an-cyan: #60b8c7;
+  --an-active: #a78bfa16;
+  --an-success: #69c6ac;
+  --an-danger: #ee91a0;
+  background: var(--an-bg);
+  color: var(--an-text);
+  overflow-x: hidden;
+}
+html:not(.dark) .analytics-dashboard {
+  --an-bg: #f5f7fa;
+  --an-panel: #ffffff;
+  --an-surface: #f7f8fb;
+  --an-text: #252c3e;
+  --an-muted: #687287;
+  --an-line: #e4e8ef;
+  --an-track: #edf0f5;
+  --an-violet: #8053c7;
+  --an-cyan: #298899;
+  --an-active: #7c3aed0c;
+  --an-success: #218569;
+  --an-danger: #bb435b;
+}
+.analytics-dashboard .an-muted { color: var(--an-muted); }
+.analytics-dashboard .an-text { color: var(--an-text); }
+.analytics-dashboard .an-success { color: var(--an-success); }
+.analytics-dashboard .an-danger { color: var(--an-danger); }
+.analytics-dashboard .an-border { border-color: var(--an-line); }
+.analytics-dashboard .an-surface { background: var(--an-surface); }
+.analytics-dashboard .an-status-dot { background: currentColor; }
+.analytics-header { padding-block: 4px 6px; }
+.analytics-header h1 { color: var(--an-text); overflow-wrap: anywhere; line-height: 1.5; }
+.analytics-eyebrow { color: var(--an-muted); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.analytics-panel {
+  min-width: 0;
+  border: 1px solid var(--an-line);
+  border-radius: 12px;
+  background: var(--an-panel);
+  color: var(--an-text);
+  box-shadow: 0 2px 5px #00000002;
+}
+.analytics-panel h2 { font-size: 13px; font-weight: 600; line-height: 1.6; }
+.analytics-metric { padding: 18px 20px; }
+.analytics-metric__label { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--an-muted); font-size: 12px; }
+.analytics-metric__label svg { color: var(--an-violet); flex-shrink: 0; }
+.analytics-metric__value { margin-top: 18px; color: var(--an-text); font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.analytics-metric__detail { margin-top: 8px; color: var(--an-muted); font-size: 10px; line-height: 1.6; }
+.analytics-period { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-panel); }
+.analytics-period button { min-height: 32px; padding: 6px 11px; border-radius: 5px; color: var(--an-muted); font-size: 11px; white-space: nowrap; }
+.analytics-period button.is-active { color: var(--an-violet); background: var(--an-active); font-weight: 600; }
+.analytics-export { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-panel); color: var(--an-text); font-size: 11px; }
+.analytics-dashboard button { cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
+.analytics-dashboard button:hover { background: var(--an-active); }
+.analytics-dashboard button:disabled { opacity: .5; cursor: not-allowed; }
+.app-shell .analytics-dashboard button:focus-visible { outline: 2px solid var(--an-violet); outline-offset: 3px; }
+.analytics-ring { flex-shrink: 0; }
+.analytics-ring__center { background: var(--an-panel); }
+.analytics-track { background: var(--an-track); }
+.analytics-bar { background: var(--an-violet); }
+.analytics-bar-secondary { background: var(--an-cyan); }
+.analytics-trend { font-variant-numeric: tabular-nums; }
+.analytics-spinner { width: 28px; height: 28px; border: 2px solid var(--an-line); border-top-color: var(--an-violet); border-radius: 50%; animation: analytics-spin .8s linear infinite; }
+@keyframes analytics-spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) {
+  .analytics-header > div:last-child { gap: 8px; }
+  .analytics-metric { padding: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analytics-dashboard *, .analytics-dashboard button { transition: none; animation: none; }
+}
