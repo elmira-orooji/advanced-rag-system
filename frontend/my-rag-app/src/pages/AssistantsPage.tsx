@@ -45,8 +45,8 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
         <button type="button" onClick={onClose} className="assistant-form-close" aria-label={fa ? "بستن" : "Close"}><X size={18} /></button>
       </header>
       <div className="assistant-form-body">
-        <Field label={fa ? "نام" : "Name"}><input autoFocus dir="auto" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={120} placeholder={fa ? "مثلاً دستیار پشتیبانی" : "e.g. Support assistant"} /></Field>
-        <Field label={fa ? "توضیح کوتاه (اختیاری)" : "Short description (optional)"}><input dir="auto" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={fa ? "این دستیار چه کاری انجام می‌دهد؟" : "What does this assistant help with?"} /></Field>
+        <Field label={fa ? "نام" : "Name"}><input autoFocus dir="auto" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={100} placeholder={fa ? "مثلاً دستیار پشتیبانی" : "e.g. Support assistant"} /></Field>
+        <Field label={fa ? "توضیح کوتاه (اختیاری)" : "Short description (optional)"}><input dir="auto" maxLength={300} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={fa ? "این دستیار چه کاری انجام می‌دهد؟" : "What does this assistant help with?"} /></Field>
         <Field label={fa ? "دستورالعمل" : "Instructions"}><textarea dir="auto" rows={4} value={instructions} onChange={(e) => setInstructions(e.target.value)} required minLength={10} maxLength={5000} placeholder={fa ? "نقش، محدوده پاسخ و لحن دستیار را مشخص کنید..." : "Define the role, answer boundaries, and tone..."} /></Field>
         <fieldset className="assistant-form-knowledge">
           <legend>{fa ? "مجموعه‌های دانش" : "Knowledge sets"}</legend>
