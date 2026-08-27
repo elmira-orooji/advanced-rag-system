@@ -36,9 +36,40 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
   const [name, setName] = useState(item?.name || ""); const [description, setDescription] = useState(item?.description || ""); const [instructions, setInstructions] = useState(item?.instructions || ""); const [selectedSets, setSelectedSets] = useState<string[]>(item?.document_set_ids || []); const [active, setActive] = useState(item?.is_active ?? true); const [saving, setSaving] = useState(false);
   const valid = name.trim().length >= 2 && instructions.trim().length >= 10;
   const submit = async (e: React.FormEvent) => { e.preventDefault(); if (!valid) return; setSaving(true); const payload: AssistantPayload = { name: name.trim(), description: description.trim(), instructions: instructions.trim(), document_set_ids: selectedSets, is_active: active }; try { item ? await assistantService.update(item.id, payload) : await assistantService.create(payload); toast.success(fa ? "دستیار ذخیره شد" : "Assistant saved"); onSaved(); } catch (error) { toast.error((error as Error).message); } finally { setSaving(false); } };
-  const inputClass = "h-11 w-full rounded-xl border border-white/10 bg-black/20 px-3 text-sm text-white outline-none transition placeholder:text-white/20 focus:border-[#18c7f4]/50";
-  return <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-md" onMouseDown={onClose}><motion.form initial={{ opacity: 0, scale: .97 }} animate={{ opacity: 1, scale: 1 }} onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="assistant-dialog app-glass-panel max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-[26px] border border-white/10 p-6"><div className="flex justify-between"><div><span className="grid size-10 place-items-center rounded-xl bg-[#7c27ff]/30 as-accent"><Bot size={18} /></span><h2 className="mt-4 text-xl font-semibold">{fa ? (item ? "ویرایش دستیار" : "ساخت دستیار تخصصی") : (item ? "Edit assistant" : "Create specialized assistant")}</h2></div><button type="button" onClick={onClose} className="app-icon-button grid size-9 place-items-center rounded-xl as-muted"><X size={16} /></button></div><div className="mt-6 grid gap-4"><Field label={fa ? "نام" : "Name"}><input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} /></Field><Field label={fa ? "توضیح کوتاه" : "Short description"}><input value={description} onChange={(e) => setDescription(e.target.value)} className={inputClass} /></Field><Field label={fa ? "دستورالعمل تخصصی" : "Specialized instructions"}><textarea rows={5} value={instructions} onChange={(e) => setInstructions(e.target.value)} placeholder={fa ? "نقش، محدوده پاسخ و لحن دستیار را مشخص کنید..." : "Define the role, answer boundaries, and tone..."} className={`${inputClass} h-auto resize-none py-3`} /></Field><Field label={fa ? "مجموعه‌های دانش" : "Knowledge sets"}><div className="grid gap-2 sm:grid-cols-2">{sets.map((set) => { const checked = selectedSets.includes(set.id); return <button type="button" key={set.id} aria-pressed={checked} onClick={() => setSelectedSets(checked ? selectedSets.filter((id) => id !== set.id) : [...selectedSets, set.id])} className={`flex items-center gap-2 rounded-xl border p-3 text-start text-xs ${checked ? "border-[#18c7f4]/35 bg-[#7c27ff]/25 as-text" : "border-white/[.08] as-muted"}`}><span className={`grid size-6 place-items-center rounded-lg ${checked ? "bg-[#7c27ff]" : "bg-white/[.04]"}`}>{checked ? <Check size={12} /> : <FileStack size={12} />}</span><span className="truncate">{set.name}</span></button>})}</div></Field><button type="button" role="switch" aria-checked={active} onClick={() => setActive(!active)} className="flex items-center justify-between rounded-xl border border-white/[.08] p-3 text-xs as-muted"><span className="flex items-center gap-2"><Power size={14} />{fa ? "دستیار فعال باشد" : "Assistant is active"}</span><span className={`relative h-5 w-9 rounded-full transition ${active ? "bg-[#7c27ff]" : "bg-white/10"}`}><span className={`absolute top-0.5 size-4 rounded-full bg-white transition ${active ? "end-0.5" : "start-0.5"}`} /></span></button></div><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-xs as-muted">{fa ? "انصراف" : "Cancel"}</button><button disabled={!valid || saving} className="rounded-xl bg-[#7c27ff] px-5 py-2.5 text-xs font-semibold disabled:opacity-40">{saving ? "…" : fa ? "ذخیره دستیار" : "Save assistant"}</button></div></motion.form></div>;
+  return <div className="assistant-form-overlay" onMouseDown={onClose}>
+    <form onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="assistant-dialog assistant-form" dir={fa ? "rtl" : "ltr"} role="dialog" aria-modal="true" aria-labelledby="assistant-form-title">
+      <header className="assistant-form-header">
+        <span className="assistant-emblem"><Bot size={20} /></span>
+        <div><h2 id="assistant-form-title">{fa ? (item ? "ویرایش دستیار" : "ساخت دستیار") : (item ? "Edit assistant" : "Create assistant")}</h2>
+        <p>{fa ? "نقش دستیار و منابع پاسخ‌گویی را مشخص کنید." : "Define its role and choose its knowledge sources."}</p></div>
+        <button type="button" onClick={onClose} className="assistant-form-close" aria-label={fa ? "بستن" : "Close"}><X size={18} /></button>
+      </header>
+      <div className="assistant-form-body">
+        <Field label={fa ? "نام" : "Name"}><input autoFocus dir="auto" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={120} placeholder={fa ? "مثلاً دستیار پشتیبانی" : "e.g. Support assistant"} /></Field>
+        <Field label={fa ? "توضیح کوتاه (اختیاری)" : "Short description (optional)"}><input dir="auto" value={description} onChange={(e) => setDescription(e.target.value)} placeholder={fa ? "این دستیار چه کاری انجام می‌دهد؟" : "What does this assistant help with?"} /></Field>
+        <Field label={fa ? "دستورالعمل" : "Instructions"}><textarea dir="auto" rows={4} value={instructions} onChange={(e) => setInstructions(e.target.value)} required minLength={10} maxLength={5000} placeholder={fa ? "نقش، محدوده پاسخ و لحن دستیار را مشخص کنید..." : "Define the role, answer boundaries, and tone..."} /></Field>
+        <fieldset className="assistant-form-knowledge">
+          <legend>{fa ? "مجموعه‌های دانش" : "Knowledge sets"}</legend>
+          <div className="assistant-form-sets">{sets.map((set) => {
+            const checked = selectedSets.includes(set.id);
+            return <button type="button" key={set.id} aria-pressed={checked} onClick={() => setSelectedSets(checked ? selectedSets.filter((id) => id !== set.id) : [...selectedSets, set.id])} className="assistant-form-set">
+              <FileStack size={16} /><span dir="auto">{set.name}</span><span className="assistant-form-check">{checked && <Check size={12} />}</span>
+            </button>;
+          })}</div>
+          {!sets.length && <p className="assistant-form-hint">{fa ? "ابتدا در پایگاه دانش یک مجموعه بسازید." : "Create a knowledge set in Knowledge base first."}</p>}
+        </fieldset>
+        <button type="button" role="switch" aria-checked={active} onClick={() => setActive(!active)} className="assistant-form-status">
+          <span><Power size={15} />{fa ? "دستیار فعال باشد" : "Assistant is active"}</span>
+          <span className="assistant-form-toggle" aria-hidden="true"><span /></span>
+        </button>
+      </div>
+      <footer className="assistant-form-footer">
+        <button type="button" onClick={onClose} className="assistant-form-cancel">{fa ? "انصراف" : "Cancel"}</button>
+        <button type="submit" disabled={!valid || saving} className="assistant-form-save">{saving ? (fa ? "در حال ذخیره…" : "Saving…") : fa ? "ذخیره دستیار" : "Save assistant"}</button>
+      </footer>
+    </form>
+  </div>;
 }
-function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="block text-xs font-semibold as-muted">{label}<div className="mt-2">{children}</div></label>; }
+function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="assistant-form-field">{label}<div className="mt-2">{children}</div></label>; }
 
 
