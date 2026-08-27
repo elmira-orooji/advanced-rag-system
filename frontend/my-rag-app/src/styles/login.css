@@ -1,0 +1,241 @@
+/* Adapted from 21st.dev Sign In Split Screen by felipemenezes098:
+ * https://21st.dev/@felipemenezes098/components/sign-in-6
+ * Radius and shadow tokens adapted from Violet Dusk by serafimcloud:
+ * https://21st.dev/community/themes/violet-dusk
+ * Original Nexora violet / midnight palette retained.
+ * Keep the local Vazirmatn font for Persian and offline availability.
+ */
+.nexora-login {
+  --login-radius: 1rem;
+  --login-card-shadow: 0 20px 40px -10px rgb(0 0 0 / .6);
+  --login-bg: #050817;
+  --login-panel: #10162d;
+  --login-text: #f7f8ff;
+  --login-muted: #b0bbd5;
+  --login-border: #303b59;
+  --login-control-border: #667394;
+  --login-field: #0b1228;
+  --login-primary: #8b3dff;
+  --login-on-primary: #ffffff;
+  --login-error: #ffb1af;
+  --login-warning: #f2d49b;
+  --login-success: #b5dec2;
+  height: 100dvh;
+  overflow: clip;
+  color-scheme: dark;
+  color: var(--login-text);
+  background: var(--login-bg);
+  font-family: "Vazirmatn", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.nexora-login--light {
+  --login-card-shadow: 0 8px 30px 0 rgb(113 48 232 / .08);
+  --login-bg: #f0ebf7;
+  --login-panel: #faf8ff;
+  --login-text: #1b1027;
+  --login-muted: #665875;
+  --login-border: #d9d0e8;
+  --login-control-border: #92829f;
+  --login-field: #ffffff;
+  --login-primary: #7130e8;
+  --login-on-primary: #fff;
+  --login-error: #a52326;
+  --login-warning: #815413;
+  --login-success: #23663b;
+  color-scheme: light;
+}
+
+.nexora-login__shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  grid-template-rows: minmax(0, 1fr);
+  padding: 0;
+  gap: 0;
+  background: linear-gradient(90deg, #04081714 0%, #050a1b33 44%, #050918a8 100%), url('/assets/nexora-gradient-bg-4k.jpg') center / cover no-repeat;
+}
+
+.nexora-login__visual {
+  position: relative;
+  min-height: 0;
+  overflow: visible;
+  isolation: isolate;
+  background: transparent;
+}
+
+.nexora-login__visual > img:first-child {
+  position: absolute;
+  /* Anchor to the physical left; do not over-constrain width + both edges. */
+  inset: 0 auto 0 0;
+  width: 112%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
+  filter: saturate(1.04) contrast(1.03) drop-shadow(0 30px 64px #17044352);
+}
+.nexora-login__visual-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 65%, #07031233); pointer-events: none; }
+
+.nexora-login__brand { position: absolute; top: 32px; left: 34px; }
+.nexora-login__brand img { width: 132px; height: 36px; object-fit: contain; }
+.nexora-login__main { position: relative; min-width: 0; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 72px 38px 38px; container: login-panel / size; z-index: 1; }
+.nexora-login__toolbar { position: absolute; top: 20px; right: 24px; display: flex; align-items: center; gap: 8px; direction: ltr; }
+.nexora-login button { cursor: pointer; }
+.nexora-login__toolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 40px; min-width: 40px; border: 1px solid var(--login-border); border-radius: 9px; color: var(--login-muted); background: transparent; transition: background 160ms, color 160ms; }
+.nexora-login__toolbar button:hover { background: var(--login-field); color: var(--login-text); }
+.nexora-login__language-toggle { padding: 0 12px; font-size: 11px; }
+.nexora-login__form-wrap {
+  position: relative;
+  width: 100%;
+  max-width: 466px;
+  padding: 34px 36px 26px;
+  border: 1px solid #8a9dcb38;
+  border-radius: calc(var(--login-radius) + 6px);
+  background: linear-gradient(145deg, #151e3bea, #090f23ed 70%);
+  box-shadow: var(--login-card-shadow), inset 0 1px #ffffff0d;
+  backdrop-filter: blur(24px);
+}
+.nexora-login__form-wrap::before { content: ''; position: absolute; top: -1px; left: 20%; right: 20%; height: 1px; background: linear-gradient(90deg, transparent, #b7a2ff, transparent); }
+.nexora-login--light .nexora-login__form-wrap { background: linear-gradient(145deg, #ffffffed, #f6f2fcef); border-color: #b5a3d366; box-shadow: var(--login-card-shadow), inset 0 1px #fff; }
+.nexora-login__card-identity { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; padding-bottom: 23px; border-bottom: 1px solid var(--login-border); }
+.nexora-login__card-identity > span { font-size: 15px; letter-spacing: .15em; font-weight: 650; }
+.nexora-login__card-identity > span > span { display: block; margin-top: 3px; color: var(--login-muted); font-size: 8px; letter-spacing: .13em; font-weight: 400; }
+.nexora-login__access-help { margin-top: 19px; color: var(--login-muted); text-align: center; font-size: 11px; line-height: 1.9; }
+
+.nexora-login__welcome-icon { display: grid; place-items: center; width: 49px; height: 49px; margin-bottom: 0; border: 1px solid var(--login-border); border-radius: 14px; background: var(--login-panel); color: #c6acff; box-shadow: 0 3px 6px #00000008; }
+.nexora-login__eyebrow { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 13px; color: #c7afff; font-size: 10px; font-weight: 500; letter-spacing: .14em; }
+.nexora-login__heading h1 { max-width: 360px; font-size: clamp(27px, 2.4vw, 32px); font-weight: 500; line-height: 1.25; letter-spacing: -.035em; text-wrap: balance; }
+.nexora-login__heading p { margin-top: 13px; color: var(--login-muted); font-size: 13px; line-height: 1.85; }
+.nexora-login__form { display: grid; gap: 21px; margin-top: 31px; }
+.nexora-login__field > label { display: block; margin-bottom: 9px; color: var(--login-text); font-size: 12px; font-weight: 500; }
+.nexora-login__field > div { position: relative; }
+.nexora-login__field > div > span { position: absolute; top: 50%; left: 15px; transform: translateY(-50%); pointer-events: none; color: var(--login-muted); }
+.nexora-login__field > div > span.is-rtl { left: auto; right: 15px; }
+.nexora-login__field input { display: block; width: 100%; height: 54px; padding: 0 44px; border: 1px solid var(--login-border); border-radius: 11px; background: var(--login-field); color: var(--login-text); font-family: inherit; font-size: 13px; outline: none; transition: border-color 160ms, box-shadow 160ms; }
+.nexora-login__field input::placeholder { color: var(--login-muted); opacity: .85; }
+.nexora-login__field input { border-color: var(--login-control-border); }
+.nexora-login__field input:hover { border-color: var(--login-muted); }
+.nexora-login__field input:focus { border-color: #c6acff; box-shadow: 0 0 0 3px color-mix(in srgb, var(--login-primary) 16%, transparent); }
+.nexora-login__field input[aria-invalid="true"] { border-color: var(--login-error); }
+.nexora-login__trailing { position: absolute !important; right: 5px; top: 50%; transform: translateY(-50%); }
+.nexora-login__trailing.is-rtl { right: auto; left: 5px; }
+.nexora-login__password-toggle { display: grid; place-items: center; width: 40px; height: 40px; color: var(--login-muted); border-radius: 6px; }
+.nexora-login__password-toggle:hover { color: var(--login-text); background: color-mix(in srgb, var(--login-muted) 10%, transparent); }
+.nexora-login__field > p, .nexora-login__notice, .nexora-login__error, .nexora-login__success { display: flex; align-items: flex-start; gap: 7px; font-size: 12px; line-height: 1.7; }
+.nexora-login__field > p { color: var(--login-error); margin-top: 8px; }
+.nexora-login__field > p svg, .nexora-login__notice svg, .nexora-login__error svg, .nexora-login__success svg { flex-shrink: 0; margin-top: 3px; }
+.nexora-login__notice, .nexora-login__error, .nexora-login__success { padding: 11px 13px; border-radius: 8px; background: var(--login-panel); border: 1px solid var(--login-border); }
+.nexora-login__notice--warning { color: var(--login-warning); }
+.nexora-login__error { color: var(--login-error); }
+.nexora-login__success { color: var(--login-success); }
+.nexora-login__options { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; color: var(--login-muted); font-size: 11px; }
+.nexora-login__options label { position: relative; display: flex; align-items: center; gap: 8px; min-height: 32px; cursor: pointer; }
+.nexora-login__options label > input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.nexora-login__checkbox { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid var(--login-border); border-radius: 4px; color: transparent; background: var(--login-field); }
+.nexora-login__options input:checked + .nexora-login__checkbox { color: var(--login-on-primary); background: var(--login-primary); border-color: var(--login-primary); }
+.nexora-login__checkbox { border-color: var(--login-control-border); }
+.nexora-login__options input:focus-visible + .nexora-login__checkbox { outline: 2px solid var(--login-primary); outline-offset: 3px; }
+.nexora-login__options button { color: var(--login-text); min-height: 32px; text-underline-offset: 5px; }
+.nexora-login__options button:hover { text-decoration: underline; }
+.nexora-login__submit { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; min-height: 52px; border: 1px solid transparent; border-radius: 9px; background: linear-gradient(110deg, #7130e8, #8b3dff); color: var(--login-on-primary); font-size: 14px; font-weight: 600; transition: filter 160ms, transform 160ms, box-shadow 160ms; }
+.nexora-login__submit:not(:disabled):hover { filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 6px 18px #00000014; }
+.nexora-login__submit:not(:disabled):active { transform: translateY(0); }
+.nexora-login__submit:disabled { cursor: not-allowed; opacity: .55; }
+.nexora-login button:focus-visible { outline: 2px solid var(--login-primary); outline-offset: 4px; }
+.nexora-login__form-wrap footer { display: flex; align-items: center; gap: 12px; margin-top: 27px; color: var(--login-muted); }
+.nexora-login__form-wrap footer p { display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 10px; text-align: center; }
+.nexora-login__form-wrap footer svg { flex-shrink: 0; }
+.nexora-login__form-wrap footer > span { flex: 1; height: 1px; background: var(--login-border); }
+.nexora-login__page-footer { position: absolute; bottom: 24px; left: 32px; right: 32px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--login-muted); font-size: 10px; }
+
+@media (min-width: 1600px) {
+  .nexora-login__shell { max-width: 1800px; margin-inline: auto; padding: 0; gap: 0; }
+  .nexora-login__form-wrap { max-width: 480px; }
+}
+@media (min-width: 761px) and (max-height: 800px) {
+  .nexora-login__visual { min-height: 0; }
+  .nexora-login__main { padding-block: 64px 26px; }
+  .nexora-login__welcome-icon { width: 42px; height: 42px; margin-bottom: 0; }
+  .nexora-login__form { gap: 16px; margin-top: 24px; }
+  .nexora-login__card-identity { margin-bottom: 20px; padding-bottom: 18px; }
+  .nexora-login__form-wrap { padding-block: 26px 22px; }
+}
+@media (max-width: 1050px) {
+  .nexora-login__main { padding-inline: 25px; }
+  .nexora-login__form-wrap { padding-inline: 26px; }
+}
+@media (max-width: 760px) {
+  .nexora-login__shell { position: relative; grid-template-columns: minmax(0, 1fr); }
+  .nexora-login__visual { position: absolute; inset: 0; min-height: 0; overflow: clip; pointer-events: none; }
+  .nexora-login__brand { top: 20px; left: 22px; }
+  .nexora-login__brand img { width: 112px; height: 30px; }
+  .nexora-login__visual > img:first-child { inset: 0; width: 100%; height: 100%; object-position: center; opacity: .2; }
+  .nexora-login__main { padding: 70px 20px 24px; }
+  .nexora-login__toolbar { top: 16px; right: 20px; }
+  .nexora-login__form-wrap { max-width: 460px; padding: 25px 24px; }
+  .nexora-login__card-identity { margin-bottom: 22px; padding-bottom: 20px; }
+  .nexora-login__heading h1 { font-size: 27px; }
+  .nexora-login__form { margin-top: 25px; gap: 18px; }
+  .nexora-login__field input { font-size: 16px; }
+  .nexora-login__page-footer { display: none; }
+}
+@media (max-width: 380px) {
+  .nexora-login__main { padding-inline: 12px; }
+  .nexora-login__form-wrap { padding-inline: 18px; }
+  .nexora-login__heading h1 { font-size: 24px; }
+}
+.nexora-login--light .nexora-login__eyebrow,
+.nexora-login--light .nexora-login__welcome-icon { color: #7130b8; }
+.nexora-login--light .nexora-login__page-footer,
+.nexora-login--light .nexora-login__toolbar button { color: #eee5ff; }
+@media (prefers-reduced-motion: reduce) {
+  .nexora-login *, .nexora-login *::before, .nexora-login *::after { animation: none !important; transition: none !important; }
+}
+
+/* Size the contents, rather than hiding a scrollbar over an oversized form. */
+.nexora-login *, .nexora-login *::before, .nexora-login *::after { box-sizing: border-box; }
+.nexora-login__form-wrap, .nexora-login__field { min-width: 0; }
+.nexora-login__error, .nexora-login__notice, .nexora-login__success { overflow-wrap: anywhere; }
+.nexora-login__form-wrap--expanded .nexora-login__card-identity,
+.nexora-login__form-wrap--expanded .nexora-login__access-help { display: none; }
+@container login-panel (max-height: 680px) {
+  .nexora-login__form-wrap { padding: 24px; }
+  .nexora-login__card-identity { margin-bottom: 16px; padding-bottom: 14px; }
+  .nexora-login__welcome-icon { width: 38px; height: 38px; }
+  .nexora-login__form { margin-top: 20px; gap: 14px; }
+  .nexora-login__form-wrap footer { margin-top: 18px; }
+  .nexora-login__access-help { margin-top: 12px; }
+}
+@container login-panel (max-height: 580px) {
+  .nexora-login__card-identity, .nexora-login__access-help, .nexora-login__heading > p { display: none; }
+  .nexora-login__heading h1 { font-size: 26px; }
+  .nexora-login__form-wrap footer { margin-top: 16px; }
+  .nexora-login__field input { height: 46px; }
+  .nexora-login__submit { min-height: 46px; }
+  .nexora-login__form-wrap--expanded footer { display: none; }
+}
+@container login-panel (max-height: 520px) {
+  .nexora-login__form-wrap { padding: 16px 20px; }
+  .nexora-login__eyebrow, .nexora-login__form-wrap footer { display: none; }
+  .nexora-login__heading h1 { font-size: 23px; }
+  .nexora-login__form { margin-top: 12px; gap: 9px; }
+  .nexora-login__field > label { margin-bottom: 5px; }
+  .nexora-login__field input { height: 40px; }
+  .nexora-login__field > p { margin-top: 4px; font-size: 11px; line-height: 1.4; }
+  .nexora-login__notice, .nexora-login__error, .nexora-login__success { padding: 6px 9px; font-size: 11px; }
+  .nexora-login__submit { min-height: 40px; }
+}
+@media (max-height: 540px) and (min-width: 600px) {
+  .nexora-login__shell { grid-template-columns: minmax(0, .7fr) minmax(0, 1.3fr); }
+  .nexora-login__main { padding: 12px 20px; }
+  .nexora-login__toolbar { position: fixed; top: auto; bottom: 18px; left: 20px; right: auto; }
+  .nexora-login__page-footer { display: none; }
+}
+
+@container login-panel (max-height: 420px) and (min-width: 400px) {
+  .nexora-login__form { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+  #login-workspace, .nexora-login__options, .nexora-login__submit,
+  .nexora-login__notice, .nexora-login__error, .nexora-login__success { grid-column: 1 / -1; }
+  .nexora-login__heading h1 { font-size: 21px; }
+}

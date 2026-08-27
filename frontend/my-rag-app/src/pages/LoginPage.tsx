@@ -3,8 +3,9 @@ import type { KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
+  ArrowRight,
   Building2,
   Check,
   CircleAlert,
@@ -14,6 +15,10 @@ import {
   Languages,
   LoaderCircle,
   LockKeyhole,
+  Moon,
+  ShieldCheck,
+  Sparkles,
+  Sun,
   UserRound,
   WifiOff,
 } from "lucide-react";
@@ -23,13 +28,15 @@ import { useLanguage } from "../hooks/useLanguage";
 import { loginSchema } from "../schemas/loginSchema";
 import type { LoginSchemaType } from "../schemas/loginSchema";
 import { authService } from "../services/authService";
+import "../styles/login.css";
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const reduceMotion = useReducedMotion();
   const { language, changeLanguage } = useLanguage();
   const [showPassword, setShowPassword] = useState(false);
   const [showWorkspace, setShowWorkspace] = useState(false);
-  const [theme] = useState<"dark" | "light">(
+  const [theme, setTheme] = useState<"dark" | "light">(
     () =>
       (localStorage.getItem("knowledgeflow.login-theme") as "dark" | "light" | null) ||
       "dark",
@@ -71,6 +78,14 @@ export default function LoginPage() {
   const updateCapsLock = (event: KeyboardEvent<HTMLInputElement>) =>
     setCapsLock(event.getModifierState("CapsLock"));
 
+  const toggleTheme = () => {
+    setTheme((current) => {
+      const next = current === "dark" ? "light" : "dark";
+      localStorage.setItem("knowledgeflow.login-theme", next);
+      return next;
+    });
+  };
+
   const onSubmit = async (data: LoginSchemaType) => {
     setServerError("");
     setSuccessMessage("");
@@ -104,12 +119,12 @@ export default function LoginPage() {
       className={`nexora-login ${theme === "light" ? "nexora-login--light" : ""}`}
     >
       <motion.section
-        initial={{ opacity: 0, scale: 0.985 }}
+        initial={reduceMotion ? false : { opacity: 0, scale: 0.985 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
         className="nexora-login__shell"
       >
-        <aside className="nexora-login__visual" aria-label="Nexora artificial intelligence visual">
+        <aside dir="ltr" className="nexora-login__visual" aria-label={isRtl ? "فضای دانش نکسورا" : "Nexora knowledge workspace"}>
           <img src="/assets/nexora-rag-hero-transparent-v2.png" alt="Nexora retrieval augmented generation knowledge network" />
           <div className="nexora-login__visual-shade" />
           <div className="nexora-login__brand">
@@ -118,8 +133,15 @@ export default function LoginPage() {
         </aside>
 
         <main dir={isRtl ? "rtl" : "ltr"} className="nexora-login__main">
-          <div className="nexora-login__ambient" />
           <div className="nexora-login__toolbar">
+            <button
+              type="button"
+              onClick={toggleTheme}
+              aria-label={isRtl ? (theme === "dark" ? "فعال‌کردن حالت روشن" : "فعال‌کردن حالت تیره") : (theme === "dark" ? "Switch to light mode" : "Switch to dark mode")}
+              className="nexora-login__theme-toggle"
+            >
+              {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+            </button>
             <button
               type="button"
               onClick={() => changeLanguage(language === "en" ? "fa" : "en")}
@@ -132,28 +154,33 @@ export default function LoginPage() {
           </div>
 
           <motion.div
-            initial={{ opacity: 0, x: 16 }}
+            initial={reduceMotion ? false : { opacity: 0, x: 16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.12, duration: 0.5 }}
-            className="nexora-login__form-wrap"
+            className={`nexora-login__form-wrap ${showWorkspace || Object.keys(errors).length > 0 || serverError || !isOnline || capsLock ? "nexora-login__form-wrap--expanded" : ""}`}
           >
-            <div className="nexora-login__mobile-brand">
-              <img src="/brand/nexora-horizontal-light.svg" alt="Nexora" />
-            </div>
-
             <header className="nexora-login__heading">
-              <span>{isRtl ? "خوش آمدید" : "WELCOME BACK"}</span>
+              <div className="nexora-login__card-identity">
+                <div className="nexora-login__welcome-icon" aria-hidden="true"><LockKeyhole size={22} strokeWidth={1.5} /></div>
+                <span dir="ltr">NEXORA<span>KNOWLEDGE WORKSPACE</span></span>
+              </div>
+              <span className="nexora-login__eyebrow">
+                <Sparkles size={12} />
+                {isRtl ? "خوش آمدید" : "WELCOME BACK"}
+              </span>
               <h1>{t.title}</h1>
-              <p>{t.subtitle}</p>
+              <p>{isRtl ? "برای دسترسی به اسناد و گفتگوها، وارد حساب خود شوید." : "Sign in to access your documents and conversations."}</p>
             </header>
 
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="nexora-login__form">
               <AnimatePresence initial={false}>
                 {showWorkspace && (
                   <motion.div
-                    initial={{ opacity: 0, height: 0 }}
+                    initial={reduceMotion ? false : { opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: reduceMotion ? 0 : 0.2 }}
+                    id="login-workspace"
                     className="overflow-hidden"
                   >
                     <LoginField
@@ -218,6 +245,8 @@ export default function LoginPage() {
                   <button
                     type="button"
                     aria-label={showPassword ? t.hidePassword : t.showPassword}
+                    aria-pressed={showPassword}
+                    aria-controls="password"
                     onClick={() => setShowPassword((current) => !current)}
                     className="nexora-login__password-toggle"
                   >
@@ -253,7 +282,7 @@ export default function LoginPage() {
               )}
               {serverError && (
                 <motion.p
-                  initial={{ opacity: 0, y: -4 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   role="alert"
                   className="nexora-login__error"
@@ -264,7 +293,7 @@ export default function LoginPage() {
               )}
               {successMessage && (
                 <motion.p
-                  initial={{ opacity: 0, y: -4 }}
+                  initial={reduceMotion ? false : { opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
                   role="status"
                   aria-live="polite"
@@ -281,7 +310,7 @@ export default function LoginPage() {
                   <span className="nexora-login__checkbox"><Check size={11} /></span>
                   {t.remember}
                 </label>
-                <button type="button" onClick={() => setShowWorkspace((current) => !current)}>
+                <button type="button" aria-expanded={showWorkspace} aria-controls={showWorkspace ? "login-workspace" : undefined} onClick={() => setShowWorkspace((current) => !current)}>
                   {showWorkspace
                     ? isRtl ? "بستن فضای کاری" : "Hide workspace"
                     : isRtl ? "تغییر فضای کاری" : "Change workspace"}
@@ -291,19 +320,26 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading || !isOnline}
+                aria-busy={isLoading}
                 className="nexora-login__submit"
               >
                 {isLoading && <LoaderCircle size={18} className="animate-spin" />}
                 <span>{isLoading ? t.loading : t.login}</span>
+                {!isLoading && <ArrowRight size={16} className={isRtl ? "rotate-180" : ""} />}
               </button>
             </form>
 
             <footer>
               <span />
-              <p>{isRtl ? "ورود امن به فضای دانش شما" : "Secure access to your knowledge workspace"}</p>
+              <p>
+                <ShieldCheck size={12} />
+                {isRtl ? "ورود امن به فضای دانش شما" : "Secure access to your knowledge workspace"}
+              </p>
               <span />
             </footer>
+            <p className="nexora-login__access-help">{isRtl ? "حساب کاربری ندارید؟ با مدیر فضای کاری تماس بگیرید." : "Need an account? Contact your workspace administrator."}</p>
           </motion.div>
+          <div className="nexora-login__page-footer"><span>© {new Date().getFullYear()} Nexora</span><span>{isRtl ? "فضای کاری دانش" : "Your knowledge. Your workspace."}</span></div>
         </main>
       </motion.section>
     </div>
