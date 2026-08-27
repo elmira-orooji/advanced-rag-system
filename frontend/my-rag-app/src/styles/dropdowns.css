@@ -1,0 +1,47 @@
+/* Native select behavior is retained; supported browsers also theme the picker. */
+:root { --menu-bg: #fff; --menu-text: #252c3e; --menu-muted: #687287; --menu-line: #dfe4ed; --menu-accent: #7950bb; --menu-hover: #f4effb; }
+html.dark { --menu-bg: #111b2e; --menu-text: #e7eaf3; --menu-muted: #99a5ba; --menu-line: #2b354a; --menu-accent: #bda0f4; --menu-hover: #252039; }
+html .app-shell select {
+  min-height: 34px; max-width: 100%; border: 1px solid var(--menu-line) !important;
+  border-radius: 8px !important; background-color: var(--menu-bg) !important;
+  color: var(--menu-text) !important; font-family: inherit; font-size: 12px;
+  line-height: 1.6; cursor: pointer; color-scheme: light;
+}
+html.dark .app-shell select { color-scheme: dark; }
+html .app-shell select:focus-visible { outline: 2px solid var(--menu-accent); outline-offset: 2px; box-shadow: none !important; }
+html .app-shell select:hover:not(:disabled) { border-color: var(--menu-accent) !important; }
+html .app-shell select:disabled { opacity: .5; cursor: not-allowed; }
+html .app-shell select option { background: var(--menu-bg); color: var(--menu-text); font: inherit; }
+@supports (appearance: base-select) {
+  html .app-shell select, html .app-shell select::picker(select) { appearance: base-select !important; }
+  html .app-shell select { padding-inline: 12px !important; gap: 12px; }
+  html .app-shell select::picker(select) {
+    border: 1px solid var(--menu-line); border-radius: 10px; padding: 5px;
+    background: var(--menu-bg); color: var(--menu-text); font-family: inherit;
+    box-shadow: 0 8px 24px #00000018; margin-block: 5px;
+    max-height: min(320px, 60dvh); max-width: calc(100vw - 24px); overflow-y: auto;
+    scrollbar-width: thin; scrollbar-color: var(--menu-line) transparent;
+  }
+  html .app-shell select::picker-icon { color: var(--menu-muted); font-size: 11px; }
+  html .app-shell select:open::picker-icon { rotate: 180deg; }
+  html .app-shell select option { min-height: 34px; padding: 8px 10px; border: 0; border-radius: 6px; font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
+  html .app-shell select option:hover, html .app-shell select option:focus { background: var(--menu-hover); color: var(--menu-text); outline: none; }
+  html .app-shell select option:checked { background: var(--menu-hover); color: var(--menu-accent); font-weight: 600; }
+  html .app-shell select option::checkmark { color: var(--menu-accent); }
+  html .app-shell select + svg { display: none; }
+}
+html .app-shell .nexora-dropdown {
+  border: 1px solid var(--menu-line) !important; border-radius: 10px !important;
+  background: var(--menu-bg) !important; color: var(--menu-text) !important;
+  box-shadow: 0 8px 24px #00000018 !important; backdrop-filter: none;
+  max-width: calc(100vw - 32px); font-family: inherit;
+}
+html .app-shell .nexora-dropdown button { border-radius: 6px; transition: background-color 140ms ease, color 140ms ease; }
+html .app-shell .nexora-dropdown button:hover { background: var(--menu-hover) !important; color: var(--menu-accent) !important; }
+html .app-shell .nexora-dropdown button:focus-visible { outline: 2px solid var(--menu-accent); outline-offset: -2px; }
+html .app-shell .nexora-dropdown button[aria-pressed="true"] { background: var(--menu-hover) !important; color: var(--menu-accent) !important; }
+html .app-shell .nexora-dropdown [class*="text-white/"], html .app-shell .nexora-dropdown .kb-muted { color: var(--menu-muted) !important; }
+html .app-shell .nexora-dropdown .kb-text { color: var(--menu-text); }
+html .app-shell .nexora-dropdown button[class*="text-rose-"] { color: #bc435b !important; }
+html.dark .app-shell .nexora-dropdown button[class*="text-rose-"] { color: #ee91a0 !important; }
+@media (prefers-reduced-motion: reduce) { html .app-shell .nexora-dropdown button { transition: none; } }
