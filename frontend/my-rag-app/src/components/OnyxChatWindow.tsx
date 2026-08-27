@@ -23,8 +23,8 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
   return <div dir={isFa ? "rtl" : "ltr"} className="relative h-full">
     <div className="h-full overflow-y-auto scroll-smooth pe-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
       <div className="mx-auto flex w-full max-w-[880px] flex-col gap-8 py-4 sm:py-7">
-        {messages.map((message, index) => message.role === "user" ? <article key={message.id} className="flex justify-end ps-8 sm:ps-20">
-          <div className="max-w-[86%] rounded-[20px] rounded-se-md border border-white/[.08] bg-white/[.055] px-4 py-3 text-[13px] leading-6 text-white/78 shadow-[0_12px_34px_rgba(0,0,0,.12)] sm:max-w-[74%] sm:px-5">{message.content}</div>
+        {messages.map((message, index) => message.role === "user" ? <article key={message.id} className="chat-question">
+          <div className="chat-question-bubble"><div dir="auto">{message.content}</div></div>
         </article> : <article key={message.id} className="chat-answer">
           <NexoraMark />
           <div className="min-w-0 flex-1 pt-0.5">
@@ -91,4 +91,3 @@ function CitedText({ content, sources, onOpen }: { content: string; sources: Sou
 function Evidence({ source, isFa, onClose }: { source: Source; isFa: boolean; onClose: () => void }) {
   return <aside className="absolute inset-y-0 end-0 z-40 flex w-full max-w-md flex-col border-s border-white/10 bg-[rgba(12,9,18,.97)] shadow-2xl backdrop-blur-2xl"><header className="flex items-center justify-between border-b border-white/[.07] p-4"><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#7c27ff]/30 text-[#d9a6ff]"><Quote size={15} /></span><div><p className="text-xs font-semibold">{isFa ? `منبع ${source.citationId}` : `Source ${source.citationId}`}</p><p className="mt-0.5 max-w-64 truncate text-[10px] text-white/30">{source.title}</p></div></div><button onClick={onClose} className="grid size-8 place-items-center rounded-lg text-white/35 hover:bg-white/5"><X size={15} /></button></header><div className="min-h-0 flex-1 overflow-y-auto p-4"><div className="flex items-center gap-2 rounded-xl border border-white/[.07] bg-white/[.025] p-3 text-[11px] text-white/50"><FileText size={14} className="text-[#c43cff]" /><span className="truncate">{source.title}</span></div><blockquote className="mt-4 whitespace-pre-wrap rounded-2xl border-s-2 border-[#18c7f4]/45 bg-[#7c27ff]/10 p-4 text-xs leading-6 text-white/60">{source.excerpt}</blockquote></div></aside>;
 }
-

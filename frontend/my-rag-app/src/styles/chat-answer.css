@@ -1,4 +1,4 @@
-.chat-answer {
+.chat-answer, .chat-question {
   --answer-text: #e7eaf3;
   --answer-muted: #a4afc2;
   --answer-border: #ffffff14;
@@ -7,12 +7,14 @@
   --answer-tint: #a78bfa12;
   --answer-success: #80cbb2;
   --answer-warning: #e0bd7e;
+}
+.chat-answer {
   display: flex;
   align-items: flex-start;
   gap: 16px;
   min-width: 0;
 }
-html:not(.dark) .chat-answer {
+html:not(.dark) :is(.chat-answer, .chat-question) {
   --answer-text: #252c3e;
   --answer-muted: #59657b;
   --answer-border: #dfe4ed;
@@ -21,6 +23,28 @@ html:not(.dark) .chat-answer {
   --answer-tint: #7c3aed0b;
   --answer-success: #28775e;
   --answer-warning: #87621f;
+}
+.chat-question {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+  padding-inline-start: 48px;
+}
+.chat-question-bubble {
+  min-width: 0;
+  max-width: 80%;
+  padding: 12px 18px;
+  border: 1px solid var(--answer-border);
+  border-radius: 14px;
+  border-start-end-radius: 6px;
+  background: var(--answer-tint);
+  color: var(--answer-text);
+  font-family: inherit;
+  font-size: 17px;
+  line-height: 2;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: start;
 }
 .chat-answer-mark {
   display: grid;
@@ -121,6 +145,8 @@ html:not(.dark) .chat-answer {
 }
 .chat-answer button:focus-visible { outline: 2px solid var(--answer-accent); outline-offset: 3px; }
 @media (max-width: 480px) {
+  .chat-question { padding-inline-start: 24px; }
+  .chat-question-bubble { max-width: 92%; padding: 10px 14px; font-size: 16px; line-height: 1.95; }
   .chat-answer { gap: 10px; }
   .chat-answer-text { font-size: 16px; line-height: 1.95; }
 }
