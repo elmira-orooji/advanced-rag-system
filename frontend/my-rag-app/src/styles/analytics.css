@@ -48,7 +48,19 @@ html:not(.dark) .analytics-dashboard {
   box-shadow: 0 2px 5px #00000002;
 }
 .analytics-panel h2 { font-size: 13px; font-weight: 600; line-height: 1.6; }
-.analytics-metric { padding: 18px 20px; }
+.analytics-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 28px; border: 1px solid var(--an-line); border-radius: 12px; background: var(--an-panel); }
+.analytics-metric { min-width: 0; padding: 20px; }
+.analytics-metric + .analytics-metric { border-inline-start: 1px solid var(--an-line); }
+.analytics-health-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 20px 4px; color: var(--an-muted); font-size: 12px; line-height: 1.8; }
+.analytics-health-summary > span { display: inline-flex; align-items: center; gap: 7px; }
+.analytics-health-summary strong { color: var(--an-text); font-weight: 600; }
+.analytics-details { border-top: 1px solid var(--an-line); padding-top: 14px; }
+.analytics-details summary { width: fit-content; padding: 6px 4px; color: var(--an-muted); font-size: 13px; cursor: pointer; }
+.analytics-details summary::marker { color: var(--an-violet); }
+.analytics-details summary:focus-visible { outline: 2px solid var(--an-violet); outline-offset: 3px; border-radius: 4px; }
+.analytics-issues { display: grid; gap: 12px; margin-top: 14px; font-size: 12px; line-height: 1.8; overflow-wrap: anywhere; }
+.analytics-issues strong { font-weight: 500; }
+.analytics-issues p { color: var(--an-muted); }
 .analytics-metric__label { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--an-muted); font-size: 12px; }
 .analytics-metric__label svg { color: var(--an-violet); flex-shrink: 0; }
 .analytics-metric__value { margin-top: 18px; color: var(--an-text); font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
@@ -70,6 +82,9 @@ html:not(.dark) .analytics-dashboard {
 .analytics-spinner { width: 28px; height: 28px; border: 2px solid var(--an-line); border-top-color: var(--an-violet); border-radius: 50%; animation: analytics-spin .8s linear infinite; }
 @keyframes analytics-spin { to { transform: rotate(360deg); } }
 @media (max-width: 640px) {
+  .analytics-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .analytics-metric:nth-child(3) { border-inline-start: 0; }
+  .analytics-metric:nth-child(n+3) { border-top: 1px solid var(--an-line); }
   .analytics-header > div:last-child { gap: 8px; }
   .analytics-metric { padding: 16px; }
 }
