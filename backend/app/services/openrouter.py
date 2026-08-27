@@ -26,6 +26,29 @@ class LLMResult:
 
 
 class OpenRouterClient:
+    def list_models(self) -> list[dict[str, Any]]:
+        request = Request("https://openrouter.ai/api/v1/models", headers={
+            "Authorization": f"Bearer {self.api_key}", "Accept": "application/json",
+        })
+        try:
+            with urlopen(request, timeout=20) as response:
+                data = json.loads(response.read().decode("utf-8"))
+            if not isinstance(data, dict) or not isinstance(data.get("data"), list):
+                raise ValueError("Invalid catalog")
+            models = []
+            for item in data["data"]:
+                if not isinstance(item, dict) or not isinstance(item.get("id"), str):
+                    continue
+                architecture = item.get("architecture") or {}
+                if "text" not in architecture.get("output_modalities", ["text"]):
+                    continue
+                pricing = item.get("pricing") or {}
+                free = all(str(pricing.get(key, "unknown")) in {"0", "0.0"} for key in ("prompt", "completion"))
+                models.append({"id": item["id"], "name": item.get("name") or item["id"], "free": free})
+            return sorted(models, key=lambda model: (not model["free"], model["name"].lower()))
+        except (URLError, TimeoutError, ValueError, TypeError, AttributeError) as exc:
+            raise OpenRouterError("Could not load model catalog. Please try again.") from exc
+
     def __init__(self, model: str | None = None) -> None:
         if not OPENROUTER_API_KEY:
             raise OpenRouterError("OpenRouter configuration is missing")

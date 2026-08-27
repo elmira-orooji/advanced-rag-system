@@ -34,6 +34,17 @@ export default function AssistantsPage() {
 
 function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAssistant; sets: DocumentSet[]; fa: boolean; onClose: () => void; onSaved: () => void }) {
   const [modelId, setModelId] = useState(item?.model_id || "");
+  const [models, setModels] = useState<Array<{ id: string; name: string; free: boolean }>>([]);
+  const [modelsError, setModelsError] = useState(false);
+  const [modelsLoading, setModelsLoading] = useState(true);
+  const [modelAttempt, setModelAttempt] = useState(0);
+  useEffect(() => {
+    let active = true;
+    assistantService.models().then((result) => { if (active) setModels(result); })
+      .catch(() => { if (active) setModelsError(true); })
+      .finally(() => { if (active) setModelsLoading(false); });
+    return () => { active = false; };
+  }, [modelAttempt]);
   const [answerMode, setAnswerMode] = useState<"sources" | "hybrid">(item?.answer_mode || "hybrid");
   const [setPage, setSetPage] = useState(0);
   const setPageCount = Math.max(1, Math.ceil(sets.length / 4));
@@ -60,9 +71,16 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
         <Field label={fa ? "توضیح کوتاه (اختیاری)" : "Short description (optional)"}><input dir="auto" maxLength={300} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={fa ? "این دستیار چه کاری انجام می‌دهد؟" : "What does this assistant help with?"} /></Field>
         <Field label={fa ? "دستورالعمل" : "Instructions"}><textarea dir="auto" rows={4} value={instructions} onChange={(e) => setInstructions(e.target.value)} required minLength={10} maxLength={5000} placeholder={fa ? "نقش، محدوده پاسخ و لحن دستیار را مشخص کنید..." : "Define the role, answer boundaries, and tone..."} /></Field>
         <div className="assistant-model-settings">
-          <Field label={fa ? "مدل OpenRouter" : "OpenRouter model"}>
-            <input dir="ltr" list="assistant-model-options" value={modelId} onChange={(e) => setModelId(e.target.value)} maxLength={160} placeholder={fa ? "پیش‌فرض سرور" : "Server default"} />
-            <datalist id="assistant-model-options"><option value="openrouter/free">{fa ? "مسیریاب رایگان" : "Free model router"}</option></datalist>
+          <Field label="Models">
+            <select dir="ltr" value={modelId} onChange={(e) => setModelId(e.target.value)} aria-busy={modelsLoading}>
+              <option value="">{fa ? "پیش‌فرض سرور" : "Server default"}</option>
+              <option value="openrouter/free">{fa ? "انتخاب خودکار رایگان" : "Free model router"}</option>
+              {modelId && modelId !== "openrouter/free" && !models.some((model) => model.id === modelId) && <option value={modelId}>{modelId}</option>}
+              {[true, false].map((free) => <optgroup key={String(free)} label={free ? (fa ? "رایگان" : "Free") : (fa ? "پولی / مبتنی بر مصرف" : "Paid / usage-based")}>
+                {models.filter((model) => model.free === free && model.id !== "openrouter/free").map((model) => <option key={model.id} value={model.id}>{model.name}</option>)}
+              </optgroup>)}
+            </select>
+            {modelsLoading && <span className="assistant-form-hint" role="status">{fa ? "در حال دریافت مدل‌ها…" : "Loading models…"}</span>}
           </Field>
           <Field label={fa ? "حالت پاسخ" : "Answer mode"}>
             <select value={answerMode} onChange={(e) => setAnswerMode(e.target.value as "sources" | "hybrid")}>
@@ -70,7 +88,8 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
               <option value="sources">{fa ? "فقط منابع" : "Sources only"}</option>
             </select>
           </Field>
-          <p className="assistant-form-hint">{fa ? "برای مدل دلخواه، شناسهٔ provider/model را وارد کنید. مدل‌های پولی از اعتبار OpenRouter استفاده می‌کنند." : "Enter provider/model for a custom model. Paid models use your OpenRouter credits."}</p>
+          <p className="assistant-form-hint">{fa ? "مدل‌های پولی از اعتبار حساب استفاده می‌کنند." : "Paid models use your account credits."}</p>
+          {modelsError && <div className="assistant-form-hint" role="alert">{fa ? "دریافت مدل‌ها ناموفق بود. " : "Could not load models. "}<button type="button" onClick={() => { setModelsError(false); setModelsLoading(true); setModelAttempt((value) => value + 1); }}>{fa ? "تلاش دوباره" : "Retry"}</button></div>}
         </div>
         <fieldset className="assistant-form-knowledge">
           <legend>{fa ? "مجموعه‌های دانش" : "Knowledge sets"}</legend>

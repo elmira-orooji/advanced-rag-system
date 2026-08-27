@@ -10,6 +10,7 @@ export interface AssistantPayload { model_id: string | null; answer_mode: "sourc
 export interface AssistantAnswer { answer_basis: "sources" | "general" | "hybrid"; response_id: string; answer: string; grounded: boolean; citations: Array<{ id: number; chunk_id: string; document_id: string; filename: string; chunk_index: number; excerpt: string; score: number; page: number | null; section: string | null }>; }
 
 export const assistantService = {
+  models: () => request<Array<{ id: string; name: string; free: boolean }>>("/assistants/models", { headers: headers() }),
   list: () => request<CustomAssistant[]>("/assistants", { headers: headers() }),
   listSets: () => request<DocumentSet[]>("/document-sets", { headers: headers() }),
   create: (payload: AssistantPayload) => request<CustomAssistant>("/assistants", { method: "POST", headers: headers(true), body: JSON.stringify(payload) }),

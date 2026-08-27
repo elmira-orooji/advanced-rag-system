@@ -58,6 +58,14 @@ def _response(item: Assistant, allowed_set_ids: set[uuid.UUID] | None = None) ->
     )
 
 
+@router.get("/models")
+def available_models(user: User = Depends(_admin)):
+    try:
+        return OpenRouterClient().list_models()
+    except OpenRouterError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
 @router.get("", response_model=list[AssistantResponse])
 def list_assistants(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     statement = select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.organization_id == user.organization_id).order_by(Assistant.updated_at.desc())
