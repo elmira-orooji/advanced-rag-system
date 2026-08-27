@@ -5,7 +5,6 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES, REMEMBER_TOKEN_EXPIRE_DAYS
 from app.core.security import create_access_token, decode_access_token, verify_password
 from app.db.database import get_db
 from app.models.user import User
@@ -52,14 +51,9 @@ def login(payload: LoginRequest, db: Session = Depends(get_db)):
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive")
 
-    expires_in = (
-        REMEMBER_TOKEN_EXPIRE_DAYS * 24 * 60 * 60
-        if payload.remember_me
-        else ACCESS_TOKEN_EXPIRE_MINUTES * 60
-    )
     return LoginResponse(
-        access_token=create_access_token(str(user.id), user.role, expires_in),
-        expires_in=expires_in,
+        access_token=create_access_token(str(user.id), user.role),
+        expires_in=None,
         user=AuthUser(id=user.id, username=user.username, role=user.role, organization_id=organization.id, organization_name=organization.name, organization_slug=organization.slug),
     )
 

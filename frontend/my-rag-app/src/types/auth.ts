@@ -11,13 +11,13 @@ export interface AuthUser {
 
 export interface AuthSession {
   accessToken: string;
-  expiresAt: number;
+  expiresAt: number | null;
   user: AuthUser;
 }
 
 export interface LoginResponse {
   access_token: string;
   token_type: "bearer";
-  expires_in: number;
+  expires_in: number | null;
   user: AuthUser;
 }

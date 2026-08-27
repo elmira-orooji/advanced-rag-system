@@ -37,7 +37,7 @@ export const authService = {
     }
     const session: AuthSession = {
       accessToken: payload.access_token,
-      expiresAt: Date.now() + payload.expires_in * 1000,
+      expiresAt: payload.expires_in === null ? null : Date.now() + payload.expires_in * 1000,
       user: payload.user,
     };
     saveSession(session, data.rememberMe);
@@ -49,7 +49,12 @@ export const authService = {
     if (!raw) return null;
     try {
       const session = JSON.parse(raw) as AuthSession;
-      if (!session.accessToken || !session.user || session.expiresAt <= Date.now()) {
+      const invalidExpiry = session.expiresAt !== null && (
+        typeof session.expiresAt !== "number" ||
+        !Number.isFinite(session.expiresAt) ||
+        session.expiresAt <= Date.now()
+      );
+      if (!session.accessToken || !session.user || invalidExpiry) {
         this.logout();
         return null;
       }
