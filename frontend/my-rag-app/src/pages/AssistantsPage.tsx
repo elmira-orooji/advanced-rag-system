@@ -33,6 +33,9 @@ export default function AssistantsPage() {
 }
 
 function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAssistant; sets: DocumentSet[]; fa: boolean; onClose: () => void; onSaved: () => void }) {
+  const [setPage, setSetPage] = useState(0);
+  const setPageCount = Math.max(1, Math.ceil(sets.length / 4));
+  const currentSetPage = Math.min(setPage, setPageCount - 1);
   const modalRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const modal = modalRef.current;
@@ -56,12 +59,17 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
         <Field label={fa ? "دستورالعمل" : "Instructions"}><textarea dir="auto" rows={4} value={instructions} onChange={(e) => setInstructions(e.target.value)} required minLength={10} maxLength={5000} placeholder={fa ? "نقش، محدوده پاسخ و لحن دستیار را مشخص کنید..." : "Define the role, answer boundaries, and tone..."} /></Field>
         <fieldset className="assistant-form-knowledge">
           <legend>{fa ? "مجموعه‌های دانش" : "Knowledge sets"}</legend>
-          <div className="assistant-form-sets">{sets.map((set) => {
+          <div className="assistant-form-sets">{sets.slice(currentSetPage * 4, currentSetPage * 4 + 4).map((set) => {
             const checked = selectedSets.includes(set.id);
             return <button type="button" key={set.id} aria-pressed={checked} onClick={() => setSelectedSets(checked ? selectedSets.filter((id) => id !== set.id) : [...selectedSets, set.id])} className="assistant-form-set">
               <FileStack size={16} /><span dir="auto">{set.name}</span><span className="assistant-form-check">{checked && <Check size={12} />}</span>
             </button>;
           })}</div>
+          {setPageCount > 1 && <nav className="assistant-set-pagination" aria-label={fa ? "صفحات مجموعه‌های دانش" : "Knowledge set pages"}>
+            <button type="button" disabled={currentSetPage === 0} onClick={() => setSetPage(currentSetPage - 1)}>{fa ? "قبلی" : "Previous"}</button>
+            <span>{currentSetPage + 1} / {setPageCount}</span>
+            <button type="button" disabled={currentSetPage === setPageCount - 1} onClick={() => setSetPage(currentSetPage + 1)}>{fa ? "بعدی" : "Next"}</button>
+          </nav>}
           {!sets.length && <p className="assistant-form-hint">{fa ? "ابتدا در پایگاه دانش یک مجموعه بسازید." : "Create a knowledge set in Knowledge base first."}</p>}
         </fieldset>
         <button type="button" role="switch" aria-checked={active} onClick={() => setActive(!active)} className="assistant-form-status">
@@ -77,4 +85,3 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
   </dialog>;
 }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <label className="assistant-form-field">{label}<div className="mt-2">{children}</div></label>; }
-
