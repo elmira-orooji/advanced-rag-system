@@ -1,4 +1,5 @@
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,7 @@ class RagRequest(BaseModel):
 
 
 class RagResponse(BaseModel):
+    answer_basis: Literal["sources", "general", "hybrid"] = "sources"
     response_id: uuid.UUID
     question: str
     answer: str

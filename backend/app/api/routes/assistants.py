@@ -51,6 +51,7 @@ def _response(item: Assistant, allowed_set_ids: set[uuid.UUID] | None = None) ->
     return AssistantResponse(
         id=item.id, name=item.name, description=item.description, instructions=item.instructions,
         is_active=item.is_active, created_by_id=item.created_by_id,
+        model_id=item.model_id, answer_mode=item.answer_mode,
         document_set_ids=[value.id for value in visible_sets],
         document_set_names=[value.name for value in visible_sets],
         created_at=item.created_at, updated_at=item.updated_at,
@@ -72,7 +73,8 @@ def list_assistants(db: Session = Depends(get_db), user: User = Depends(get_curr
 @router.post("", response_model=AssistantResponse, status_code=status.HTTP_201_CREATED)
 def create_assistant(payload: AssistantCreate, db: Session = Depends(get_db), user: User = Depends(_admin)):
     item = Assistant(organization_id=user.organization_id, name=payload.name.strip(), description=payload.description.strip() if payload.description else None,
-                     instructions=payload.instructions.strip(), is_active=payload.is_active, created_by_id=user.id)
+                     instructions=payload.instructions.strip(), is_active=payload.is_active, created_by_id=user.id,
+                     model_id=payload.model_id, answer_mode=payload.answer_mode)
     item.document_sets = _sets(db, payload.document_set_ids, user)
     try:
         db.add(item); db.commit(); db.refresh(item)
@@ -91,6 +93,10 @@ def update_assistant(assistant_id: uuid.UUID, payload: AssistantUpdate, db: Sess
             setattr(item, field, value or None if field == "description" else value)
     if payload.document_set_ids is not None:
         item.document_sets = _sets(db, payload.document_set_ids, user)
+    if "model_id" in payload.model_fields_set:
+        item.model_id = payload.model_id
+    if payload.answer_mode is not None:
+        item.answer_mode = payload.answer_mode
     try:
         db.commit()
     except IntegrityError as exc:
@@ -112,24 +118,26 @@ def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerReque
     allowed = accessible_set_ids(db, user)
     if allowed is not None:
         set_ids = [value for value in set_ids if value in allowed]
-        if not set_ids:
+        if not set_ids and user.role != "admin":
             raise HTTPException(status_code=403, detail="You do not have access to this assistant's knowledge")
     document_ids = [str(value) for value in db.scalars(
         select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()
     ).all()] if set_ids else []
     try:
-        qdrant = QdrantClient(); qdrant.ensure_collection()
-        points = hybrid_search(db, payload.question, payload.limit, document_ids=document_ids)
+        points = []
+        if document_ids:
+            qdrant = QdrantClient(); qdrant.ensure_collection()
+            points = hybrid_search(db, payload.question, payload.limit, document_ids=document_ids)
     except QdrantError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
-    if not sources:
+    if not sources and item.answer_mode != "hybrid":
         message = "No relevant information was found in this assistant's knowledge."
         record = AnswerRecord(user_id=user.id, assistant_id=item.id, question=payload.question, answer=message, grounded=False, citation_count=0)
         db.add(record); db.commit(); db.refresh(record)
         return RagResponse(response_id=record.id, question=payload.question, answer=message, grounded=False, citations=[], sources=[])
     try:
-        answer = OpenRouterClient().answer(payload.question, [source.model_dump(mode="json") for source in sources], instructions=item.instructions)
+        answer = OpenRouterClient(model=item.model_id).answer(payload.question, [source.model_dump(mode="json") for source in sources], instructions=item.instructions, hybrid=item.answer_mode == "hybrid")
     except OpenRouterError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     used = set()
@@ -143,4 +151,5 @@ def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerReque
                  for index, source in enumerate(sources, 1) if index in used]
     record = AnswerRecord(user_id=user.id, assistant_id=item.id, question=payload.question, answer=answer, grounded=bool(citations), citation_count=len(citations))
     db.add(record); db.commit(); db.refresh(record)
-    return RagResponse(response_id=record.id, question=payload.question, answer=answer, grounded=bool(citations), citations=citations, sources=sources)
+    basis = ("hybrid" if citations else "general") if item.answer_mode == "hybrid" else "sources"
+    return RagResponse(response_id=record.id, question=payload.question, answer=answer, grounded=bool(citations), citations=citations, sources=sources, answer_basis=basis)

@@ -20,7 +20,7 @@ export default function AssistantsPage() {
   const load = async () => { try { const [assistants, knowledgeSets] = await Promise.all([assistantService.list(), assistantService.listSets()]); setItems(assistants); setSets(knowledgeSets); setSelected((current) => assistants.find((x) => x.id === current?.id) || assistants.find((x) => x.is_active) || null); } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); } };
   useEffect(() => { void load(); }, []);
   const choose = (item: CustomAssistant) => { if (!item.is_active) return; setSelected(item); setMessages([]); setMobileChat(true); };
-  const ask = async (content: string) => { if (!selected) return; setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", content, createdAt: new Date().toISOString() }]); setThinking(true); try { const result = await assistantService.ask(selected.id, content); setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: result.answer, responseId: result.response_id, grounded: result.grounded, createdAt: new Date().toISOString(), sources: result.citations.map((x) => ({ id: x.chunk_id, citationId: x.id, documentId: x.document_id, title: x.filename, chunkIndex: x.chunk_index, excerpt: x.excerpt, score: x.score, page: x.page, section: x.section })) }]); } catch (e) { toast.error((e as Error).message); } finally { setThinking(false); } };
+  const ask = async (content: string) => { if (!selected) return; setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", content, createdAt: new Date().toISOString() }]); setThinking(true); try { const result = await assistantService.ask(selected.id, content); setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: result.answer, responseId: result.response_id, grounded: result.grounded, answerBasis: result.answer_basis, createdAt: new Date().toISOString(), sources: result.citations.map((x) => ({ id: x.chunk_id, citationId: x.id, documentId: x.document_id, title: x.filename, chunkIndex: x.chunk_index, excerpt: x.excerpt, score: x.score, page: x.page, section: x.section })) }]); } catch (e) { toast.error((e as Error).message); } finally { setThinking(false); } };
   const remove = async (item: CustomAssistant) => { if (!await confirmAction(fa ? `دستیار «${item.name}» حذف شود؟` : `Delete “${item.name}”?`)) return; try { await assistantService.remove(item.id); toast.success(fa ? "دستیار حذف شد" : "Assistant deleted"); await load(); } catch (e) { toast.error((e as Error).message); } };
   return <motion.div initial={{ opacity: reducedMotion ? 1 : 0 }} animate={{ opacity: 1 }} transition={{ duration: .18 }} dir={fa ? "rtl" : "ltr"} className="assistants-page flex h-full min-h-0 overflow-hidden">
     <section className="flex min-w-0 flex-1 flex-col px-4 py-5 sm:px-6 lg:px-8"><header className="assistants-header flex shrink-0 items-end justify-between"><div><div className="assistants-eyebrow">{c.eyebrow}</div><h1 className="text-2xl font-semibold tracking-[-.025em]">{c.title}</h1><p className="mt-2 text-xs leading-6 as-muted">{c.subtitle}</p></div>{admin && <button onClick={() => setEditing("new")} className="assistants-create flex h-10 items-center gap-2 px-4 text-xs font-semibold"><Plus size={15} />{c.add}</button>}</header>
@@ -33,6 +33,8 @@ export default function AssistantsPage() {
 }
 
 function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAssistant; sets: DocumentSet[]; fa: boolean; onClose: () => void; onSaved: () => void }) {
+  const [modelId, setModelId] = useState(item?.model_id || "");
+  const [answerMode, setAnswerMode] = useState<"sources" | "hybrid">(item?.answer_mode || "hybrid");
   const [setPage, setSetPage] = useState(0);
   const setPageCount = Math.max(1, Math.ceil(sets.length / 4));
   const currentSetPage = Math.min(setPage, setPageCount - 1);
@@ -44,7 +46,7 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
   }, []);
   const [name, setName] = useState(item?.name || ""); const [description, setDescription] = useState(item?.description || ""); const [instructions, setInstructions] = useState(item?.instructions || ""); const [selectedSets, setSelectedSets] = useState<string[]>(item?.document_set_ids || []); const [active, setActive] = useState(item?.is_active ?? true); const [saving, setSaving] = useState(false);
   const valid = name.trim().length >= 2 && instructions.trim().length >= 10;
-  const submit = async (e: React.FormEvent) => { e.preventDefault(); if (!valid) return; setSaving(true); const payload: AssistantPayload = { name: name.trim(), description: description.trim(), instructions: instructions.trim(), document_set_ids: selectedSets, is_active: active }; try { item ? await assistantService.update(item.id, payload) : await assistantService.create(payload); toast.success(fa ? "دستیار ذخیره شد" : "Assistant saved"); onSaved(); } catch (error) { toast.error((error as Error).message); } finally { setSaving(false); } };
+  const submit = async (e: React.FormEvent) => { e.preventDefault(); if (!valid) return; setSaving(true); const payload: AssistantPayload = { model_id: modelId.trim() || null, answer_mode: answerMode, name: name.trim(), description: description.trim(), instructions: instructions.trim(), document_set_ids: selectedSets, is_active: active }; try { item ? await assistantService.update(item.id, payload) : await assistantService.create(payload); toast.success(fa ? "دستیار ذخیره شد" : "Assistant saved"); onSaved(); } catch (error) { toast.error((error as Error).message); } finally { setSaving(false); } };
   return <dialog ref={modalRef} className="assistant-form-overlay" aria-labelledby="assistant-form-title" onCancel={(event) => { event.preventDefault(); onClose(); }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <form onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="assistant-dialog assistant-form" dir={fa ? "rtl" : "ltr"}>
       <header className="assistant-form-header">
@@ -57,6 +59,19 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
         <Field label={fa ? "نام" : "Name"}><input autoFocus dir="auto" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} maxLength={100} placeholder={fa ? "مثلاً دستیار پشتیبانی" : "e.g. Support assistant"} /></Field>
         <Field label={fa ? "توضیح کوتاه (اختیاری)" : "Short description (optional)"}><input dir="auto" maxLength={300} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={fa ? "این دستیار چه کاری انجام می‌دهد؟" : "What does this assistant help with?"} /></Field>
         <Field label={fa ? "دستورالعمل" : "Instructions"}><textarea dir="auto" rows={4} value={instructions} onChange={(e) => setInstructions(e.target.value)} required minLength={10} maxLength={5000} placeholder={fa ? "نقش، محدوده پاسخ و لحن دستیار را مشخص کنید..." : "Define the role, answer boundaries, and tone..."} /></Field>
+        <div className="assistant-model-settings">
+          <Field label={fa ? "مدل OpenRouter" : "OpenRouter model"}>
+            <input dir="ltr" list="assistant-model-options" value={modelId} onChange={(e) => setModelId(e.target.value)} maxLength={160} placeholder={fa ? "پیش‌فرض سرور" : "Server default"} />
+            <datalist id="assistant-model-options"><option value="openrouter/free">{fa ? "مسیریاب رایگان" : "Free model router"}</option></datalist>
+          </Field>
+          <Field label={fa ? "حالت پاسخ" : "Answer mode"}>
+            <select value={answerMode} onChange={(e) => setAnswerMode(e.target.value as "sources" | "hybrid")}>
+              <option value="hybrid">{fa ? "ترکیبی: منابع و دانش عمومی" : "Hybrid: sources + general knowledge"}</option>
+              <option value="sources">{fa ? "فقط منابع" : "Sources only"}</option>
+            </select>
+          </Field>
+          <p className="assistant-form-hint">{fa ? "برای مدل دلخواه، شناسهٔ provider/model را وارد کنید. مدل‌های پولی از اعتبار OpenRouter استفاده می‌کنند." : "Enter provider/model for a custom model. Paid models use your OpenRouter credits."}</p>
+        </div>
         <fieldset className="assistant-form-knowledge">
           <legend>{fa ? "مجموعه‌های دانش" : "Knowledge sets"}</legend>
           <div className="assistant-form-sets">{sets.slice(currentSetPage * 4, currentSetPage * 4 + 4).map((set) => {

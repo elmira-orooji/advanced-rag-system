@@ -1,10 +1,13 @@
 import uuid
+from typing import Literal
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class AssistantCreate(BaseModel):
+    model_id: str | None = Field(default=None, max_length=160, pattern=r"^[A-Za-z0-9_.:-]+/[A-Za-z0-9_./:-]+$")
+    answer_mode: Literal["sources", "hybrid"] = "hybrid"
     name: str = Field(min_length=2, max_length=100)
     description: str | None = Field(default=None, max_length=300)
     instructions: str = Field(min_length=10, max_length=5000)
@@ -13,6 +16,8 @@ class AssistantCreate(BaseModel):
 
 
 class AssistantUpdate(BaseModel):
+    model_id: str | None = Field(default=None, max_length=160, pattern=r"^[A-Za-z0-9_.:-]+/[A-Za-z0-9_./:-]+$")
+    answer_mode: Literal["sources", "hybrid"] | None = None
     name: str | None = Field(default=None, min_length=2, max_length=100)
     description: str | None = Field(default=None, max_length=300)
     instructions: str | None = Field(default=None, min_length=10, max_length=5000)
@@ -21,6 +26,8 @@ class AssistantUpdate(BaseModel):
 
 
 class AssistantResponse(BaseModel):
+    model_id: str | None = None
+    answer_mode: Literal["sources", "hybrid"] = "sources"
     model_config = ConfigDict(from_attributes=True)
 
     id: uuid.UUID

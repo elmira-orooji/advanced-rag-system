@@ -25,6 +25,7 @@ export interface ChatMessage {
 
   sources?: Source[];
   grounded?: boolean;
+  answerBasis?: "sources" | "general" | "hybrid";
   responseId?: string;
   feedback?: 1 | -1;
   research?: { steps: Array<{ query: string; evidence_count: number }>; evidenceReviewed: number };

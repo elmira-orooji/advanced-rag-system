@@ -21,6 +21,9 @@
 .assistant-form-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 14px; padding: 16px 20px; min-height: 0; }
 .assistant-form-body > :nth-child(n+3) { grid-column: 1 / -1; }
 .assistant-form-field { min-width: 0; }
+.assistant-model-settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.assistant-model-settings > p { grid-column: 1 / -1; margin: 0; }
+.app-shell .assistants-page .assistant-model-settings select { width: 100%; min-height: 42px; border: 1px solid var(--as-line); border-radius: 8px; background: var(--as-panel); color: var(--as-text); font-size: 12px; padding: 8px; }
 .assistant-form-field, .assistant-form-knowledge legend { font-size: 12px; font-weight: 500; color: var(--as-text); }
 .app-shell .assistants-page .assistant-form input,
 .app-shell .assistants-page .assistant-form textarea { display: block; width: 100%; min-height: 42px; border: 1px solid var(--as-line); padding: 10px 12px; font: inherit; font-size: 14px; font-weight: 400; line-height: 1.8; text-align: start; outline: none; }
@@ -54,7 +57,7 @@
   .assistant-form-sets { grid-template-columns: 1fr; }
   .assistant-form-header .assistant-emblem { display: none; }
 }
-@media (max-height: 600px), (max-width: 480px) {
+@media (max-height: 850px), (max-width: 480px) {
   .assistant-form-body { overflow-y: auto; scrollbar-width: thin; }
 }
 html:not(.dark) .assistants-page {
