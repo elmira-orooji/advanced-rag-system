@@ -14,7 +14,12 @@ html .app-shell select:disabled { opacity: .5; cursor: not-allowed; }
 html .app-shell select option { background: var(--menu-bg); color: var(--menu-text); font: inherit; }
 @supports (appearance: base-select) {
   html .app-shell select, html .app-shell select::picker(select) { appearance: base-select !important; }
-  html .app-shell select { padding-inline: 12px !important; gap: 12px; }
+  /* Center the selected text and picker icon inside existing fixed-height controls. */
+  html .app-shell select {
+    display: inline-flex !important; align-items: center; justify-content: space-between;
+    box-sizing: border-box; padding-block: 6px !important; padding-inline: 12px !important;
+    gap: 12px; text-align: start; white-space: nowrap;
+  }
   html .app-shell select::picker(select) {
     border: 1px solid var(--menu-line); border-radius: 10px; padding: 5px;
     background: var(--menu-bg); color: var(--menu-text); font-family: inherit;
@@ -22,7 +27,7 @@ html .app-shell select option { background: var(--menu-bg); color: var(--menu-te
     max-height: min(320px, 60dvh); max-width: calc(100vw - 24px); overflow-y: auto;
     scrollbar-width: thin; scrollbar-color: var(--menu-line) transparent;
   }
-  html .app-shell select::picker-icon { color: var(--menu-muted); font-size: 11px; }
+  html .app-shell select::picker-icon { color: var(--menu-muted); font-size: 11px; align-self: center; flex-shrink: 0; margin-inline-start: auto; }
   html .app-shell select:open::picker-icon { rotate: 180deg; }
   html .app-shell select option { min-height: 34px; padding: 8px 10px; border: 0; border-radius: 6px; font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
   html .app-shell select option:hover, html .app-shell select option:focus { background: var(--menu-hover); color: var(--menu-text); outline: none; }
