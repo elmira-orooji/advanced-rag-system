@@ -9,6 +9,7 @@ import shutil
 import uuid
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from http.client import HTTPSConnection
 from pathlib import Path
@@ -37,6 +38,13 @@ ALLOWED_EXTENSIONS = {".md", ".txt", ".rst", ".py", ".ts", ".tsx", ".js", ".json
 
 class ConnectorSyncError(RuntimeError):
     pass
+
+
+@dataclass
+class SourceSnapshot:
+    sources: list[tuple[str, str, str, str]]
+    observed_ids: set[str]
+    complete: bool = False
 
 
 class TextHTMLParser(HTMLParser):
@@ -151,13 +159,13 @@ def _bearer_download(url: str, token: str) -> bytes:
     return data
 
 
-def _google_drive(source_url: str) -> list[tuple[str, str, str, str]]:
+def _google_drive(source_url: str) -> SourceSnapshot:
     if not all((GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN)): raise ConnectorSyncError("Google Drive OAuth configuration is missing")
     match = re.search(r"/folders/([\w-]+)", source_url); folder_id = match.group(1) if match else parse_qs(urlparse(source_url).query).get("id", [None])[0]
     if not folder_id: raise ConnectorSyncError("Use a Google Drive folder URL")
     token = _oauth_token("https://oauth2.googleapis.com/token", {"client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET, "refresh_token": GOOGLE_REFRESH_TOKEN, "grant_type": "refresh_token"})
     query = quote(f"'{folder_id}' in parents and trashed=false")
-    data = _authorized_json(f"https://www.googleapis.com/drive/v3/files?q={query}&pageSize=1000&fields=files(id,name,mimeType,webViewLink,modifiedTime)", token)
+    data = _authorized_json(f"https://www.googleapis.com/drive/v3/files?q={query}&pageSize=1000&fields=nextPageToken,incompleteSearch,files(id,name,mimeType,webViewLink,modifiedTime)", token)
     results = []
     for item in data.get("files", []):
         mime = item.get("mimeType", ""); name = item.get("name", "Untitled")
@@ -166,10 +174,11 @@ def _google_drive(source_url: str) -> list[tuple[str, str, str, str]]:
         else: continue
         text = _bearer_download(url, token).decode("utf-8", errors="replace").strip()
         if len(text) >= 20: results.append((item["id"], name[:255], text, item.get("webViewLink") or source_url))
-    return results
+    return SourceSnapshot(results, {item["id"] for item in data.get("files", [])},
+                          "files" in data and not data.get("nextPageToken") and not data.get("incompleteSearch"))
 
 
-def _sharepoint(source_url: str) -> list[tuple[str, str, str, str]]:
+def _sharepoint(source_url: str) -> SourceSnapshot:
     if not all((MICROSOFT_TENANT_ID, MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET)): raise ConnectorSyncError("SharePoint OAuth configuration is missing")
     parsed = urlparse(source_url)
     if parsed.hostname != "graph.microsoft.com" or "/children" not in parsed.path: raise ConnectorSyncError("Use a Microsoft Graph drive folder children URL")
@@ -180,7 +189,8 @@ def _sharepoint(source_url: str) -> list[tuple[str, str, str, str]]:
         if not download or Path(name).suffix.lower() not in ALLOWED_EXTENSIONS: continue
         body, _, final = _fetch(download); text = body.decode("utf-8", errors="replace").strip()
         if len(text) >= 20: results.append((item["id"], name[:255], text, item.get("webUrl") or final))
-    return results
+    return SourceSnapshot(results, {item["id"] for item in data.get("value", [])},
+                          "value" in data and not data.get("@odata.nextLink"))
 
 
 def _aws_signed_get(url: str) -> bytes:
@@ -209,7 +219,7 @@ def _aws_signed_get(url: str) -> bytes:
     return data
 
 
-def _s3(source_url: str) -> list[tuple[str, str, str, str]]:
+def _s3(source_url: str) -> SourceSnapshot:
     parsed = urlparse(source_url); host = (parsed.hostname or "").lower(); path = parsed.path.lstrip("/")
     virtual = re.fullmatch(r"([a-z0-9][a-z0-9.-]{1,61}[a-z0-9])\.s3(?:\.[a-z0-9-]+)?\.amazonaws\.com", host)
     if virtual: bucket, prefix = virtual.group(1), path
@@ -223,16 +233,18 @@ def _s3(source_url: str) -> list[tuple[str, str, str, str]]:
     try: root = ET.fromstring(listing)
     except ET.ParseError as exc: raise ConnectorSyncError("S3 returned invalid object metadata") from exc
     results = []
-    for node in root.findall("{*}Contents")[:100]:
+    nodes = root.findall("{*}Contents")
+    for node in nodes[:100]:
         key = node.findtext("{*}Key") or ""
         if Path(key).suffix.lower() not in ALLOWED_EXTENSIONS: continue
         object_url = f"{endpoint}/{quote(key, safe='/')}"; body = _aws_signed_get(object_url)
         text = body.decode("utf-8", errors="replace").strip()
         if len(text) >= 20: results.append((key, Path(key).name[:255], text, object_url))
-    return results
+    return SourceSnapshot(results, {node.findtext("{*}Key") for node in nodes if node.findtext("{*}Key")},
+                          root.findtext("{*}IsTruncated") == "false" and len(nodes) <= 100)
 
 
-def _website(source_url: str) -> list[tuple[str, str, str, str]]:
+def _website(source_url: str) -> SourceSnapshot:
     data, content_type, final_url = _fetch(source_url)
     text = data.decode("utf-8", errors="replace")
     title = urlparse(final_url).hostname or "Website"
@@ -241,36 +253,39 @@ def _website(source_url: str) -> list[tuple[str, str, str, str]]:
         if match: title = re.sub(r"\s+", " ", html.unescape(match.group(1))).strip()[:255]
         parser = TextHTMLParser(); parser.feed(text); text = re.sub(r"\n{3,}", "\n\n", "".join(parser.parts)); text = re.sub(r"[ \t]+", " ", text).strip()
     if len(text) < 50: raise ConnectorSyncError("The web page contains too little readable text")
-    return [(final_url, title, text, final_url)]
+    return SourceSnapshot([(final_url, title, text, final_url)], {final_url}, complete=True)
 
 
-def _github(source_url: str) -> list[tuple[str, str, str, str]]:
+def _github(source_url: str) -> SourceSnapshot:
     _validate_public_url(source_url, github_only=True)
     parts = [part for part in urlparse(source_url).path.split("/") if part]
     if len(parts) < 2: raise ConnectorSyncError("Use a GitHub repository URL such as https://github.com/owner/repo")
     owner, repo = parts[0], parts[1].removesuffix(".git")
     api = f"https://api.github.com/repos/{quote(owner)}/{quote(repo)}/git/trees/HEAD?recursive=1"
     data, _, _ = _fetch(api, "application/vnd.github+json")
-    try: tree = json.loads(data).get("tree", [])
+    try:
+        metadata = json.loads(data)
+        tree = metadata.get("tree", [])
     except json.JSONDecodeError as exc: raise ConnectorSyncError("GitHub returned invalid repository metadata") from exc
-    files = [item for item in tree if item.get("type") == "blob" and Path(item.get("path", "")).suffix.lower() in ALLOWED_EXTENSIONS and int(item.get("size", 0)) <= 300_000][:MAX_GITHUB_FILES]
+    files = [item for item in tree if item.get("type") == "blob" and Path(item.get("path", "")).suffix.lower() in ALLOWED_EXTENSIONS and int(item.get("size", 0)) <= 300_000]
     results = []
-    for item in files:
+    for item in files[:MAX_GITHUB_FILES]:
         path = item["path"]; raw = f"https://raw.githubusercontent.com/{quote(owner)}/{quote(repo)}/HEAD/{quote(path)}"
         body, _, final = _fetch(raw); text = body.decode("utf-8", errors="replace").strip()
         if len(text) >= 20: results.append((path, f"{repo}: {path}"[:255], text, final))
     if not results: raise ConnectorSyncError("No supported text files were found in this repository")
-    return results
+    return SourceSnapshot(results, {item["path"] for item in tree if item.get("type") == "blob"},
+                          metadata.get("truncated") is False and len(files) <= MAX_GITHUB_FILES)
 
 
 def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
     fetchers = {"website": _website, "github": _github, "google_drive": _google_drive, "s3": _s3, "sharepoint": _sharepoint}
     fetcher = fetchers.get(connector.connector_type)
     if fetcher is None: raise ConnectorSyncError("Unsupported connector type")
-    sources = fetcher(connector.source_url)
+    snapshot = fetcher(connector.source_url)
+    sources = snapshot.sources
     existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
     created = updated = unchanged = deleted = 0; removed_directories: list[Path] = []; qdrant = QdrantClient(); qdrant.ensure_collection(); document_set = db.get(DocumentSet, connector.document_set_id)
-    discovered_ids = {source[0] for source in sources}
     for external_id, title, text, source_url in sources:
         digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
         if item and item.content_hash == digest: unchanged += 1; continue
@@ -286,7 +301,8 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
         if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
         else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1
     for external_id, item in existing.items():
-        if external_id in discovered_ids:
+        # Absence in a capped or paginated response is not evidence of deletion.
+        if not snapshot.complete or external_id in snapshot.observed_ids:
             continue
         document = db.get(Document, item.document_id)
         if document is not None:
@@ -301,7 +317,7 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
         else:
             db.delete(item)
         deleted += 1
-    result = {"discovered": len(sources), "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted}
+    result = {"discovered": len(sources), "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted, "deletion_skipped": int(not snapshot.complete)}
     connector.last_sync_summary = result
     db.commit()
     for document_dir in removed_directories:
