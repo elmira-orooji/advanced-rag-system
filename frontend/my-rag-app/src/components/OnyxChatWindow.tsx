@@ -81,5 +81,24 @@ function CitedText({ content, sources, onOpen }: { content: string; sources: Sou
 }
 
 function Evidence({ source, isFa, onClose }: { source: Source; isFa: boolean; onClose: () => void }) {
-  return <aside className="absolute inset-y-0 end-0 z-40 flex w-full max-w-md flex-col border-s border-white/10 bg-[rgba(12,9,18,.97)] shadow-2xl backdrop-blur-2xl"><header className="flex items-center justify-between border-b border-white/[.07] p-4"><div className="flex items-center gap-3"><span className="grid size-9 place-items-center rounded-xl bg-[#7c27ff]/30 text-[#d9a6ff]"><Quote size={15} /></span><div><p className="text-xs font-semibold">{isFa ? `منبع ${source.citationId}` : `Source ${source.citationId}`}</p><p className="mt-0.5 max-w-64 truncate text-[10px] text-white/30">{source.title}</p></div></div><button onClick={onClose} className="grid size-8 place-items-center rounded-lg text-white/35 hover:bg-white/5"><X size={15} /></button></header><div className="min-h-0 flex-1 overflow-y-auto p-4"><div className="flex items-center gap-2 rounded-xl border border-white/[.07] bg-white/[.025] p-3 text-[11px] text-white/50"><FileText size={14} className="text-[#c43cff]" /><span className="truncate">{source.title}</span></div><blockquote className="mt-4 whitespace-pre-wrap rounded-2xl border-s-2 border-[#18c7f4]/45 bg-[#7c27ff]/10 p-4 text-xs leading-6 text-white/60">{source.excerpt}</blockquote></div></aside>;
+  const closeRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const previous = document.activeElement;
+    closeRef.current?.focus();
+    return () => { if (previous instanceof HTMLElement && previous.isConnected) previous.focus(); };
+  }, []);
+  return <aside className="chat-evidence" aria-label={isFa ? "جزئیات منبع" : "Source details"} dir={isFa ? "rtl" : "ltr"} onKeyDown={(event) => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } }}>
+    <header className="chat-evidence-header">
+      <span className="chat-evidence-icon"><Quote size={19} /></span>
+      <div className="chat-evidence-heading"><h2>{isFa ? `منبع ${source.citationId ?? ""}` : `Source ${source.citationId ?? ""}`}</h2><p>{isFa ? "متن بازیابی‌شده از اسناد" : "Retrieved document passage"}</p></div>
+      <button ref={closeRef} type="button" className="chat-evidence-close" onClick={onClose} aria-label={isFa ? "بستن منبع" : "Close source"}><X size={18} /></button>
+    </header>
+    <div className="chat-evidence-content">
+      <div className="chat-evidence-file"><span className="chat-evidence-file-icon"><FileText size={19} /></span><div><strong dir="auto">{source.title}</strong><span>{source.page ? `${isFa ? "صفحه" : "Page"} ${source.page}` : source.chunkIndex != null ? `${isFa ? "بخش" : "Chunk"} ${source.chunkIndex + 1}` : (isFa ? "سند مرجع" : "Source document")}</span></div></div>
+      {source.section && <p className="chat-evidence-section" dir="auto">{source.section}</p>}
+      <h3 className="chat-evidence-label">{isFa ? "متن منبع" : "Source passage"}</h3>
+      <blockquote className="chat-evidence-passage" dir="auto">{source.excerpt || (isFa ? "متن این منبع در دسترس نیست." : "No passage is available for this source.")}</blockquote>
+    </div>
+    <footer className="chat-evidence-footer"><FileText size={13} /><span>{isFa ? "این بخش از سند برای پاسخ بازیابی شده است." : "This passage was retrieved to support the answer."}</span></footer>
+  </aside>;
 }
