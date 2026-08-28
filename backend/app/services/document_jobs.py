@@ -12,7 +12,7 @@ from app.models.processing_job import ProcessingJob
 from app.services.document_extractor import extract_text
 from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
-from app.services.incremental_index import checksum, incremental_chunks, sync_incremental
+from app.services.incremental_index import checksum, incremental_chunks
 
 _executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="document-jobs")
 
@@ -73,11 +73,13 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             extracted_path = source_path.parent / "extracted.txt"
             extracted_path.write_text(text, encoding="utf-8")
             document.extracted_text_path = extracted_path.relative_to(BASE_DIR).as_posix()
+            # Persist an invalid index marker before committing new chunks.
+            document.content_checksum = None
             _progress(db, document, job, 35, "chunking")
             contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
             if not contents:
                 raise RuntimeError("Document contains no text to index")
-            next_chunks, changed_ids, removed_ids = incremental_chunks(document, text, chunk_size, overlap, parent_size)
+            next_chunks, _, removed_ids = incremental_chunks(document, text, chunk_size, overlap, parent_size)
             for chunk in list(document.chunks):
                 if str(chunk.id) in removed_ids: db.delete(chunk)
             document.chunks = next_chunks
@@ -85,7 +87,12 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             _progress(db, document, job, 65, "indexing")
             client = QdrantClient()
             client.ensure_collection()
-            sync_incremental(client, document, changed_ids, removed_ids)
+            # SQL chunks may survive a failed/partial Qdrant write. Reconcile the
+            # whole document, including stale vectors whose SQL rows are gone.
+            client.replace_document_chunks(str(document.id), document.filename, [
+                {"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content}
+                for chunk in document.chunks
+            ])
             document.content_checksum = text_checksum
             document.processing_error = None
             job.status = "completed"
