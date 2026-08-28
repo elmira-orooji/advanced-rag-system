@@ -121,6 +121,14 @@ html:not(.dark) .kb-page {
 .scope-panel footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--kb-line); font-size: 10px; color: var(--kb-muted); }
 .scope-panel footer button { padding: 6px 12px; border-radius: 7px; color: #fff; background: #7950bb; font-size: 11px; }
 .scope-empty { padding: 18px; text-align: center; font-size: 11px; color: var(--kb-muted); }
+.member-dialog { max-width: 640px; }
+.app-shell .kb-page .member-input { width: 100%; min-width: 0; height: 44px; border: 1px solid var(--kb-line); border-radius: 10px; background: var(--kb-panel) !important; color: var(--kb-text); padding-inline: 12px; font-size: 13px; font-weight: 400; outline: none; }
+.app-shell .kb-page select.member-input { padding-inline-end: 36px; }
+.member-active { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 20px; padding: 14px 0 0; border-top: 1px solid var(--kb-line); color: var(--kb-text); font-size: 12px; }
+.member-active > span:first-child { display: flex; align-items: center; gap: 8px; }
+.member-switch { display: flex; align-items: center; width: 36px; height: 21px; flex-shrink: 0; border-radius: 20px; padding: 3px; background: var(--kb-muted); }
+.member-switch > span { width: 15px; height: 15px; border-radius: 50%; background: white; }
+.member-active[aria-checked=true] .member-switch { background: #7950bb; justify-content: flex-end; }
 .kb-main { height: 100%; min-height: 0; overflow: hidden; }
 .kb-content { height: 100%; min-height: 0; gap: 14px; }
 .kb-set-content { gap: 12px; }

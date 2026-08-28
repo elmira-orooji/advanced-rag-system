@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Check, ChevronDown, UserPlus, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import "../styles/knowledge.css";
+import { Power, ChevronDown, UserPlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { userService, type ManagedUser } from "../services/userService";
 
@@ -35,22 +37,24 @@ export default function AddUserForm({ isFa, onClose, onCreated }: AddUserFormPro
     finally { setSaving(false); }
   };
 
-  return <div className="fixed inset-0 z-[90] grid place-items-center bg-black/65 p-4 backdrop-blur-md" onMouseDown={onClose}>
-    <form onSubmit={submit} onMouseDown={(event) => event.stopPropagation()} className="team-member-form app-glass-panel max-h-[90dvh] overflow-y-auto w-full max-w-lg rounded-[24px] p-5 sm:p-6">
-      <header className="flex items-start justify-between gap-4"><div><span className="grid size-10 place-items-center rounded-xl border border-[#18c7f4]/20 bg-[#7c27ff]/20 text-[#c43cff]"><UserPlus size={18} /></span><h2 className="mt-4 text-xl font-semibold">{copy.title}</h2><p className="mt-2 text-xs leading-5 tm-muted">{copy.subtitle}</p></div><button type="button" aria-label={copy.cancel} onClick={onClose} className="app-icon-button grid size-9 place-items-center rounded-xl"><X size={16} /></button></header>
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <Field label={copy.username} hint={copy.usernameHint}><input autoFocus value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="off" className="team-input" /></Field>
-        <Field label={copy.job}><input value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} placeholder={copy.jobPlaceholder} maxLength={120} className="team-input" /></Field>
-        <Field label={copy.password} hint={copy.passwordHint}><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" className="team-input" /></Field>
-        <Field label={copy.role}><label className="relative block"><select value={role} onChange={(event) => setRole(event.target.value as "admin" | "user")} className="team-input appearance-none pe-9"><option value="user">{copy.user}</option><option value="admin">{copy.admin}</option></select><ChevronDown size={14} className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 tm-muted" /></label></Field>
+  return createPortal(<div className="app-shell"><div className="kb-page fixed inset-0 z-[90] grid place-items-center p-4 backdrop-blur-sm" style={{ background: "#18213380", fontFamily: isFa ? "Vazirmatn, sans-serif" : "Inter, sans-serif" }} dir={isFa ? "rtl" : "ltr"} onMouseDown={onClose}>
+    <form onSubmit={submit} onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="add-member-title" className="chunk-settings member-dialog" onKeyDown={(event) => { if (event.key === "Escape" && !saving) onClose(); }}>
+      <header className="chunk-settings-header"><span className="chunk-settings-icon"><UserPlus size={22} /></span><div><h2 id="add-member-title">{copy.title}</h2><p>{copy.subtitle}</p></div><button type="button" aria-label={copy.cancel} onClick={onClose} className="chunk-settings-close"><X size={19} /></button></header>
+      <div className="chunk-settings-content">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label={copy.username} hint={copy.usernameHint}><input autoFocus maxLength={100} disabled={saving} value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="off" className="member-input" /></Field>
+        <Field label={copy.job}><input disabled={saving} value={jobTitle} onChange={(event) => setJobTitle(event.target.value)} placeholder={copy.jobPlaceholder} maxLength={120} className="member-input" /></Field>
+        <Field label={copy.password} hint={copy.passwordHint}><input disabled={saving} type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="new-password" className="member-input" /></Field>
+        <Field label={copy.role}><div className="relative block"><select disabled={saving} value={role} onChange={(event) => setRole(event.target.value as "admin" | "user")} className="member-input appearance-none pe-9"><option value="user">{copy.user}</option><option value="admin">{copy.admin}</option></select><ChevronDown size={14} className="pointer-events-none absolute end-3 top-1/2 -translate-y-1/2 kb-muted" /></div></Field>
       </div>
-      <button type="button" role="switch" aria-checked={active} onClick={() => setActive((value) => !value)} className="mt-4 flex w-full items-center justify-between rounded-xl border border-white/[.08] px-3 py-3 text-xs tm-muted"><span>{copy.active}</span><span className={`grid size-5 place-items-center rounded-md border ${active ? "border-[#18c7f4]/35 bg-[#7c27ff] text-white" : "border-white/15 text-transparent"}`}><Check size={12} /></span></button>
-      {error && <p role="alert" className="mt-4 rounded-xl border border-rose-400/20 bg-rose-400/[.07] px-3 py-2.5 text-[11px] text-rose-200">{error}</p>}
-      <footer className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl px-4 py-2.5 text-xs tm-muted">{copy.cancel}</button><button disabled={!valid || saving} className="rounded-xl bg-gradient-to-r from-[#7c27ff] to-[#1b4dff] px-5 py-2.5 text-xs font-semibold text-white shadow-[0_10px_25px_rgba(124,39,255,.22)] disabled:cursor-not-allowed disabled:opacity-40">{saving ? copy.saving : copy.save}</button></footer>
+      <button type="button" role="switch" aria-checked={active} disabled={saving} onClick={() => setActive((value) => !value)} className="member-active"><span><Power size={16} />{copy.active}</span><span className="member-switch" aria-hidden="true"><span /></span></button>
+      {error && <p role="alert" className="chunk-settings-error">{error}</p>}
+      </div>
+      <footer className="chunk-settings-footer"><div className="kb-set-footer-actions"><button type="button" disabled={saving} onClick={onClose} className="chunk-cancel">{copy.cancel}</button><button type="submit" disabled={!valid || saving} className="chunk-save">{saving ? copy.saving : copy.save}</button></div></footer>
     </form>
-  </div>;
+  </div></div>, document.body);
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return <label className="block text-[11px] font-semibold tm-muted"><span>{label}</span><div className="mt-2">{children}</div>{hint && <span className="mt-1.5 block text-[9px] font-normal leading-4 tm-muted">{hint}</span>}</label>;
+  return <label className="block text-[11px] font-semibold kb-muted"><span>{label}</span><div className="mt-2">{children}</div>{hint && <span className="mt-1.5 block text-[9px] font-normal leading-4 kb-muted">{hint}</span>}</label>;
 }
