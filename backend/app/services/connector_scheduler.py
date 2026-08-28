@@ -16,9 +16,12 @@ def _delay(interval: str) -> timedelta:
 
 def run_due_connector_syncs() -> int:
     now = datetime.now(timezone.utc); processed = 0
-    with SessionLocal() as db:
-        due = list(db.scalars(select(Connector).where(Connector.schedule_enabled.is_(True), Connector.next_sync_at <= now, Connector.status != "syncing").with_for_update(skip_locked=True).limit(10)).all())
-        for item in due:
+    for _ in range(10):
+        with SessionLocal() as db:
+            # Claim only the row we will process before commit releases its lock.
+            item = db.scalar(select(Connector).where(Connector.schedule_enabled.is_(True), Connector.next_sync_at <= now, Connector.status != "syncing").order_by(Connector.next_sync_at, Connector.id).with_for_update(skip_locked=True).limit(1))
+            if item is None:
+                break
             connector_id = item.id
             item.status = "syncing"; item.last_error = None; item.next_sync_at = now + _delay(item.schedule_interval); db.commit()
             try:
