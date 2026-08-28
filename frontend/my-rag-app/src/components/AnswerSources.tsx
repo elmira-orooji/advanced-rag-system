@@ -11,7 +11,6 @@ export default function AnswerSources({ sources, isFa, onOpen }: { sources: Sour
   const [active, setActive] = useState<number | null>(null);
   const [expanded, setExpanded] = useState(false);
   return <div className="answer-source-section">
-    <div className="answer-source-label">{isFa ? "منابع پاسخ" : "Answer sources"}<span>{sources.length}</span></div>
     <div className="answer-source-grid" onMouseLeave={() => setActive(null)}>
       {(expanded ? sources : sources.slice(0, 4)).map((source, index) => <button key={`${source.id}-${index}`} type="button" className="answer-source-card"
         onMouseEnter={() => setActive(index)} onFocus={() => setActive(index)} onBlur={() => setActive(null)} onClick={() => onOpen(source)}>
