@@ -38,7 +38,7 @@ def _assistant_sets(db: Session, assistant: Assistant, user: User) -> list[uuid.
     set_ids = [item.id for item in assistant.document_sets]
     allowed = accessible_set_ids(db, user)
     if allowed is not None: set_ids = [value for value in set_ids if value in allowed]
-    if not set_ids: raise HTTPException(status_code=403, detail="You do not have access to this assistant's knowledge")
+    if not set_ids and user.role != "admin": raise HTTPException(status_code=403, detail="You do not have access to this assistant's knowledge")
     return set_ids
 
 
@@ -87,12 +87,8 @@ def delete_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_db
 def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     conversation = _owned(db, conversation_id, user, messages=True)
     history = [{"role": message.role, "content": message.content} for message in conversation.messages[-8:]]
-    retrieval_query = payload.content
-    if should_rewrite(payload.content, history):
-        try:
-            retrieval_query = OpenRouterClient().rewrite_query(payload.content, history)
-        except OpenRouterError:
-            retrieval_query = payload.content
+    model_id: str | None = None
+    hybrid = False
     document_id: str | None = None; document_ids: list[str] | None = None; instructions: str | None = None
     if conversation.document_id:
         require_document_access(db, user, conversation.document_id); document_id = str(conversation.document_id)
@@ -103,14 +99,24 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
         assistant = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == conversation.assistant_id, Assistant.organization_id == user.organization_id))
         if assistant is None: raise HTTPException(status_code=409, detail="Conversation assistant is unavailable")
         set_ids = _assistant_sets(db, assistant, user); instructions = assistant.instructions
-        document_ids = [str(value) for value in db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()).all()]
+        model_id = assistant.model_id
+        hybrid = assistant.answer_mode == "hybrid"
+        document_ids = [str(value) for value in db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()).all()] if set_ids else []
     else: raise HTTPException(status_code=409, detail="Conversation has no valid knowledge scope")
+    retrieval_query = payload.content
+    if (document_id or document_ids) and should_rewrite(payload.content, history):
+        try:
+            retrieval_query = OpenRouterClient(model=model_id).rewrite_query(payload.content, history)
+        except OpenRouterError:
+            retrieval_query = payload.content
     try:
-        qdrant = QdrantClient(); qdrant.ensure_collection(); points = hybrid_search(db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids)
+        points = []
+        if document_id or document_ids:
+            qdrant = QdrantClient(); qdrant.ensure_collection(); points = hybrid_search(db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids)
     except QdrantError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
-    if sources:
-        try: answer = OpenRouterClient().answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions)
+    if sources or hybrid:
+        try: answer = OpenRouterClient(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
         except OpenRouterError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     else: answer = _no_results_message(payload.content)
     user_message = Message(role="user", content=payload.content)
