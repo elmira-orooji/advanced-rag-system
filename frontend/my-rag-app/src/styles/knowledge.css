@@ -66,6 +66,14 @@ html:not(.dark) .kb-page {
   .chunk-settings-footer { padding: 14px 16px; flex-wrap: wrap; }
   .chunk-settings-footer > div { margin-inline-start: auto; }
 }
+.kb-set-dialog { max-width: 580px; }
+.kb-set-fields { display: grid; gap: 18px; }
+.kb-set-fields label > span { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: 500; }
+.kb-set-fields small { color: var(--kb-muted); font-size: 10px; font-weight: 400; }
+.app-shell .kb-page .kb-set-fields input, .app-shell .kb-page .kb-set-fields textarea { width: 100%; padding: 12px; border: 1px solid var(--kb-line); border-radius: 10px; color: var(--kb-text); background: var(--kb-panel) !important; font-size: 13px; outline: none; }
+.kb-set-fields textarea { resize: vertical; min-height: 90px; max-height: 180px; line-height: 1.8; }
+.kb-set-counter { display: block; margin-top: 6px; text-align: end; font-variant-numeric: tabular-nums; }
+.chunk-settings-footer .kb-set-footer-actions { margin-inline-start: auto; }
 .kb-main { height: 100%; min-height: 0; overflow: hidden; }
 .kb-content { height: 100%; min-height: 0; gap: 14px; }
 .kb-set-content { gap: 12px; }
