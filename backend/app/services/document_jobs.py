@@ -24,13 +24,15 @@ def enqueue_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
 def recover_document_jobs() -> int:
     with SessionLocal() as db:
         jobs = list(db.scalars(select(ProcessingJob).where(ProcessingJob.status.in_(["queued", "running", "retrying"]))).all())
+        # Keep scalar IDs before commit expires the ORM instances.
+        job_ids = [job.id for job in jobs]
         for job in jobs:
             job.status = "queued"
             job.stage = "queued"
         db.commit()
-    for job in jobs:
-        enqueue_document_job(job.id)
-    return len(jobs)
+    for job_id in job_ids:
+        enqueue_document_job(job_id)
+    return len(job_ids)
 
 
 def _progress(db, document: Document, job: ProcessingJob, value: int, stage: str) -> None:
