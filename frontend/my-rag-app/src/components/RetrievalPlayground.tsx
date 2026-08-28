@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { ArrowDown, ArrowUpRight, Play, LoaderCircle, Bot, Database, FlaskConical, GitCompareArrows, ListFilter, Search, Sparkles, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { knowledgeService, type MetadataFilters, type PipelineTraceResponse } from "../services/knowledgeService";
@@ -32,7 +33,7 @@ export default function RetrievalPlayground({ setId, documentIds, filters, isFa,
     ? ["پرسش و محدودهٔ جست‌وجو", "یافتن بخش‌های مرتبط اسناد", "مرتب‌سازی بر اساس ارتباط", "تولید پاسخ با استناد به منابع"]
     : ["Define your question and scope", "Find relevant document passages", "Rank the strongest matches", "Generate an answer with sources"];
 
-  return <div className="trace-overlay" onMouseDown={onClose}>
+  return createPortal(<div className="app-shell trace-overlay" style={{ background: "#18213380", fontFamily: isFa ? "Vazirmatn, sans-serif" : "Inter, sans-serif" }} onMouseDown={onClose}>
     <aside ref={panel} className="trace-panel" dir={isFa ? "rtl" : "ltr"} role="dialog" aria-modal="true" aria-labelledby="trace-heading" onMouseDown={(event) => event.stopPropagation()} onKeyDown={(event) => {
         if (datasetOpen || comparisonOpen) return;
         if (event.key === "Escape") { event.stopPropagation(); onClose(); }
@@ -77,6 +78,5 @@ export default function RetrievalPlayground({ setId, documentIds, filters, isFa,
     </>}</div>
     {datasetOpen && <EvaluationDataset setId={setId} documentIds={documentIds} filters={filters} isFa={isFa} canManage={canManage} onClose={() => setDatasetOpen(false)} />}
     {comparisonOpen && <RetrieverComparison setId={setId} query={query} documentIds={documentIds} filters={filters} isFa={isFa} onClose={() => setComparisonOpen(false)} />}
-  </aside></div>;
+  </aside></div>, document.body);
 }
-
