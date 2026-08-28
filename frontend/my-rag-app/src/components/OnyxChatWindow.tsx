@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, CheckCircle2, ChevronDown, Copy, FileText, Layers3, Quote, RotateCcw, Share2, ShieldAlert, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
+import AnswerSources from "./AnswerSources";
 import AnswerLoading from "./AnswerLoading";
 import ConversationScrollRail from "./ConversationScrollRail";
 import "../styles/chat-answer.css";
@@ -31,16 +32,17 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
     <div ref={scrollRef} onScroll={(event) => { const node = event.currentTarget; followLatest.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; }} className="chat-thread-scroll h-full overflow-y-auto pe-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
       <div className="chat-thread-messages">
         {messages.map((message, index) => message.role === "user" ? <article key={message.id} data-scroll-message={message.id} className="chat-question">
-          <div className="chat-question-bubble"><div dir="auto">{message.content}</div></div>
+          <div className="chat-question-stack"><span className="chat-question-label">{isFa ? "شما" : "You"}</span><div className="chat-question-bubble"><div dir="auto">{message.content}</div></div></div>
         </article> : <article key={message.id} data-scroll-message={message.id} className="chat-answer">
+          <NexoraMark />
           <div className="chat-answer-body">
-            <header className="chat-answer-heading"><NexoraMark /><strong>Nexora</strong><span>{isFa ? "پاسخ دستیار" : "Assistant response"}</span></header>
+            <header className="chat-answer-heading"><strong>Nexora</strong><span>{isFa ? "پاسخ دستیار" : "Assistant response"}</span></header>
             {message.research && <details className="mb-4 overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.025]"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-[11px] font-semibold text-white/58"><Telescope size={14} className="text-[#c43cff]" />{isFa ? "فعالیت بازیابی" : "Retrieval activity"}<span className="ms-auto text-[10px] font-normal text-white/25">{message.research.steps.length} {isFa ? "جست‌وجو" : "searches"} · {message.research.evidenceReviewed} {isFa ? "منبع" : "sources"}</span><ChevronDown size={13} className="text-white/25" /></summary><div className="space-y-2 border-t border-white/[.06] px-4 py-3">{message.research.steps.map((step, stepIndex) => <div key={stepIndex} className="flex items-center gap-2 text-[10px] leading-4 text-white/38"><Check size={11} className="text-emerald-300/55" /><span className="min-w-0 flex-1 truncate">{step.query}</span><span className="shrink-0 text-white/20">{step.evidence_count}</span></div>)}</div></details>}
 
             <div className="chat-answer-text" dir="auto"><CitedText content={message.content} sources={message.sources || []} onOpen={setEvidence} /></div>
             <div className={`chat-answer-grounding ${message.grounded ? "is-grounded" : "is-ungrounded"}`}>{message.grounded ? <><CheckCircle2 size={12} />{isFa ? "پاسخ مستند به منابع" : "Grounded in your sources"}</> : <><ShieldAlert size={12} />{isFa ? "منبع مرتبطی پیدا نشد" : "No relevant source found"}</>}</div>
 
-            {message.sources?.length ? <div className="mt-3 flex flex-wrap gap-2">{message.sources.slice(0, 4).map((source) => <button key={`${source.id}-${source.citationId}`} onClick={() => setEvidence(source)} className="chat-answer-source"><span className="chat-answer-source-number">{source.citationId}</span><span className="chat-answer-source-title" dir="auto">{source.title}</span></button>)}</div> : null}
+            {message.sources?.length ? <AnswerSources sources={message.sources} isFa={isFa} onOpen={setEvidence} /> : null}
 
             <div className="chat-answer-actions">
               <Action label={isFa ? "کپی" : "Copy"} onClick={() => { void navigator.clipboard.writeText(message.content); toast.success(isFa ? "پاسخ کپی شد" : "Response copied"); }}><Copy size={13} /></Action>
