@@ -1,13 +1,15 @@
 import unittest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 from uuid import uuid4
+from contextlib import contextmanager
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models.connector import Connector
 from app.services.connector_scheduler import run_due_connector_syncs
+from app.services.connector_lock import connector_sync_lock
 
 
 class ConnectorSchedulerTests(unittest.TestCase):
@@ -17,6 +19,18 @@ class ConnectorSchedulerTests(unittest.TestCase):
         Connector.__table__.create(self.engine)
         self.sessions = sessionmaker(bind=self.engine, expire_on_commit=True)
         self.enterContext(patch("app.services.connector_scheduler.SessionLocal", self.sessions))
+        self.locked = set()
+        @contextmanager
+        def lock(engine, connector_id):
+            if connector_id in self.locked:
+                yield False
+                return
+            self.locked.add(connector_id)
+            try:
+                yield True
+            finally:
+                self.locked.remove(connector_id)
+        self.enterContext(patch("app.services.connector_scheduler.connector_sync_lock", lock, create=True))
 
     def seed(self, count):
         ids = [uuid4() for _ in range(count)]
@@ -59,3 +73,97 @@ class ConnectorSchedulerTests(unittest.TestCase):
         with patch("app.services.connector_scheduler.sync_connector") as sync:
             self.assertEqual(run_due_connector_syncs(), 0)
         sync.assert_not_called()
+
+    def test_abandoned_sync_is_recovered_before_next_schedule(self):
+        connector_id = self.seed(1)[0]
+        with self.sessions() as db:
+            item = db.get(Connector, connector_id)
+            item.status = "syncing"
+            item.next_sync_at = datetime.now(timezone.utc) + timedelta(days=1)
+            db.commit()
+        with patch("app.services.connector_scheduler.sync_connector") as sync:
+            self.assertEqual(run_due_connector_syncs(), 1)
+        sync.assert_called_once()
+        with self.sessions() as db:
+            self.assertEqual(db.get(Connector, connector_id).status, "ready")
+
+    def test_live_sync_is_skipped_until_owner_lock_is_released(self):
+        connector_id = self.seed(1)[0]
+        with self.sessions() as db:
+            db.get(Connector, connector_id).status = "syncing"
+            db.commit()
+        self.locked.add(connector_id)
+        with patch("app.services.connector_scheduler.sync_connector") as sync:
+            self.assertEqual(run_due_connector_syncs(), 0)
+            sync.assert_not_called()
+            self.locked.remove(connector_id)
+            self.assertEqual(run_due_connector_syncs(), 1)
+
+    def test_interrupted_manual_sync_is_recovered_without_enabling_schedule(self):
+        connector_id = self.seed(1)[0]
+        with self.sessions() as db:
+            item = db.get(Connector, connector_id)
+            item.status = "syncing"
+            item.schedule_enabled = False
+            item.next_sync_at = None
+            db.commit()
+        with patch("app.services.connector_scheduler.sync_connector"):
+            self.assertEqual(run_due_connector_syncs(), 1)
+        with self.sessions() as db:
+            item = db.get(Connector, connector_id)
+            self.assertFalse(item.schedule_enabled)
+            self.assertIsNone(item.next_sync_at)
+
+
+class ConnectorLockTests(unittest.TestCase):
+    def setUp(self):
+        self.engine = MagicMock()
+        self.connection = self.engine.connect.return_value.__enter__.return_value
+
+    def test_lock_is_released_after_success_or_failure(self):
+        for fail in (False, True):
+            with self.subTest(fail=fail):
+                self.connection.reset_mock()
+                self.connection.scalar.return_value = True
+                try:
+                    with connector_sync_lock(self.engine, uuid4()) as acquired:
+                        self.assertTrue(acquired)
+                        self.connection.execute.assert_not_called()
+                        if fail:
+                            raise RuntimeError("Worker failed")
+                except RuntimeError:
+                    self.assertTrue(fail)
+                self.assertIn("pg_advisory_unlock", str(self.connection.execute.call_args.args[0]))
+                self.assertEqual(self.connection.scalar.call_args.args[1], self.connection.execute.call_args.args[1])
+
+    def test_busy_lock_is_not_released_by_non_owner(self):
+        self.connection.scalar.return_value = False
+        with connector_sync_lock(self.engine, uuid4()) as acquired:
+            self.assertFalse(acquired)
+        self.connection.execute.assert_not_called()
+
+    def test_unlock_error_discards_connection(self):
+        self.connection.scalar.return_value = True
+        self.connection.execute.side_effect = RuntimeError("Connection lost")
+        with self.assertRaises(RuntimeError):
+            with connector_sync_lock(self.engine, uuid4()):
+                pass
+        self.connection.invalidate.assert_called_once()
+
+    def test_manual_sync_rejects_live_owner(self):
+        from fastapi import HTTPException
+        from app.api.routes.connectors import sync
+        from types import SimpleNamespace
+
+        set_id, connector_id = uuid4(), uuid4()
+        db = MagicMock()
+        db.get.return_value = SimpleNamespace(document_set_id=set_id)
+        @contextmanager
+        def busy(*args):
+            yield False
+        with patch("app.api.routes.connectors.require_set_access"), patch("app.api.routes.connectors.connector_sync_lock", busy), patch("app.api.routes.connectors.sync_connector") as perform:
+            with self.assertRaises(HTTPException) as raised:
+                sync(set_id, connector_id, db, MagicMock())
+        self.assertEqual(raised.exception.status_code, 409)
+        perform.assert_not_called()
+        db.commit.assert_not_called()
