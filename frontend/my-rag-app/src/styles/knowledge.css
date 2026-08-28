@@ -66,6 +66,12 @@ html:not(.dark) .kb-page {
   .chunk-settings-footer { padding: 14px 16px; flex-wrap: wrap; }
   .chunk-settings-footer > div { margin-inline-start: auto; }
 }
+.connector-settings { max-width: 680px; }
+.connector-options button { display: flex; align-items: center; gap: 9px; min-height: 52px; font-size: 12px; font-weight: 500; }
+.connector-options .chunk-preset-check { margin-inline-start: auto; }
+.connector-option-icon { display: grid; place-items: center; color: var(--kb-accent); }
+.connector-fields { margin-top: 22px; }
+@media (max-width: 480px) { .connector-options > div { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .kb-set-dialog { max-width: 580px; }
 .kb-set-fields { display: grid; gap: 18px; }
 .kb-set-fields label > span { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; font-size: 12px; font-weight: 500; }
