@@ -250,3 +250,47 @@ html:not(.dark) .conversation-scroll-preview > span { color: #687287; }
 .chat-evidence-footer { display: flex; align-items: flex-start; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--answer-border); color: var(--answer-muted); font-size: 10px; line-height: 1.8; }
 .chat-evidence-footer svg { flex-shrink: 0; margin-top: 3px; }
 @media (max-width: 480px) { .chat-evidence { border-radius: 12px; } .chat-evidence-content, .chat-evidence-header { padding: 16px; } }
+
+/* Onyx-inspired reading surface: the answer itself is the primary surface. */
+.chat-thread .chat-answer { position: relative; display: block; }
+.chat-thread .chat-answer > .nexora-avatar { position: absolute; inset-inline-start: 0; top: 0; }
+.chat-thread .chat-answer-body { border: 0; border-radius: 0; background: transparent; box-shadow: none; padding: 0; }
+.chat-thread .chat-answer-heading { min-height: 36px; padding-inline-start: 48px; margin-bottom: 18px; }
+.chat-thread .chat-answer-heading strong { font-size: 12px; }
+.chat-thread .chat-answer-heading > span:last-child { font-size: 11px; }
+.chat-thread .chat-question-bubble { border-color: transparent; background: var(--answer-tint); border-radius: 16px 16px 4px 16px; }
+.chat-thread .chat-answer-actions { border-top: 0; margin-top: 12px; padding-top: 0; }
+.chat-thread-messages { max-width: 800px; gap: 32px; }
+.chat-thread .answer-markdown { white-space: normal; line-height: 1.9; font-size: 15px; }
+.answer-markdown > :first-child { margin-top: 0; }
+.answer-markdown > :last-child { margin-bottom: 0; }
+.answer-markdown p { margin: 0 0 16px; }
+.answer-markdown :is(h1,h2,h3,h4,h5,h6) { color: var(--answer-text); font-weight: 600; line-height: 1.6; margin: 24px 0 10px; }
+.answer-markdown h1 { font-size: 23px; }
+.answer-markdown h2 { font-size: 20px; }
+.answer-markdown h3 { font-size: 17px; }
+.answer-markdown :is(h4,h5,h6) { font-size: 15px; }
+.answer-markdown :is(ul,ol) { padding-inline-start: 24px; margin: 10px 0 18px; }
+.answer-markdown ul { list-style: disc; }
+.answer-markdown ol { list-style: decimal; }
+.answer-markdown li { padding-inline-start: 3px; margin: 5px 0; }
+.answer-markdown li p { margin: 4px 0; }
+.answer-markdown blockquote { margin: 18px 0; padding: 4px 16px; border-inline-start: 3px solid var(--answer-border); color: var(--answer-muted); }
+.answer-markdown hr { border: 0; border-top: 1px solid var(--answer-border); margin: 24px 0; }
+.answer-markdown a { color: var(--answer-accent); text-decoration: underline; text-underline-offset: 3px; }
+.answer-markdown code { padding: 2px 5px; border-radius: 4px; background: var(--answer-tint); font-family: Consolas, monospace; font-size: .88em; }
+.answer-markdown pre { padding: 16px; margin: 18px 0; border: 1px solid var(--answer-border); border-radius: 10px; background: var(--answer-panel); overflow-x: auto; direction: ltr; text-align: left; }
+.answer-markdown pre code { padding: 0; background: none; white-space: pre; }
+.answer-table-scroll { max-width: 100%; overflow-x: auto; margin-block: 18px; }
+.answer-markdown table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.answer-markdown :is(th,td) { border: 1px solid var(--answer-border); padding: 9px 12px; text-align: start; }
+.answer-markdown th { font-weight: 600; background: var(--answer-tint); }
+.chat-thread .chat-loading .chat-answer-body { padding-bottom: 12px; }
+.chat-loading .chat-answer-heading { padding-inline-start: 0; margin-bottom: 8px; }
+.chat-thread .chat-loading .chat-answer-heading { padding-inline-start: 0; }
+.chat-loading .answer-kinetic { padding-inline-start: 48px; font-size: 12px; }
+@media (max-width: 640px) { .chat-thread .answer-markdown { font-size: 14px; } .chat-thread-messages { gap: 24px; } .answer-markdown h1 { font-size: 20px; } .answer-markdown h2 { font-size: 18px; } }
+
+.chat-thread .chat-answer { animation: answer-arrive 220ms ease-out both; }
+@keyframes answer-arrive { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) { .chat-thread .chat-answer { animation: none; } }
