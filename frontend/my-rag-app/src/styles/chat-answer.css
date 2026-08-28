@@ -190,11 +190,17 @@ html:not(.dark) :is(.chat-answer, .chat-question) {
 .chat-thread-scroll::-webkit-scrollbar { display: none; }
 .conversation-scroll-rail { position: absolute; inset-inline-end: 0; top: 50%; transform: translateY(-50%); width: 28px; height: min(360px, 76%); border-radius: 6px; }
 .conversation-scroll-ticks { display: flex; height: 100%; flex-direction: column; justify-content: space-between; align-items: center; padding-block: 8px; pointer-events: none; }
-.conversation-scroll-ticks span { width: 7px; height: 2px; flex-shrink: 0; background: #a4afc23d; transition: background-color 140ms ease, width 140ms ease; }
+.conversation-scroll-ticks span { width: 7px; height: 2px; flex-shrink: 0; background: #a4afc23d; transition: background-color 180ms ease, width 220ms cubic-bezier(.2,.8,.2,1); }
 .conversation-scroll-ticks span.is-active { width: 9px; background: #d5dbe8; }
 html:not(.dark) .conversation-scroll-ticks span { background: #68728745; }
 html:not(.dark) .conversation-scroll-ticks span.is-active { background: #7950bb; }
 .conversation-scroll-rail input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; writing-mode: vertical-lr; direction: ltr; }
-.conversation-scroll-rail:focus-within { outline: 2px solid #9671ce; outline-offset: 1px; }
+.conversation-scroll-rail.is-keyboard-focused { outline: 2px solid #9671ce; outline-offset: 1px; }
 @media (max-width: 640px) { .conversation-scroll-rail { display: none; } .chat-thread-scroll { scrollbar-width: thin; padding-inline-end: 4px; } .chat-thread-scroll::-webkit-scrollbar { display: block; width: 4px; } }
 @media (prefers-reduced-motion: reduce) { .conversation-scroll-ticks span { transition: none; } }
+
+.conversation-scroll-preview { position: absolute; inset-inline-end: 36px; width: min(280px, 55vw); translate: 0 -50%; padding: 13px 15px; border: 1px solid #ffffff18; border-radius: 12px; background: #20232b; color: #e7eaf3; box-shadow: 0 8px 28px #0003; pointer-events: none; z-index: 10; }
+.conversation-scroll-preview > span { display: block; margin-bottom: 6px; font-size: 10px; font-weight: 600; color: #a4afc2; }
+.conversation-scroll-preview p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: 0; font-size: 12px; line-height: 1.85; overflow-wrap: anywhere; text-align: start; }
+html:not(.dark) .conversation-scroll-preview { background: #fff; color: #252c3e; border-color: #dfe4ed; box-shadow: 0 8px 28px #18213314; }
+html:not(.dark) .conversation-scroll-preview > span { color: #687287; }

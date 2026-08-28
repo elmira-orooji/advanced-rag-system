@@ -30,9 +30,9 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
   return <div dir={isFa ? "rtl" : "ltr"} className="chat-thread relative h-full">
     <div ref={scrollRef} onScroll={(event) => { const node = event.currentTarget; followLatest.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; }} className="chat-thread-scroll h-full overflow-y-auto pe-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
       <div className="chat-thread-messages">
-        {messages.map((message, index) => message.role === "user" ? <article key={message.id} className="chat-question">
+        {messages.map((message, index) => message.role === "user" ? <article key={message.id} data-scroll-message={message.id} className="chat-question">
           <div className="chat-question-bubble"><div dir="auto">{message.content}</div></div>
-        </article> : <article key={message.id} className="chat-answer">
+        </article> : <article key={message.id} data-scroll-message={message.id} className="chat-answer">
           <div className="chat-answer-body">
             <header className="chat-answer-heading"><NexoraMark /><strong>Nexora</strong><span>{isFa ? "پاسخ دستیار" : "Assistant response"}</span></header>
             {message.research && <details className="mb-4 overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.025]"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-[11px] font-semibold text-white/58"><Telescope size={14} className="text-[#c43cff]" />{isFa ? "فعالیت بازیابی" : "Retrieval activity"}<span className="ms-auto text-[10px] font-normal text-white/25">{message.research.steps.length} {isFa ? "جست‌وجو" : "searches"} · {message.research.evidenceReviewed} {isFa ? "منبع" : "sources"}</span><ChevronDown size={13} className="text-white/25" /></summary><div className="space-y-2 border-t border-white/[.06] px-4 py-3">{message.research.steps.map((step, stepIndex) => <div key={stepIndex} className="flex items-center gap-2 text-[10px] leading-4 text-white/38"><Check size={11} className="text-emerald-300/55" /><span className="min-w-0 flex-1 truncate">{step.query}</span><span className="shrink-0 text-white/20">{step.evidence_count}</span></div>)}</div></details>}
@@ -54,7 +54,7 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
         {isThinking && <AnswerLoading isFa={isFa} />}
       </div>
     </div>
-    <ConversationScrollRail viewportRef={scrollRef} isFa={isFa} />
+    <ConversationScrollRail viewportRef={scrollRef} isFa={isFa} messages={messages} />
     {evidence && <Evidence source={evidence} isFa={isFa} onClose={() => setEvidence(null)} />}
   </div>;
 }
