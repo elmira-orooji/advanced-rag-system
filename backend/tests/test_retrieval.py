@@ -1,0 +1,49 @@
+import unittest
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+from uuid import uuid4
+
+from app.services.retrieval import _expand_parents, hybrid_search
+
+
+class RetrievalContextTests(unittest.TestCase):
+    def setUp(self):
+        self.document_id = uuid4()
+
+    def chunk(self, index, content, active=True, document_id=None):
+        return SimpleNamespace(id=uuid4(), document_id=document_id or self.document_id,
+                               chunk_index=index, parent_index=0, content=content,
+                               parent_content="old text and disabled secret", is_active=active)
+
+    def point(self, chunk):
+        return {"id": str(chunk.id), "score": 0.9, "payload": {
+            "chunk_id": str(chunk.id), "document_id": str(chunk.document_id),
+            "chunk_index": chunk.chunk_index, "filename": "test.txt", "content": "stale vector text"}}
+
+    def test_parent_context_uses_current_active_siblings_in_order(self):
+        edited = self.chunk(0, "edited text")
+        active = self.chunk(2, "current neighbor")
+        disabled = self.chunk(1, "disabled secret", active=False)
+        other_document = self.chunk(0, "other document", document_id=uuid4())
+        rows = [(chunk, "test.txt") for chunk in (active, disabled, other_document, edited)]
+        results = _expand_parents(rows, [self.point(active), self.point(edited)], 5)
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["payload"]["content"], "edited text\n\ncurrent neighbor")
+        self.assertEqual(results[0]["payload"]["matched_child_content"], "current neighbor")
+
+    def test_disabled_vector_hit_is_not_expanded(self):
+        disabled = self.chunk(0, "disabled secret", active=False)
+        self.assertEqual(_expand_parents([(disabled, "test.txt")], [self.point(disabled)], 5), [])
+
+    def test_hybrid_search_reranks_current_database_text_only(self):
+        edited = self.chunk(0, "edited text")
+        disabled = self.chunk(1, "disabled secret", active=False)
+        db = MagicMock()
+        db.execute.return_value.all.return_value = [(edited, "test.txt")]
+        with patch("app.services.retrieval.QdrantClient") as client, patch("app.services.retrieval._rerank", side_effect=lambda query, candidates, limit: candidates) as rerank:
+            client.return_value.search.return_value = [self.point(disabled), self.point(edited)]
+            results = hybrid_search(db, "edited", 5, document_id=str(self.document_id))
+        candidates = rerank.call_args.args[1]
+        self.assertEqual(len(candidates), 1)
+        self.assertEqual(candidates[0]["payload"]["content"], "edited text")
+        self.assertEqual(results[0]["payload"]["content"], "edited text")

@@ -79,7 +79,15 @@ def _rerank(query: str, candidates: list[dict], limit: int) -> list[dict]:
 
 
 def _expand_parents(rows: list[tuple[Chunk, str]], ranked_children: list[dict], limit: int) -> list[dict]:
-    chunks = {str(chunk.id): chunk for chunk, _ in rows}
+    chunks = {str(chunk.id): chunk for chunk, _ in rows if chunk.is_active}
+    parents: dict[tuple[str, int], list[Chunk]] = {}
+    for chunk in chunks.values():
+        parents.setdefault((str(chunk.document_id), chunk.parent_index), []).append(chunk)
+    # Cached parent_content predates edits and can include disabled siblings.
+    parent_texts = {
+        key: "\n\n".join(chunk.content for chunk in sorted(children, key=lambda item: item.chunk_index))
+        for key, children in parents.items()
+    }
     seen_parents: set[tuple[str, int]] = set()
     expanded = []
     for child in ranked_children:
@@ -95,7 +103,7 @@ def _expand_parents(rows: list[tuple[Chunk, str]], ranked_children: list[dict], 
             **child,
             "payload": {
                 **payload,
-                "content": chunk.parent_content,
+                "content": parent_texts[parent_key],
                 "matched_child_content": chunk.content,
                 "parent_index": chunk.parent_index,
             },
@@ -122,11 +130,20 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
     started = perf_counter()
     rows = list(db.execute(select(Chunk, Document.filename).join(Document, Document.id == Chunk.document_id).where(Chunk.document_id.in_(scoped_ids), Chunk.is_active.is_(True))).all())
     lexical_results = _bm25(query, rows, candidate_limit)
+    active_chunks = {str(chunk.id): (chunk, filename) for chunk, filename in rows}
     lexical_ms = round((perf_counter() - started) * 1000, 2)
     fused: dict[str, dict] = {}
     for source, source_name in ((vector_results, "vector"), (lexical_results, "bm25")):
         for rank, result in enumerate(source, 1):
             chunk_id = str(result.get("payload", {}).get("chunk_id") or result.get("id"))
+            if chunk_id not in active_chunks:
+                continue
+            chunk, filename = active_chunks[chunk_id]
+            # Vector payloads may be stale after an edit or a failed reindex.
+            result = {**result, "payload": {
+                "chunk_id": chunk_id, "document_id": str(chunk.document_id),
+                "filename": filename, "chunk_index": chunk.chunk_index, "content": chunk.content,
+            }}
             item = fused.setdefault(chunk_id, {"point": result, "score": 0.0, "vector_rank": None, "lexical_rank": None})
             item["score"] += (vector_weight if source_name == "vector" else bm25_weight) / (RRF_K + rank)
             if source_name == "vector":
