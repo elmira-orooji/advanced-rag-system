@@ -4,6 +4,8 @@ import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import "../styles/conversation.css";
+import NexoraAvatar from "../components/NexoraAvatar";
+import { assistantService } from "../services/assistantService";
 import ChatInput from "../components/ChatInput";
 import OnyxChatWindow from "../components/OnyxChatWindow";
 import { conversationService, type ConversationDetail, type PersistedMessage } from "../services/conversationService";
@@ -39,6 +41,7 @@ function toChatMessage(message: PersistedMessage): ChatMessage {
 }
 
 export default function ConversationPage({ conversationId, onConversationChange, onConversationsUpdated }: ConversationPageProps) {
+  const [assistant, setAssistant] = useState<{ id: string; name: string } | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [sets, setSets] = useState<DocumentSet[]>([]);
   const [selectedSetId, setSelectedSetId] = useState("");
@@ -62,6 +65,17 @@ export default function ConversationPage({ conversationId, onConversationChange,
     task.catch((error) => toast.error((error as Error).message)).finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [conversationId]);
+
+  const assistantId = detail?.assistant_id;
+  useEffect(() => {
+    if (!assistantId) return;
+    let active = true;
+    assistantService.list().then((items) => {
+      if (active) setAssistant(items.find((item) => item.id === assistantId) ?? null);
+    }).catch(() => { if (active) setAssistant(null); });
+    return () => { active = false; };
+  }, [assistantId]);
+  const assistantName = assistant?.id === assistantId ? assistant?.name : undefined;
 
   const messages = useMemo(() => {
     const persisted = detail?.messages.map(toChatMessage) ?? [];
@@ -167,14 +181,14 @@ export default function ConversationPage({ conversationId, onConversationChange,
   return <div dir={isFa ? "rtl" : "ltr"} className="conversation-page relative mx-auto flex h-full w-full flex-col overflow-hidden px-4 sm:px-7 lg:px-10">
     <header className="relative z-10 flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-white/[.045]">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-xl border border-[#9f8be8]/15 bg-[#7c27ff]/20"><img src="/brand/nexora-symbol.svg" alt="Nexora" className="size-[18px]" /></span>
+        <NexoraAvatar />
         <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1><p className="mt-0.5 text-[9px] conversation-muted">{isFa ? "پاسخ‌گویی مبتنی بر منابع" : "Source-grounded conversation"}</p></div>
       </div>
       <span className="conversation-save-status hidden items-center gap-2 text-[10px] sm:flex"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span>
     </header>
 
     <section className="relative z-10 min-h-0 flex-1 overflow-hidden px-0 sm:px-3">
-      {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} /> : <div className="flex h-full flex-col items-center justify-center text-center">
+      {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} assistantName={assistantName} /> : <div className="flex h-full flex-col items-center justify-center text-center">
         <span className="grid size-14 place-items-center rounded-2xl border border-[#18c7f4]/25 bg-[#7c27ff]/25 text-[#d9a6ff]"><MessageSquareText size={23} /></span>
         <h2 className="mt-5 text-xl font-semibold">Start a source-grounded conversation</h2>
         <p className="mt-2 max-w-md text-sm leading-6 conversation-muted">Choose the knowledge base this conversation should use. Your messages and answers will remain available in Recent chats.</p>
