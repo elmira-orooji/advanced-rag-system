@@ -3,6 +3,7 @@ import { Check, CheckCircle2, ChevronDown, Copy, FileText, Layers3, Quote, Rotat
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import AnswerLoading from "./AnswerLoading";
+import ConversationScrollRail from "./ConversationScrollRail";
 import "../styles/chat-answer.css";
 
 import { feedbackService, type FeedbackReason } from "../services/feedbackService";
@@ -53,6 +54,7 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
         {isThinking && <AnswerLoading isFa={isFa} />}
       </div>
     </div>
+    <ConversationScrollRail viewportRef={scrollRef} isFa={isFa} />
     {evidence && <Evidence source={evidence} isFa={isFa} onClose={() => setEvidence(null)} />}
   </div>;
 }

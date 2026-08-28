@@ -184,3 +184,17 @@ html:not(.dark) :is(.chat-answer, .chat-question) {
 @keyframes answer-word { 0%, 100% { transform: translateY(0); opacity: .65; } 35% { transform: translateY(-2px); opacity: 1; } }
 @media (max-width: 640px) { .chat-thread-messages { padding: 16px 2px 24px; gap: 16px; } .chat-answer-body { padding: 16px 14px 10px; border-radius: 15px; } .chat-answer-heading { margin-bottom: 12px; } }
 @media (prefers-reduced-motion: reduce) { .message-loading-dots circle, .answer-kinetic span { animation: none; opacity: 1; } }
+
+/* Codex-style overview rail; the bright ticks represent the visible viewport. */
+.chat-thread-scroll { scrollbar-width: none; padding-inline-end: 30px; }
+.chat-thread-scroll::-webkit-scrollbar { display: none; }
+.conversation-scroll-rail { position: absolute; inset-inline-end: 0; top: 50%; transform: translateY(-50%); width: 28px; height: min(360px, 76%); border-radius: 6px; }
+.conversation-scroll-ticks { display: flex; height: 100%; flex-direction: column; justify-content: space-between; align-items: center; padding-block: 8px; pointer-events: none; }
+.conversation-scroll-ticks span { width: 7px; height: 2px; flex-shrink: 0; background: #a4afc23d; transition: background-color 140ms ease, width 140ms ease; }
+.conversation-scroll-ticks span.is-active { width: 9px; background: #d5dbe8; }
+html:not(.dark) .conversation-scroll-ticks span { background: #68728745; }
+html:not(.dark) .conversation-scroll-ticks span.is-active { background: #7950bb; }
+.conversation-scroll-rail input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; writing-mode: vertical-lr; direction: ltr; }
+.conversation-scroll-rail:focus-within { outline: 2px solid #9671ce; outline-offset: 1px; }
+@media (max-width: 640px) { .conversation-scroll-rail { display: none; } .chat-thread-scroll { scrollbar-width: thin; padding-inline-end: 4px; } .chat-thread-scroll::-webkit-scrollbar { display: block; width: 4px; } }
+@media (prefers-reduced-motion: reduce) { .conversation-scroll-ticks span { transition: none; } }
