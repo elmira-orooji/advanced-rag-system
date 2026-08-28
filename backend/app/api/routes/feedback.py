@@ -15,7 +15,11 @@ router = APIRouter(prefix="/answers", tags=["feedback"])
 
 @router.put("/{answer_id}/feedback", response_model=FeedbackResponse)
 def upsert_feedback(answer_id: uuid.UUID, payload: FeedbackUpsert, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    answer = db.get(AnswerRecord, answer_id)
+    answer = db.scalar(
+        select(AnswerRecord)
+        .join(User, User.id == AnswerRecord.user_id)
+        .where(AnswerRecord.id == answer_id, User.organization_id == user.organization_id)
+    )
     if answer is None or (answer.user_id != user.id and user.role != "admin"):
         raise HTTPException(status_code=404, detail="Answer not found")
     item = db.scalar(select(AnswerFeedback).where(AnswerFeedback.answer_id == answer_id, AnswerFeedback.user_id == user.id))
