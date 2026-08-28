@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -46,6 +46,24 @@ def create_user(payload: UserAdminCreate, db: Session = Depends(get_db), admin: 
         raise HTTPException(status_code=409, detail="A member with this username already exists") from exc
     db.refresh(item)
     return item
+
+
+@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: uuid.UUID, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    target = db.scalar(select(User).where(
+        User.id == user_id, User.organization_id == admin.organization_id,
+    ).with_for_update())
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.role == "admin":
+        raise HTTPException(status_code=403, detail="Admin accounts cannot be deleted")
+    db.delete(target)
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="This member owns shared resources and cannot be deleted") from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/{user_id}/document-set-permissions", response_model=list[SetPermissionItem])

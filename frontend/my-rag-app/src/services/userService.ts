@@ -13,6 +13,7 @@ export interface SetPermission { document_set_id: string; document_set_name: str
 export const userService = {
   list: () => request<ManagedUser[]>("/users", { headers: headers() }),
   create: (payload: CreateManagedUser) => request<ManagedUser>("/users", { method: "POST", headers: headers(true), body: JSON.stringify(payload) }),
+  remove: (userId: string) => request<void>(`/users/${userId}`, { method: "DELETE", headers: headers() }),
   listSets: () => request<DocumentSet[]>("/document-sets", { headers: headers() }),
   permissions: (userId: string) => request<SetPermission[]>(`/users/${userId}/document-set-permissions`, { headers: headers() }),
   savePermissions: (userId: string, permissions: Array<{ document_set_id: string; permission: PermissionLevel }>) => request<SetPermission[]>(`/users/${userId}/document-set-permissions`, { method: "PUT", headers: headers(true), body: JSON.stringify({ permissions }) }),

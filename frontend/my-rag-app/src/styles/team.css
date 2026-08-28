@@ -31,3 +31,9 @@ html.dark .team-page .team-member-form [role="alert"] { color: #ee91a0; }
 .team-page button:disabled { cursor: not-allowed; }
 @media (max-width: 640px) { .team-header h1 { font-size: 23px; } .team-member-row { padding: 12px; gap: 8px; } }
 @media (prefers-reduced-motion: reduce) { .team-page *, .team-page button { transition: none !important; animation: none !important; } }
+
+.team-page .team-delete { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 8px 10px; flex-shrink: 0; border: 1px solid var(--tm-line); border-radius: 8px; color: #b43b53; background: var(--tm-panel); font-size: 11px; transition: background-color 140ms ease, border-color 140ms ease; }
+html.dark .team-page .team-delete { color: #ee91a0; }
+.team-page .team-delete:hover:not(:disabled) { background: #bc435b12; border-color: currentColor; }
+.team-page .team-delete:disabled { opacity: .5; }
+@media (max-width: 480px) { .team-delete span { display: none; } }
