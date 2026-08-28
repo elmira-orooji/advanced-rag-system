@@ -226,12 +226,23 @@ function MetadataFilterBar({ documents, filters, onChange, isFa }: { documents: 
     const current = filters[key] || [];
     onChange({ ...filters, [key]: current.includes(value) ? current.filter((item) => item !== value) : [...current, value] });
   };
-  return <div className="mb-2"><button type="button" onClick={() => setOpen(!open)} className={`flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[10px] font-semibold ${count ? "border-[#18c7f4]/30 bg-[#7c27ff]/25 kb-accent" : "border-white/[.08] bg-white/[.035] kb-muted"}`}><Filter size={12} />{isFa ? "فیلتر اطلاعات سند" : "Metadata filters"}{count > 0 && <span className="grid size-4 place-items-center rounded-full bg-[#7c27ff] text-[8px]">{count}</span>}<ChevronDown size={11} className={open ? "rotate-180" : ""} /></button>{open && <div className="nexora-dropdown mt-2 rounded-xl border border-white/[.08] bg-black/20 p-3"><FilterGroup title={isFa ? "زبان" : "Language"} values={languages} selected={filters.languages || []} onToggle={(value) => toggle("languages", value)} /><FilterGroup title={isFa ? "نوع منبع" : "Source type"} values={types} selected={filters.source_types || []} onToggle={(value) => toggle("source_types", value)} /><FilterGroup title={isFa ? "برچسب" : "Tags"} values={tags} selected={filters.tags || []} onToggle={(value) => toggle("tags", value)} /><div className="mt-2 grid grid-cols-2 gap-2"><input type="date" value={filters.date_from || ""} onChange={(event) => onChange({ ...filters, date_from: event.target.value || undefined })} className="h-8 rounded-lg border border-white/[.08] bg-[#0a1530] px-2 text-[9px] kb-muted" /><input type="date" value={filters.date_to || ""} onChange={(event) => onChange({ ...filters, date_to: event.target.value || undefined })} className="h-8 rounded-lg border border-white/[.08] bg-[#0a1530] px-2 text-[9px] kb-muted" /></div>{count > 0 && <button onClick={() => onChange({})} className="mt-3 text-[9px] kb-accent">{isFa ? "پاک‌کردن فیلترها" : "Clear filters"}</button>}</div>}</div>;
+  return <div className="mb-2"><button type="button" aria-expanded={open} onClick={() => setOpen(!open)} className="metadata-filter-trigger"><Filter size={14} />{isFa ? "فیلتر اطلاعات سند" : "Metadata filters"}{count > 0 && <span>{count}</span>}<ChevronDown size={12} className={open ? "rotate-180" : ""} /></button>
+    {open && <section className="metadata-filter-panel" dir={isFa ? "rtl" : "ltr"} aria-label={isFa ? "فیلتر اطلاعات سند" : "Metadata filters"}>
+      <header><span>{isFa ? "محدودکردن نتایج" : "Refine results"}</span>{count > 0 && <button type="button" onClick={() => onChange({})}>{isFa ? "پاک‌کردن همه" : "Clear all"}</button>}</header>
+      <FilterGroup title={isFa ? "زبان" : "Language"} values={languages} selected={filters.languages || []} onToggle={(value) => toggle("languages", value)} />
+      <FilterGroup title={isFa ? "نوع منبع" : "Source type"} values={types} selected={filters.source_types || []} onToggle={(value) => toggle("source_types", value)} />
+      <FilterGroup title={isFa ? "برچسب" : "Tags"} values={tags} selected={filters.tags || []} onToggle={(value) => toggle("tags", value)} />
+      <fieldset className="metadata-dates"><legend>{isFa ? "بازهٔ تاریخ سند" : "Document date range"}</legend><div>
+        <label>{isFa ? "از تاریخ" : "From"}<input type="date" dir="ltr" max={filters.date_to || undefined} value={filters.date_from || ""} onChange={(event) => onChange({ ...filters, date_from: event.target.value || undefined })} /></label>
+        <label>{isFa ? "تا تاریخ" : "To"}<input type="date" dir="ltr" min={filters.date_from || undefined} value={filters.date_to || ""} onChange={(event) => onChange({ ...filters, date_to: event.target.value || undefined })} /></label>
+      </div></fieldset>
+    </section>}
+  </div>;
 }
 
 function FilterGroup({ title, values, selected, onToggle }: { title: string; values: string[]; selected: string[]; onToggle: (value: string) => void }) {
   if (!values.length) return null;
-  return <div className="mb-2"><p className="mb-1.5 text-[9px] font-semibold kb-muted">{title}</p><div className="flex flex-wrap gap-1">{values.map((value) => <button type="button" key={value} aria-pressed={selected.includes(value)} onClick={() => onToggle(value)} className={`rounded-md border px-2 py-1 text-[9px] ${selected.includes(value) ? "border-[#18c7f4]/30 bg-[#7c27ff]/30 kb-accent" : "border-white/[.07] kb-muted"}`}>{value}</button>)}</div></div>;
+  return <fieldset className="metadata-filter-group"><legend>{title}</legend><div>{values.map((value) => <button type="button" key={value} aria-pressed={selected.includes(value)} onClick={() => onToggle(value)}>{selected.includes(value) && <Check size={12} />}<span>{value}</span></button>)}</div></fieldset>;
 }
 
 function ScopeSelector({ documents, selectedIds, open, copy, isFa, onToggle, onChange, onClose }: { documents: KnowledgeDocument[]; selectedIds: string[]; open: boolean; copy: Record<string, string>; isFa: boolean; onToggle: () => void; onChange: (ids: string[]) => void; onClose: () => void }) {

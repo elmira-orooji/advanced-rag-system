@@ -80,6 +80,23 @@ html:not(.dark) .kb-page {
 .kb-set-fields textarea { resize: vertical; min-height: 90px; max-height: 180px; line-height: 1.8; }
 .kb-set-counter { display: block; margin-top: 6px; text-align: end; font-variant-numeric: tabular-nums; }
 .chunk-settings-footer .kb-set-footer-actions { margin-inline-start: auto; }
+.metadata-filter-trigger { display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 7px 10px; border: 1px solid var(--kb-line); border-radius: 9px; color: var(--kb-muted); background: var(--kb-panel); font-size: 11px; font-weight: 500; }
+.metadata-filter-trigger[aria-expanded=true] { border-color: var(--kb-accent); color: var(--kb-accent); background: var(--kb-tint); }
+.metadata-filter-trigger > span { display: grid; place-items: center; min-width: 18px; height: 18px; padding-inline: 3px; border-radius: 6px; background: #7950bb; color: #fff; font-size: 10px; }
+.metadata-filter-panel { margin-top: 8px; padding: 14px; border: 1px solid var(--kb-line); border-radius: 12px; background: var(--kb-panel); color: var(--kb-text); box-shadow: 0 4px 16px #101b3506; }
+.metadata-filter-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--kb-line); font-size: 12px; font-weight: 600; }
+.metadata-filter-panel > header button { color: var(--kb-accent); font-size: 11px; font-weight: 500; }
+.metadata-filter-panel legend { font-size: 11px; font-weight: 500; color: var(--kb-muted); margin-bottom: 8px; }
+.metadata-filter-group { margin-bottom: 14px; min-width: 0; }
+.metadata-filter-group > div { display: flex; flex-wrap: wrap; gap: 6px; }
+.metadata-filter-group button { display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 6px 10px; border: 1px solid var(--kb-line); border-radius: 7px; color: var(--kb-muted); background: transparent; font-size: 11px; line-height: 1.5; }
+.metadata-filter-group button span { overflow-wrap: anywhere; }
+.metadata-filter-group button[aria-pressed=true] { color: var(--kb-accent); border-color: var(--kb-accent); background: var(--kb-tint); }
+.metadata-dates { min-width: 0; padding-top: 4px; }
+.metadata-dates > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.metadata-dates label { min-width: 0; color: var(--kb-muted); font-size: 10px; }
+.app-shell .kb-page .metadata-dates input { display: block; width: 100%; min-width: 0; height: 38px; margin-top: 5px; padding: 6px 8px; border: 1px solid var(--kb-line); border-radius: 8px; background: var(--kb-panel) !important; color: var(--kb-text); font-size: 12px; }
+@media (max-width: 380px) { .metadata-dates > div { grid-template-columns: 1fr; } }
 .kb-main { height: 100%; min-height: 0; overflow: hidden; }
 .kb-content { height: 100%; min-height: 0; gap: 14px; }
 .kb-set-content { gap: 12px; }
