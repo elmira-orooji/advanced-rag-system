@@ -124,13 +124,6 @@ export default function LoginPage() {
             <span />
             <span />
           </div>
-          <div className="nexora-login__brand"><img
-                className="nexora-login__form-logo"
-                src={theme === "light" ? "/brand/nexora-horizontal-dark.svg" : "/brand/nexora-horizontal-light.svg"}
-                alt="Nexora"
-                width={132}
-                height={36}
-              /></div>
           <div className="nexora-login__toolbar">
             <button
               type="button"
@@ -157,6 +150,10 @@ export default function LoginPage() {
             transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.2, 0, 0, 1] }}
             className="nexora-login__form-wrap"
           >
+            <div className="nexora-login__brand" dir="ltr">
+              <img src="/brand/nexora-symbol.svg" alt="" width={30} height={30} />
+              <span>Nexora</span>
+            </div>
             <header className="nexora-login__heading">
               <h1 id="login-title">{isRtl ? "خوش آمدید" : "Welcome back"}</h1>
               <p>{isRtl ? "برای ادامه، اطلاعات حساب خود را وارد کنید." : "Enter your account details to continue."}</p>

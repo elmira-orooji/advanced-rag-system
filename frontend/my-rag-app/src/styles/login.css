@@ -1051,3 +1051,57 @@
  radial-gradient(ellipse at 100% 100%, #b9dcea26, transparent 50%),
  var(--login-panel);
 }
+
+/* Underlined fields and centered script wordmark from the supplied reference. */
+@font-face {
+  font-family: "Nexora Script";
+  src: url("/fonts/pacifico/Pacifico-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+.nexora-login__brand {
+  position: static;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 0 auto 52px;
+}
+.nexora-login__brand img { width: 30px; height: 30px; }
+.nexora-login__brand span { font-family: "Nexora Script", cursive; font-size: 36px; font-weight: 400; line-height: 1.6; color: var(--login-text); }
+.nexora-login__heading h1,
+.nexora-login__main[dir="rtl"] .nexora-login__heading h1 {
+  text-align: center;
+  font-size: 20px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+.nexora-login__heading p { text-align: center; }
+.nexora-login__form { margin-top: 40px; gap: 22px; }
+.nexora-login__field > label { font-size: 11px; color: var(--login-muted); }
+.nexora-login__field .nexora-login__leading-icon { display: none; }
+.nexora-login__control {
+  --control-height: 38px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--login-control-border);
+  border-radius: 0;
+  box-shadow: none;
+}
+.nexora-login__control:focus-within {
+  border-color: var(--login-primary);
+  box-shadow: 0 1px 0 var(--login-primary);
+}
+.nexora-login__field .nexora-login__control > input {
+  padding-inline: 0;
+  background: transparent;
+  border-radius: 0;
+  font-size: 14px;
+}
+.nexora-login__field .nexora-login__control[data-has-action="true"] > input { padding-inline-end: 36px; }
+.nexora-login__field[data-invalid="true"] .nexora-login__control {
+  border-color: var(--login-error);
+  box-shadow: 0 1px 0 var(--login-error);
+}
+.nexora-login__submit { width: 180px; justify-self: center; align-self: center; margin-inline: auto; border-radius: 999px; min-height: 42px; }
