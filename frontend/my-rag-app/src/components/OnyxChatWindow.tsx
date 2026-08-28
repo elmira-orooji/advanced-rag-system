@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, CheckCircle2, ChevronDown, Copy, FileText, Layers3, Quote, RotateCcw, Share2, ShieldAlert, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
+import { Check, ChevronDown, Copy, FileText, Layers3, Quote, ShieldAlert, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import AnswerSources from "./AnswerSources";
@@ -13,10 +13,9 @@ import type { ChatMessage, Source } from "../types/chat";
 interface Props {
   messages: ChatMessage[];
   isThinking: boolean;
-  onRegenerate?: (prompt: string) => void;
 }
 
-export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: Props) {
+export default function OnyxChatWindow({ messages, isThinking }: Props) {
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const [evidence, setEvidence] = useState<Source | null>(null);
@@ -26,12 +25,11 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
     const viewport = scrollRef.current;
     if (viewport && followLatest.current) viewport.scrollTop = viewport.scrollHeight;
   }, [messages, isThinking]);
-  const previousPrompt = (index: number) => [...messages.slice(0, index)].reverse().find((item) => item.role === "user")?.content;
 
   return <div dir={isFa ? "rtl" : "ltr"} className="chat-thread relative h-full">
     <div ref={scrollRef} onScroll={(event) => { const node = event.currentTarget; followLatest.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; }} className="chat-thread-scroll h-full overflow-y-auto pe-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
       <div className="chat-thread-messages">
-        {messages.map((message, index) => message.role === "user" ? <article key={message.id} data-scroll-message={message.id} className="chat-question">
+        {messages.map((message) => message.role === "user" ? <article key={message.id} data-scroll-message={message.id} className="chat-question">
           <div className="chat-question-stack"><span className="chat-question-label">{isFa ? "شما" : "You"}</span><div className="chat-question-bubble"><div dir="auto">{message.content}</div></div></div>
         </article> : <article key={message.id} data-scroll-message={message.id} className="chat-answer">
           <NexoraMark />
@@ -40,15 +38,13 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
             {message.research && <details className="mb-4 overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.025]"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-[11px] font-semibold text-white/58"><Telescope size={14} className="text-[#c43cff]" />{isFa ? "فعالیت بازیابی" : "Retrieval activity"}<span className="ms-auto text-[10px] font-normal text-white/25">{message.research.steps.length} {isFa ? "جست‌وجو" : "searches"} · {message.research.evidenceReviewed} {isFa ? "منبع" : "sources"}</span><ChevronDown size={13} className="text-white/25" /></summary><div className="space-y-2 border-t border-white/[.06] px-4 py-3">{message.research.steps.map((step, stepIndex) => <div key={stepIndex} className="flex items-center gap-2 text-[10px] leading-4 text-white/38"><Check size={11} className="text-emerald-300/55" /><span className="min-w-0 flex-1 truncate">{step.query}</span><span className="shrink-0 text-white/20">{step.evidence_count}</span></div>)}</div></details>}
 
             <div className="chat-answer-text" dir="auto"><CitedText content={message.content} sources={message.sources || []} onOpen={setEvidence} /></div>
-            <div className={`chat-answer-grounding ${message.grounded ? "is-grounded" : "is-ungrounded"}`}>{message.grounded ? <><CheckCircle2 size={12} />{isFa ? "پاسخ مستند به منابع" : "Grounded in your sources"}</> : <><ShieldAlert size={12} />{isFa ? "منبع مرتبطی پیدا نشد" : "No relevant source found"}</>}</div>
+            {!message.grounded && <div className="chat-answer-grounding is-ungrounded"><ShieldAlert size={12} />{isFa ? "منبع مرتبطی پیدا نشد" : "No relevant source found"}</div>}
 
             {message.sources?.length ? <AnswerSources sources={message.sources} isFa={isFa} onOpen={setEvidence} /> : null}
 
             <div className="chat-answer-actions">
               <Action label={isFa ? "کپی" : "Copy"} onClick={() => { void navigator.clipboard.writeText(message.content); toast.success(isFa ? "پاسخ کپی شد" : "Response copied"); }}><Copy size={13} /></Action>
               {message.responseId && <Feedback responseId={message.responseId} isFa={isFa} />}
-              {onRegenerate && previousPrompt(index) && <Action label={isFa ? "تولید دوباره" : "Regenerate"} onClick={() => onRegenerate(previousPrompt(index)!)}><RotateCcw size={13} /></Action>}
-              <Action label={isFa ? "اشتراک" : "Share"} onClick={() => { void navigator.clipboard.writeText(message.content); toast.success(isFa ? "متن پاسخ برای اشتراک کپی شد" : "Answer copied for sharing"); }}><Share2 size={13} /></Action>
               {message.sources?.length ? <button onClick={() => setEvidence(message.sources![0])} className="chat-answer-source-count"><Layers3 size={13} />{message.sources.length} {isFa ? "منبع" : "Sources"}</button> : null}
             </div>
           </div>

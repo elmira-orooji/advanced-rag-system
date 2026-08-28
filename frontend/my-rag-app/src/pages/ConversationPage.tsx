@@ -174,7 +174,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
     </header>
 
     <section className="relative z-10 min-h-0 flex-1 overflow-hidden px-0 sm:px-3">
-      {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} onRegenerate={send} /> : <div className="flex h-full flex-col items-center justify-center text-center">
+      {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} /> : <div className="flex h-full flex-col items-center justify-center text-center">
         <span className="grid size-14 place-items-center rounded-2xl border border-[#18c7f4]/25 bg-[#7c27ff]/25 text-[#d9a6ff]"><MessageSquareText size={23} /></span>
         <h2 className="mt-5 text-xl font-semibold">Start a source-grounded conversation</h2>
         <p className="mt-2 max-w-md text-sm leading-6 conversation-muted">Choose the knowledge base this conversation should use. Your messages and answers will remain available in Recent chats.</p>
