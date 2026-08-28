@@ -97,6 +97,30 @@ html:not(.dark) .kb-page {
 .metadata-dates label { min-width: 0; color: var(--kb-muted); font-size: 10px; }
 .app-shell .kb-page .metadata-dates input { display: block; width: 100%; min-width: 0; height: 38px; margin-top: 5px; padding: 6px 8px; border: 1px solid var(--kb-line); border-radius: 8px; background: var(--kb-panel) !important; color: var(--kb-text); font-size: 12px; }
 @media (max-width: 380px) { .metadata-dates > div { grid-template-columns: 1fr; } }
+.answer-scope { position: relative; margin-bottom: 12px; }
+.scope-trigger { width: 100%; text-align: start; }
+.metadata-filter-trigger .scope-trigger-label { display: block; flex: 1; min-width: 0; height: auto; padding: 0; background: transparent; color: inherit; font-size: 11px; }
+.scope-selected { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.scope-selected > span { display: flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 6px; border: 1px solid var(--kb-line); border-radius: 7px; color: var(--kb-muted); background: var(--kb-panel); font-size: 10px; }
+.scope-selected > span > span { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scope-selected button { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; }
+.scope-panel { position: absolute; bottom: calc(100% + 8px); inset-inline: 0; z-index: 60; overflow: hidden; border: 1px solid var(--kb-line); border-radius: 12px; background: var(--kb-panel); color: var(--kb-text); box-shadow: 0 -8px 30px #101b3514; }
+.scope-panel header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px; border-bottom: 1px solid var(--kb-line); }
+.scope-panel h3 { margin: 0; font-size: 12px; font-weight: 600; }
+.scope-panel header p { margin: 4px 0 0; color: var(--kb-muted); font-size: 10px; }
+.scope-panel header button { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; color: var(--kb-muted); }
+.scope-options { max-height: min(240px, 35dvh); overflow-y: auto; padding: 6px; }
+.scope-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px; text-align: start; border-radius: 8px; color: var(--kb-text); font-size: 11px; }
+.scope-option > span:nth-child(2) { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scope-option small { display: block; color: var(--kb-muted); font-size: 10px; margin-top: 3px; }
+.scope-file-icon { display: grid; place-items: center; width: 32px; height: 32px; flex-shrink: 0; border: 1px solid var(--kb-line); border-radius: 8px; color: var(--kb-muted); }
+.scope-check { display: grid; place-items: center; width: 16px; height: 16px; flex-shrink: 0; border: 1px solid var(--kb-line); border-radius: 5px; }
+.scope-option[aria-pressed=true] { background: var(--kb-tint); }
+.scope-option[aria-pressed=true] .scope-check { color: white; background: #7950bb; border-color: #7950bb; }
+.scope-option:hover, .scope-panel header button:hover, .scope-selected button:hover { background: var(--kb-tint); }
+.scope-panel footer { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--kb-line); font-size: 10px; color: var(--kb-muted); }
+.scope-panel footer button { padding: 6px 12px; border-radius: 7px; color: #fff; background: #7950bb; font-size: 11px; }
+.scope-empty { padding: 18px; text-align: center; font-size: 11px; color: var(--kb-muted); }
 .kb-main { height: 100%; min-height: 0; overflow: hidden; }
 .kb-content { height: 100%; min-height: 0; gap: 14px; }
 .kb-set-content { gap: 12px; }
