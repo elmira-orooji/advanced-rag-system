@@ -99,7 +99,7 @@ html:not(.dark) .kb-page {
 @media (max-width: 380px) { .metadata-dates > div { grid-template-columns: 1fr; } }
 .answer-scope { position: relative; margin-bottom: 12px; }
 .scope-trigger { width: 100%; text-align: start; }
-.metadata-filter-trigger .scope-trigger-label { display: block; flex: 1; min-width: 0; height: auto; padding: 0; background: transparent; color: inherit; font-size: 11px; }
+.metadata-filter-trigger .scope-trigger-label { display: block; flex: 1; min-width: 0; height: auto; padding: 0; background: transparent; color: inherit; font-size: 11px; text-align: center; }
 .scope-selected { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .scope-selected > span { display: flex; align-items: center; gap: 5px; max-width: 100%; padding: 4px 6px; border: 1px solid var(--kb-line); border-radius: 7px; color: var(--kb-muted); background: var(--kb-panel); font-size: 10px; }
 .scope-selected > span > span { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
