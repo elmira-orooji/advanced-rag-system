@@ -22,8 +22,22 @@ router = APIRouter(prefix="/search", tags=["search"])
 
 
 def _playground_hit(point: dict) -> PlaygroundHit:
-    meta = point.get("retrieval", {}); data = point["payload"]
-    return PlaygroundHit(**data, score=point["score"], parent_index=data.get("parent_index", 0), matched_child_content=data.get("matched_child_content", data["content"]), diagnostics=RetrievalDiagnostics(method=meta.get("method", "hybrid"), vector_rank=meta.get("vector_rank"), bm25_rank=meta.get("bm25_rank"), hybrid_score=meta.get("hybrid_score", point["score"]), reranker_score=point["score"], term_coverage=meta.get("term_coverage", 0), phrase_match=meta.get("phrase_match", False), expanded_to_parent=meta.get("expanded_to_parent", False)))
+    meta = point.get("retrieval", {})
+    data = dict(point["payload"])
+    data.setdefault("parent_index", 0)
+    data.setdefault("matched_child_content", data["content"])
+    data["score"] = point["score"]
+    data["diagnostics"] = RetrievalDiagnostics(
+        method=meta.get("method", "hybrid"),
+        vector_rank=meta.get("vector_rank"),
+        bm25_rank=meta.get("bm25_rank"),
+        hybrid_score=meta.get("hybrid_score", point["score"]),
+        reranker_score=point["score"],
+        term_coverage=meta.get("term_coverage", 0),
+        phrase_match=meta.get("phrase_match", False),
+        expanded_to_parent=meta.get("expanded_to_parent", False),
+    )
+    return PlaygroundHit(**data)
 
 
 def _scope(payload: SearchRequest, db: Session, user: User) -> tuple[str | None, list[str] | None, int]:
@@ -63,25 +77,7 @@ def retrieval_playground(payload: SearchRequest, db: Session = Depends(get_db), 
         QdrantClient().ensure_collection()
         points = hybrid_search(db, payload.query, payload.limit, document_id=document_id, document_ids=document_ids)
     except QdrantError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
-    results = []
-    for point in points:
-        meta = point.get("retrieval", {}); data = point["payload"]
-        results.append(PlaygroundHit(
-            **data,
-            score=point["score"],
-            parent_index=data.get("parent_index", 0),
-            matched_child_content=data.get("matched_child_content", data["content"]),
-            diagnostics=RetrievalDiagnostics(
-                method=meta.get("method", "hybrid"),
-                vector_rank=meta.get("vector_rank"),
-                bm25_rank=meta.get("bm25_rank"),
-                hybrid_score=meta.get("hybrid_score", point["score"]),
-                reranker_score=point["score"],
-                term_coverage=meta.get("term_coverage", 0),
-                phrase_match=meta.get("phrase_match", False),
-                expanded_to_parent=meta.get("expanded_to_parent", False),
-            ),
-        ))
+    results = [_playground_hit(point) for point in points]
     return PlaygroundResponse(query=payload.query, scoped_document_count=scoped_count, result_count=len(results), results=results)
 
 
