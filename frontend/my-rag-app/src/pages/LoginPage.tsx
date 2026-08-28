@@ -124,6 +124,13 @@ export default function LoginPage() {
             <span />
             <span />
           </div>
+          <div className="nexora-login__brand"><img
+                className="nexora-login__form-logo"
+                src={theme === "light" ? "/brand/nexora-horizontal-dark.svg" : "/brand/nexora-horizontal-light.svg"}
+                alt="Nexora"
+                width={132}
+                height={36}
+              /></div>
           <div className="nexora-login__toolbar">
             <button
               type="button"
@@ -151,14 +158,8 @@ export default function LoginPage() {
             className="nexora-login__form-wrap"
           >
             <header className="nexora-login__heading">
-              <img
-                className="nexora-login__form-logo"
-                src={theme === "light" ? "/brand/nexora-horizontal-dark.svg" : "/brand/nexora-horizontal-light.svg"}
-                alt="Nexora"
-                width={132}
-                height={36}
-              />
-              <h1 id="login-title">{isRtl ? "دانش خود را به پاسخ تبدیل کنید" : "Turn knowledge into answers"}</h1>
+              <h1 id="login-title">{isRtl ? "خوش آمدید" : "Welcome back"}</h1>
+              <p>{isRtl ? "برای ادامه، اطلاعات حساب خود را وارد کنید." : "Enter your account details to continue."}</p>
             </header>
 
             <form onSubmit={handleSubmit(onSubmit)} noValidate className="nexora-login__form">
@@ -278,7 +279,10 @@ export default function LoginPage() {
                 </label>
               </div>
 
-              <button
+              <motion.button
+                whileHover={reduceMotion || isLoading ? undefined : { scale: 1.01 }}
+                whileTap={reduceMotion || isLoading ? undefined : { scale: .98 }}
+                transition={{ type: "spring", stiffness: 500, damping: 30, mass: .5 }}
                 type="submit"
                 disabled={isLoading || !isOnline}
                 aria-busy={isLoading}
@@ -286,7 +290,7 @@ export default function LoginPage() {
               >
                 {isLoading && <LoaderCircle size={18} className="nexora-login__loading-icon animate-spin" aria-hidden="true" />}
                 <span>{isLoading ? t.loading : isRtl ? "ورود" : "Sign in"}</span>
-              </button>
+              </motion.button>
             </form>
 
           </motion.div>
