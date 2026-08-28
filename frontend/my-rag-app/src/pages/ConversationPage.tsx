@@ -170,7 +170,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
         <span className="grid size-8 shrink-0 place-items-center rounded-xl border border-[#9f8be8]/15 bg-[#7c27ff]/20"><img src="/brand/nexora-symbol.svg" alt="Nexora" className="size-[18px]" /></span>
         <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1><p className="mt-0.5 text-[9px] conversation-muted">{isFa ? "پاسخ‌گویی مبتنی بر منابع" : "Source-grounded conversation"}</p></div>
       </div>
-      <span className="hidden items-center gap-2 text-[9px] text-emerald-200/40 sm:flex"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span>
+      <span className="conversation-save-status hidden items-center gap-2 text-[10px] sm:flex"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span>
     </header>
 
     <section className="relative z-10 min-h-0 flex-1 overflow-hidden px-0 sm:px-3">

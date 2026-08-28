@@ -82,3 +82,10 @@ html:not(.dark) .conversation-page {
 @media (prefers-reduced-motion: reduce) {
   .conversation-page .app-composer, .conversation-page button { transition: none; }
 }
+
+.conversation-page { font-family: Inter, Vazirmatn, sans-serif; }
+.conversation-page[dir="rtl"] { font-family: Vazirmatn, Inter, sans-serif; }
+.conversation-page .conversation-dock { border-top: 0; }
+.app-shell .conversation-page .app-composer { max-width: 780px; border-radius: 18px; padding: 14px; box-shadow: 0 8px 30px #10192c08; }
+.conversation-page .conversation-save-status { color: var(--cv-muted); }
+.conversation-page .conversation-save-status > span { background: var(--cv-success); }

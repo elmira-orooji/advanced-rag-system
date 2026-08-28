@@ -1,8 +1,8 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Check, CheckCircle2, ChevronDown, Copy, FileText, Layers3, Quote, RotateCcw, Share2, ShieldAlert, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
-import "../styles/processing-status.css";
+import AnswerLoading from "./AnswerLoading";
 import "../styles/chat-answer.css";
 
 import { feedbackService, type FeedbackReason } from "../services/feedbackService";
@@ -18,16 +18,22 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const [evidence, setEvidence] = useState<Source | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const followLatest = useRef(true);
+  useEffect(() => {
+    const viewport = scrollRef.current;
+    if (viewport && followLatest.current) viewport.scrollTop = viewport.scrollHeight;
+  }, [messages, isThinking]);
   const previousPrompt = (index: number) => [...messages.slice(0, index)].reverse().find((item) => item.role === "user")?.content;
 
-  return <div dir={isFa ? "rtl" : "ltr"} className="relative h-full">
-    <div className="h-full overflow-y-auto scroll-smooth pe-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-      <div className="mx-auto flex w-full max-w-[880px] flex-col gap-8 py-4 sm:py-7">
+  return <div dir={isFa ? "rtl" : "ltr"} className="chat-thread relative h-full">
+    <div ref={scrollRef} onScroll={(event) => { const node = event.currentTarget; followLatest.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100; }} className="chat-thread-scroll h-full overflow-y-auto pe-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+      <div className="chat-thread-messages">
         {messages.map((message, index) => message.role === "user" ? <article key={message.id} className="chat-question">
           <div className="chat-question-bubble"><div dir="auto">{message.content}</div></div>
         </article> : <article key={message.id} className="chat-answer">
-          <NexoraMark />
-          <div className="min-w-0 flex-1 pt-0.5">
+          <div className="chat-answer-body">
+            <header className="chat-answer-heading"><NexoraMark /><strong>Nexora</strong><span>{isFa ? "پاسخ دستیار" : "Assistant response"}</span></header>
             {message.research && <details className="mb-4 overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.025]"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-[11px] font-semibold text-white/58"><Telescope size={14} className="text-[#c43cff]" />{isFa ? "فعالیت بازیابی" : "Retrieval activity"}<span className="ms-auto text-[10px] font-normal text-white/25">{message.research.steps.length} {isFa ? "جست‌وجو" : "searches"} · {message.research.evidenceReviewed} {isFa ? "منبع" : "sources"}</span><ChevronDown size={13} className="text-white/25" /></summary><div className="space-y-2 border-t border-white/[.06] px-4 py-3">{message.research.steps.map((step, stepIndex) => <div key={stepIndex} className="flex items-center gap-2 text-[10px] leading-4 text-white/38"><Check size={11} className="text-emerald-300/55" /><span className="min-w-0 flex-1 truncate">{step.query}</span><span className="shrink-0 text-white/20">{step.evidence_count}</span></div>)}</div></details>}
 
             <div className="chat-answer-text" dir="auto"><CitedText content={message.content} sources={message.sources || []} onOpen={setEvidence} /></div>
@@ -44,7 +50,7 @@ export default function OnyxChatWindow({ messages, isThinking, onRegenerate }: P
             </div>
           </div>
         </article>)}
-        {isThinking && <Thinking isFa={isFa} />}
+        {isThinking && <AnswerLoading isFa={isFa} />}
       </div>
     </div>
     {evidence && <Evidence source={evidence} isFa={isFa} onClose={() => setEvidence(null)} />}
@@ -59,20 +65,6 @@ function Action({ label, onClick, children }: { label: string; onClick: () => vo
   return <button type="button" aria-label={label} title={label} onClick={onClick} className="chat-answer-action">{children}</button>;
 }
 
-function Thinking({ isFa }: { isFa: boolean }) {
-  return <article className="processing-status" dir={isFa ? "rtl" : "ltr"}>
-    <span className="processing-status-mark" aria-hidden="true">
-      <img src="/brand/nexora-symbol.svg" alt="" />
-    </span>
-    <div className="processing-status-card" role="status" aria-live="polite" aria-atomic="true">
-      <div className="processing-status-heading">
-        <span className="processing-status-spinner" aria-hidden="true" />
-        <span>{isFa ? "در حال آماده‌سازی پاسخ" : "Preparing your answer"}</span>
-      </div>
-      <p>{isFa ? "درخواست شما در حال پردازش است. پاسخ اینجا نمایش داده می‌شود." : "Your request is being processed. The answer will appear here."}</p>
-    </div>
-  </article>;
-}
 function Feedback({ responseId, isFa }: { responseId: string; isFa: boolean }) {
   const [rating, setRating] = useState<1 | -1 | null>(null);
   const [open, setOpen] = useState(false);
