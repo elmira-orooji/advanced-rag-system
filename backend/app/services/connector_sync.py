@@ -29,7 +29,7 @@ from app.models.document_set import DocumentSet
 from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
 from app.services.chunk_enrichment import enrich_chunk
-from app.services.incremental_index import checksum, incremental_chunks, sync_incremental
+from app.services.incremental_index import checksum, incremental_chunks
 
 MAX_REMOTE_BYTES = 2 * 1024 * 1024
 MAX_GITHUB_FILES = 40
@@ -45,6 +45,74 @@ class SourceSnapshot:
     sources: list[tuple[str, str, str, str]]
     observed_ids: set[str]
     complete: bool = False
+
+
+@dataclass
+class ExternalDocumentState:
+    document_id: str
+    filename: str
+    chunks: list[dict[str, object]]
+    directory: Path
+    files: dict[Path, bytes] | None
+    existed: bool
+
+
+def _chunk_payload(document: Document) -> list[dict[str, object]]:
+    return [
+        {"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content}
+        for chunk in document.chunks
+    ]
+
+
+def _capture_external_state(document: Document, existed: bool) -> ExternalDocumentState:
+    directory = UPLOAD_DIR / str(document.id)
+    files = None
+    if directory.is_dir():
+        files = {
+            path.relative_to(directory): path.read_bytes()
+            for path in directory.rglob("*")
+            if path.is_file()
+        }
+    return ExternalDocumentState(
+        document_id=str(document.id),
+        filename=document.filename,
+        chunks=_chunk_payload(document),
+        directory=directory,
+        files=files,
+        existed=existed,
+    )
+
+
+def _replace_document_vectors(qdrant: QdrantClient, document: Document) -> None:
+    qdrant.replace_document_chunks(str(document.id), document.filename, _chunk_payload(document))
+
+
+def _restore_external_states(
+    qdrant: QdrantClient,
+    states: list[ExternalDocumentState],
+    original_error: Exception,
+) -> None:
+    compensation_errors: list[str] = []
+    for state in reversed(states):
+        try:
+            if state.directory.exists():
+                shutil.rmtree(state.directory)
+            if state.files is not None:
+                for relative_path, content in state.files.items():
+                    destination = state.directory / relative_path
+                    destination.parent.mkdir(parents=True, exist_ok=True)
+                    destination.write_bytes(content)
+        except Exception as exc:
+            compensation_errors.append(f"files for document {state.document_id}: {exc}")
+        try:
+            if state.existed:
+                qdrant.replace_document_chunks(state.document_id, state.filename, state.chunks)
+            else:
+                qdrant.delete_document(state.document_id)
+        except Exception as exc:
+            compensation_errors.append(f"vectors for document {state.document_id}: {exc}")
+    if compensation_errors and hasattr(original_error, "add_note"):
+        original_error.add_note("External compensation errors: " + "; ".join(compensation_errors))
 
 
 class TextHTMLParser(HTMLParser):
@@ -285,41 +353,56 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
     snapshot = fetcher(connector.source_url)
     sources = snapshot.sources
     existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
-    created = updated = unchanged = deleted = 0; removed_directories: list[Path] = []; qdrant = QdrantClient(); qdrant.ensure_collection(); document_set = db.get(DocumentSet, connector.document_set_id)
-    for external_id, title, text, source_url in sources:
-        digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
-        if item and item.content_hash == digest: unchanged += 1; continue
-        document = db.get(Document, item.document_id) if item else Document(organization_id=document_set.organization_id, filename=title, content_type="text/plain", status="chunked", source_type=connector.connector_type, tags=[])
-        if not item: db.add(document); db.flush(); document.document_sets.append(document_set)
-        directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
-        document.extracted_text_path = extracted.relative_to(BASE_DIR).as_posix(); document.filename = title; document.processing_error = None
-        next_chunks, changed_ids, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
-        for chunk in list(document.chunks):
-            if str(chunk.id) in removed_ids: db.delete(chunk)
-        document.chunks = next_chunks; document.content_checksum = checksum(text)
-        db.flush(); sync_incremental(qdrant, document, changed_ids, removed_ids); document.status = "indexed"
-        if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
-        else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1
-    for external_id, item in existing.items():
-        # Absence in a capped or paginated response is not evidence of deletion.
-        if not snapshot.complete or external_id in snapshot.observed_ids:
-            continue
-        document = db.get(Document, item.document_id)
-        if document is not None:
-            other_sets = [value for value in document.document_sets if value.id != connector.document_set_id]
-            if other_sets:
-                document.document_sets = other_sets
-                db.delete(item)
+    created = updated = unchanged = deleted = 0
+    removed_directories: list[Path] = []
+    journal: dict[str, ExternalDocumentState] = {}
+    qdrant = QdrantClient(); qdrant.ensure_collection()
+    document_set = db.get(DocumentSet, connector.document_set_id)
+    try:
+        for external_id, title, text, source_url in sources:
+            digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
+            if item and item.content_hash == digest: unchanged += 1; continue
+            document = db.get(Document, item.document_id) if item else Document(organization_id=document_set.organization_id, filename=title, content_type="text/plain", status="chunked", source_type=connector.connector_type, tags=[])
+            if not item: db.add(document); db.flush(); document.document_sets.append(document_set)
+            document_id = str(document.id)
+            if document_id not in journal:
+                journal[document_id] = _capture_external_state(document, existed=item is not None)
+            directory = UPLOAD_DIR / document_id; directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
+            document.extracted_text_path = extracted.relative_to(BASE_DIR).as_posix(); document.filename = title; document.processing_error = None
+            next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
+            for chunk in list(document.chunks):
+                if str(chunk.id) in removed_ids: db.delete(chunk)
+            document.chunks = next_chunks; document.content_checksum = checksum(text)
+            db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
+            if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
+            else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1
+        for external_id, item in existing.items():
+            # Absence in a capped or paginated response is not evidence of deletion.
+            if not snapshot.complete or external_id in snapshot.observed_ids:
+                continue
+            document = db.get(Document, item.document_id)
+            if document is not None:
+                other_sets = [value for value in document.document_sets if value.id != connector.document_set_id]
+                if other_sets:
+                    document.document_sets = other_sets
+                    db.delete(item)
+                else:
+                    document_id = str(document.id)
+                    if document_id not in journal:
+                        journal[document_id] = _capture_external_state(document, existed=True)
+                    qdrant.delete_document(document_id)
+                    removed_directories.append(UPLOAD_DIR / document_id)
+                    db.delete(document)
             else:
-                qdrant.delete_document(str(document.id))
-                removed_directories.append(UPLOAD_DIR / str(document.id))
-                db.delete(document)
-        else:
-            db.delete(item)
-        deleted += 1
-    result = {"discovered": len(sources), "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted, "deletion_skipped": int(not snapshot.complete)}
-    connector.last_sync_summary = result
-    db.commit()
+                db.delete(item)
+            deleted += 1
+        result = {"discovered": len(sources), "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted, "deletion_skipped": int(not snapshot.complete)}
+        connector.last_sync_summary = result
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        _restore_external_states(qdrant, list(journal.values()), exc)
+        raise
     for document_dir in removed_directories:
         if document_dir.is_dir(): shutil.rmtree(document_dir, ignore_errors=True)
     return result
@@ -332,31 +415,46 @@ def ingest_webhook_event(db: Session, connector: Connector, action: str, externa
     qdrant = QdrantClient(); qdrant.ensure_collection()
     if action == "delete":
         if item is None: return "not_found"
-        document = db.get(Document, item.document_id)
-        if document is not None:
-            other_sets = [value for value in document.document_sets if value.id != connector.document_set_id]
-            if other_sets: document.document_sets = other_sets; db.delete(item)
-            else: qdrant.delete_document(str(document.id)); directory = UPLOAD_DIR / str(document.id); db.delete(document); db.commit(); shutil.rmtree(directory, ignore_errors=True); return "deleted"
-        else: db.delete(item)
-        db.commit(); return "deleted"
+        journal: list[ExternalDocumentState] = []
+        directory = None
+        try:
+            document = db.get(Document, item.document_id)
+            if document is not None:
+                other_sets = [value for value in document.document_sets if value.id != connector.document_set_id]
+                if other_sets: document.document_sets = other_sets; db.delete(item)
+                else:
+                    journal.append(_capture_external_state(document, existed=True))
+                    qdrant.delete_document(str(document.id)); directory = UPLOAD_DIR / str(document.id); db.delete(document)
+            else: db.delete(item)
+            db.commit()
+        except Exception as exc:
+            db.rollback(); _restore_external_states(qdrant, journal, exc); raise
+        if directory is not None: shutil.rmtree(directory, ignore_errors=True)
+        return "deleted"
     text = (content or "").strip(); digest = hashlib.sha256(text.encode()).hexdigest()
     if item and item.content_hash == digest: return "unchanged"
     document_set = db.get(DocumentSet, connector.document_set_id)
     if document_set is None: raise ConnectorSyncError("Knowledge base no longer exists")
     created = item is None
     document = db.get(Document, item.document_id) if item else None
-    if document is None:
-        document = Document(organization_id=document_set.organization_id, filename=(title or external_id)[:255], content_type="text/plain", status="chunked", source_type="webhook", tags=[])
-        db.add(document); db.flush(); document.document_sets.append(document_set)
-    directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
-    document.extracted_text_path = extracted.relative_to(BASE_DIR).as_posix(); document.filename = (title or external_id)[:255]; document.processing_error = None
-    next_chunks, changed_ids, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
-    for chunk in list(document.chunks):
-        if str(chunk.id) in removed_ids: db.delete(chunk)
-    document.chunks = next_chunks; document.content_checksum = checksum(text); db.flush(); sync_incremental(qdrant, document, changed_ids, removed_ids); document.status = "indexed"
-    resolved_source = source_url or f"webhook:{external_id}"
-    if item: item.content_hash = digest; item.source_url = resolved_source; item.title = document.filename
-    else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=resolved_source, title=document.filename))
-    connector.status = "ready"; connector.last_synced_at = datetime.now(timezone.utc); connector.last_error = None
-    connector.last_sync_summary = {"discovered": 1, "created": int(created), "updated": int(not created), "unchanged": 0, "deleted": 0}
-    db.commit(); return "created" if created else "updated"
+    journal: list[ExternalDocumentState] = []
+    try:
+        if document is None:
+            document = Document(organization_id=document_set.organization_id, filename=(title or external_id)[:255], content_type="text/plain", status="chunked", source_type="webhook", tags=[])
+            db.add(document); db.flush(); document.document_sets.append(document_set)
+        journal.append(_capture_external_state(document, existed=not created))
+        directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
+        document.extracted_text_path = extracted.relative_to(BASE_DIR).as_posix(); document.filename = (title or external_id)[:255]; document.processing_error = None
+        next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
+        for chunk in list(document.chunks):
+            if str(chunk.id) in removed_ids: db.delete(chunk)
+        document.chunks = next_chunks; document.content_checksum = checksum(text); db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
+        resolved_source = source_url or f"webhook:{external_id}"
+        if item: item.content_hash = digest; item.source_url = resolved_source; item.title = document.filename
+        else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=resolved_source, title=document.filename))
+        connector.status = "ready"; connector.last_synced_at = datetime.now(timezone.utc); connector.last_error = None
+        connector.last_sync_summary = {"discovered": 1, "created": int(created), "updated": int(not created), "unchanged": 0, "deleted": 0}
+        db.commit()
+    except Exception as exc:
+        db.rollback(); _restore_external_states(qdrant, journal, exc); raise
+    return "created" if created else "updated"

@@ -1,9 +1,11 @@
 import io
 import hashlib
 import json
+import shutil
 import socket
 import ssl
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.request import Request
 from types import SimpleNamespace
@@ -22,7 +24,12 @@ class ConnectorDeletionTests(unittest.TestCase):
         items = [SimpleNamespace(external_id=f"{i}.md", document_id=uuid4(), content_hash=hashlib.sha256(body).hexdigest()) for i in range(count)]
         missing = SimpleNamespace(external_id="absent.md", document_id=uuid4())
         db.scalars.return_value.all.return_value = items + [missing]
-        document = SimpleNamespace(id=missing.document_id, document_sets=[SimpleNamespace(id=connector.document_set_id)])
+        document = SimpleNamespace(
+            id=missing.document_id,
+            filename="absent.md",
+            chunks=[],
+            document_sets=[SimpleNamespace(id=connector.document_set_id)],
+        )
         db.get.return_value = document
         with patch.object(sync, "_validate_public_url"), patch.object(sync, "_fetch", side_effect=lambda url, *args: (metadata if "api.github.com" in url else body, "text/plain", url)), patch.object(sync, "QdrantClient") as qdrant, patch.object(sync.shutil, "rmtree") as remove:
             result = sync.sync_connector(db, connector)
@@ -100,6 +107,97 @@ class ConnectorDeletionTests(unittest.TestCase):
         db.delete.assert_not_called()
         db.commit.assert_not_called()
         qdrant.assert_not_called()
+
+
+class ConnectorConsistencyTests(unittest.TestCase):
+    def _run_failed_update(self, *, commit_failure=None, qdrant_failure=None):
+        connector_id, set_id, document_id, chunk_id = uuid4(), uuid4(), uuid4(), uuid4()
+        connector = SimpleNamespace(
+            id=connector_id,
+            document_set_id=set_id,
+            connector_type="website",
+            source_url="https://example.com",
+            last_sync_summary={},
+        )
+        item = SimpleNamespace(
+            external_id="https://example.com",
+            document_id=document_id,
+            content_hash="old-hash",
+            source_url="https://example.com",
+            title="Old title",
+        )
+        old_chunk = SimpleNamespace(id=chunk_id, chunk_index=0, content="old content")
+        new_chunk = SimpleNamespace(id=uuid4(), chunk_index=0, content="new content")
+        document_set = SimpleNamespace(
+            id=set_id,
+            organization_id=uuid4(),
+            child_chunk_size=800,
+            chunk_overlap=120,
+            parent_chunk_size=2400,
+        )
+        document = SimpleNamespace(
+            id=document_id,
+            filename="Old title",
+            chunks=[old_chunk],
+            document_sets=[document_set],
+            extracted_text_path=None,
+            processing_error=None,
+            status="indexed",
+            content_checksum="old-checksum",
+        )
+        db = MagicMock()
+        db.scalars.return_value.all.return_value = [item]
+        db.get.side_effect = lambda model, key: document_set if model is sync.DocumentSet else document
+        db.commit.side_effect = commit_failure
+        snapshot = sync.SourceSnapshot(
+            [("https://example.com", "New title", "new remote content", "https://example.com")],
+            {"https://example.com"},
+            complete=True,
+        )
+        base = Path.cwd() / "storage" / f"connector-consistency-{uuid4()}"
+        base.mkdir(parents=True)
+        try:
+            upload = base / "uploads"
+            extracted = upload / str(document_id) / "extracted.txt"
+            extracted.parent.mkdir(parents=True)
+            extracted.write_text("old extracted content", encoding="utf-8")
+            document.extracted_text_path = extracted.relative_to(base).as_posix()
+            with (
+                patch.object(sync, "BASE_DIR", base),
+                patch.object(sync, "UPLOAD_DIR", upload),
+                patch.object(sync, "_website", return_value=snapshot),
+                patch.object(sync, "incremental_chunks", return_value=([new_chunk], [str(new_chunk.id)], [str(old_chunk.id)])),
+                patch.object(sync, "QdrantClient") as factory,
+            ):
+                client = factory.return_value
+                if qdrant_failure is not None:
+                    client.replace_document_chunks.side_effect = [qdrant_failure, None]
+                with self.assertRaises(Exception):
+                    sync.sync_connector(db, connector)
+                restored = extracted.read_text(encoding="utf-8")
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+        return db, factory.return_value, document_id, chunk_id, restored
+
+    def test_failed_sql_commit_restores_file_and_previous_vectors(self):
+        db, qdrant, document_id, chunk_id, restored = self._run_failed_update(
+            commit_failure=RuntimeError("commit failed")
+        )
+        db.rollback.assert_called_once()
+        self.assertEqual(restored, "old extracted content")
+        self.assertEqual(qdrant.replace_document_chunks.call_count, 2)
+        compensation = qdrant.replace_document_chunks.call_args_list[-1].args
+        self.assertEqual(compensation[0], str(document_id))
+        self.assertEqual(compensation[2], [{"id": str(chunk_id), "chunk_index": 0, "content": "old content"}])
+
+    def test_partial_qdrant_failure_restores_file_and_previous_vectors(self):
+        db, qdrant, _, _, restored = self._run_failed_update(
+            qdrant_failure=RuntimeError("partial qdrant write")
+        )
+        db.rollback.assert_called_once()
+        db.commit.assert_not_called()
+        self.assertEqual(restored, "old extracted content")
+        self.assertEqual(qdrant.replace_document_chunks.call_count, 2)
 
 
 def addresses(ip):
