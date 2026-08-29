@@ -1054,8 +1054,8 @@
 
 /* Underlined fields and centered script wordmark from the supplied reference. */
 @font-face {
-  font-family: "Nexora Script";
-  src: url("/fonts/pacifico/Pacifico-Regular.ttf") format("truetype");
+  font-family: "Cyber Copix";
+  src: url("/fonts/cyber-copix/Cyber-Copix.otf") format("opentype");
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -1068,8 +1068,8 @@
   gap: 10px;
   margin: 0 auto 52px;
 }
-.nexora-login__brand img { width: 30px; height: 30px; }
-.nexora-login__brand span { font-family: "Nexora Script", cursive; font-size: 36px; font-weight: 400; line-height: 1.6; color: var(--login-text); }
+.nexora-login__brand img { width: 44px; height: 44px; flex-shrink: 0; }
+.nexora-login__brand span { font-family: "Cyber Copix", sans-serif; font-size: 32px; font-weight: 400; line-height: 1.6; color: var(--login-text); }
 .nexora-login__heading h1,
 .nexora-login__main[dir="rtl"] .nexora-login__heading h1 {
   text-align: center;
