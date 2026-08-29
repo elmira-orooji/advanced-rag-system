@@ -1124,3 +1124,13 @@
   transform: scaleY(1.12);
   transform-origin: center top;
 }
+
+/* Blend the dark sign-in panel into the hero's midnight-violet edge. */
+.nexora-login:not(.nexora-login--light) {
+  --login-panel: #0c0d26;
+  --login-border: #69528f1f;
+}
+.nexora-login:not(.nexora-login--light) .nexora-login__main {
+  background: linear-gradient(90deg, #09081f 0%, #0c0d26 18%, #11132c 100%);
+  border-left-color: #6e57921a;
+}
