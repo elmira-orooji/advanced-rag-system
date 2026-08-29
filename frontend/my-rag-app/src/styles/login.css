@@ -1069,7 +1069,7 @@
   margin: 0 auto 52px;
 }
 .nexora-login__brand img { width: 44px; height: 44px; flex-shrink: 0; }
-.nexora-login__brand span { font-family: "Cyber Copix", sans-serif; font-size: 32px; font-weight: 400; line-height: 1.6; color: var(--login-text); }
+.nexora-login__brand span { font-family: "Cyber Copix", sans-serif; font-size: 34px; font-weight: 400; line-height: 1.6; color: var(--login-text); }
 .nexora-login__heading h1,
 .nexora-login__main[dir="rtl"] .nexora-login__heading h1 {
   text-align: center;
@@ -1105,3 +1105,22 @@
   box-shadow: 0 1px 0 var(--login-error);
 }
 .nexora-login__submit { width: 180px; justify-self: center; align-self: center; margin-inline: auto; border-radius: 999px; min-height: 42px; }
+
+/* Align the wordmark between a shared visual cap/base line. */
+.nexora-login__brand {
+  gap: 4px;
+  transform: translateX(-12px);
+}
+.nexora-login__brand img {
+  width: 42px;
+  height: 42px;
+}
+.nexora-login__brand span {
+  display: inline-flex;
+  align-items: center;
+  height: 42px;
+  font-size: 34px;
+  line-height: 42px;
+  transform: scaleY(1.12);
+  transform-origin: center top;
+}

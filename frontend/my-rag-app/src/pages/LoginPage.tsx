@@ -151,7 +151,7 @@ export default function LoginPage() {
             className="nexora-login__form-wrap"
           >
             <div className="nexora-login__brand" dir="ltr">
-              <img src="/brand/nexora-symbol.svg" alt="" width={44} height={44} />
+              <img src="/brand/nexora-symbol.svg" alt="" width={42} height={42} />
               <span>Nexora</span>
             </div>
             <header className="nexora-login__heading">
