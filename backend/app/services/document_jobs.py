@@ -61,9 +61,10 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             chunk_size = chunk_size or (settings.child_chunk_size if settings else 800)
             overlap = overlap if overlap is not None else (settings.chunk_overlap if settings else 120)
             parent_size = parent_size or (settings.parent_chunk_size if settings else 2400)
-            if not document.storage_path:
+            stored_source = document.storage_path or document.extracted_text_path
+            if not stored_source:
                 raise RuntimeError("Document file is unavailable")
-            source_path = BASE_DIR / document.storage_path
+            source_path = BASE_DIR / stored_source
             text = extract_text(source_path, document.content_type or "")
             text_checksum = checksum(text)
             if document.content_checksum == text_checksum and document.chunks:

@@ -361,14 +361,20 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
     try:
         for external_id, title, text, source_url in sources:
             digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
-            if item and item.content_hash == digest: unchanged += 1; continue
+            if item and item.content_hash == digest:
+                document = db.get(Document, item.document_id)
+                if document is not None and not document.storage_path and document.extracted_text_path:
+                    document.storage_path = document.extracted_text_path
+                unchanged += 1
+                continue
             document = db.get(Document, item.document_id) if item else Document(organization_id=document_set.organization_id, filename=title, content_type="text/plain", status="chunked", source_type=connector.connector_type, tags=[])
             if not item: db.add(document); db.flush(); document.document_sets.append(document_set)
             document_id = str(document.id)
             if document_id not in journal:
                 journal[document_id] = _capture_external_state(document, existed=item is not None)
             directory = UPLOAD_DIR / document_id; directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
-            document.extracted_text_path = extracted.relative_to(BASE_DIR).as_posix(); document.filename = title; document.processing_error = None
+            source_path = extracted.relative_to(BASE_DIR).as_posix()
+            document.storage_path = source_path; document.extracted_text_path = source_path; document.filename = title; document.processing_error = None
             next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
             for chunk in list(document.chunks):
                 if str(chunk.id) in removed_ids: db.delete(chunk)
@@ -444,7 +450,8 @@ def ingest_webhook_event(db: Session, connector: Connector, action: str, externa
             db.add(document); db.flush(); document.document_sets.append(document_set)
         journal.append(_capture_external_state(document, existed=not created))
         directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
-        document.extracted_text_path = extracted.relative_to(BASE_DIR).as_posix(); document.filename = (title or external_id)[:255]; document.processing_error = None
+        source_path = extracted.relative_to(BASE_DIR).as_posix()
+        document.storage_path = source_path; document.extracted_text_path = source_path; document.filename = (title or external_id)[:255]; document.processing_error = None
         next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
         for chunk in list(document.chunks):
             if str(chunk.id) in removed_ids: db.delete(chunk)

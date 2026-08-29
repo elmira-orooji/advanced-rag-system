@@ -27,6 +27,8 @@ class ConnectorDeletionTests(unittest.TestCase):
         document = SimpleNamespace(
             id=missing.document_id,
             filename="absent.md",
+            storage_path="uploads/absent/source.txt",
+            extracted_text_path="uploads/absent/extracted.txt",
             chunks=[],
             document_sets=[SimpleNamespace(id=connector.document_set_id)],
         )
@@ -110,6 +112,25 @@ class ConnectorDeletionTests(unittest.TestCase):
 
 
 class ConnectorConsistencyTests(unittest.TestCase):
+    def test_connector_document_uses_extracted_file_as_retryable_source(self):
+        document_id, set_id = uuid4(), uuid4()
+        connector = SimpleNamespace(id=uuid4(), document_set_id=set_id, connector_type="website", source_url="https://example.com", last_sync_summary={})
+        item = SimpleNamespace(external_id="https://example.com", document_id=document_id, content_hash="old", source_url="", title="Old")
+        document_set = SimpleNamespace(id=set_id, organization_id=uuid4(), child_chunk_size=800, chunk_overlap=120, parent_chunk_size=2400)
+        document = SimpleNamespace(id=document_id, filename="Old", storage_path=None, extracted_text_path=None, chunks=[], document_sets=[document_set], processing_error=None, status="indexed", content_checksum=None)
+        db = MagicMock()
+        db.scalars.return_value.all.return_value = [item]
+        db.get.side_effect = lambda model, key: document_set if model is sync.DocumentSet else document
+        snapshot = sync.SourceSnapshot([("https://example.com", "Page", "new content", "https://example.com")], {"https://example.com"}, complete=True)
+        base = Path.cwd() / "storage" / f"connector-source-{uuid4()}"
+        try:
+            with patch.object(sync, "BASE_DIR", base), patch.object(sync, "UPLOAD_DIR", base / "uploads"), patch.object(sync, "_website", return_value=snapshot), patch.object(sync, "incremental_chunks", return_value=([], [], [])), patch.object(sync, "QdrantClient"):
+                sync.sync_connector(db, connector)
+            self.assertEqual(document.storage_path, document.extracted_text_path)
+            self.assertTrue((base / document.storage_path).is_file())
+        finally:
+            shutil.rmtree(base, ignore_errors=True)
+
     def _run_failed_update(self, *, commit_failure=None, qdrant_failure=None):
         connector_id, set_id, document_id, chunk_id = uuid4(), uuid4(), uuid4(), uuid4()
         connector = SimpleNamespace(

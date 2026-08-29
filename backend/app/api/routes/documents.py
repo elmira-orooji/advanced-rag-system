@@ -444,11 +444,12 @@ def delete_document(document_id: uuid.UUID, db: Session = Depends(get_db), user:
 
 
 def _get_document_directory(document: Document) -> Path | None:
-    if not document.storage_path:
+    stored_source = document.storage_path or document.extracted_text_path
+    if not stored_source:
         return None
 
     storage_root = UPLOAD_DIR.resolve()
-    document_dir = (BASE_DIR / document.storage_path).resolve().parent
+    document_dir = (BASE_DIR / stored_source).resolve().parent
     expected_dir = storage_root / str(document.id)
     if document_dir != expected_dir:
         raise HTTPException(
@@ -459,10 +460,11 @@ def _get_document_directory(document: Document) -> Path | None:
 
 
 def _document_source_path(document: Document) -> Path:
-    if not document.storage_path:
+    stored_source = document.storage_path or document.extracted_text_path
+    if not stored_source:
         raise HTTPException(status_code=404, detail="Original document is unavailable")
     _get_document_directory(document)
-    source_path = (BASE_DIR / document.storage_path).resolve()
+    source_path = (BASE_DIR / stored_source).resolve()
     if not source_path.is_file():
         raise HTTPException(status_code=404, detail="Original document is unavailable")
     return source_path
