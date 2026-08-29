@@ -152,7 +152,10 @@ export default function LoginPage() {
           >
             <div className="nexora-login__brand" dir="ltr">
               <img src="/brand/nexora-symbol.svg" alt="" width={42} height={42} />
-              <span>Nexora</span>
+              <span className="nexora-login__brand-copy">
+                <span className="nexora-login__wordmark">Nexora</span>
+                <span className="nexora-login__signature">by elmira</span>
+              </span>
             </div>
             <header className="nexora-login__heading">
               <h1 id="login-title">{isRtl ? "خوش آمدید" : "Welcome back"}</h1>
