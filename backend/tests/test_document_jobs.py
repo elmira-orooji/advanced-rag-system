@@ -120,3 +120,16 @@ class DocumentIndexRetryTests(unittest.TestCase):
             factory.assert_not_called()
             with sessions() as db:
                 self.assertEqual(db.get(ProcessingJob, job_id).stage, "unchanged")
+
+            with sessions() as db:
+                db.get(ProcessingJob, job_id).status = "retrying"
+                db.commit()
+            factory.reset_mock()
+            document_jobs.process_document_job(job_id, chunk_size=999, overlap=111, parent_size=2500)
+            factory.assert_called_once()
+            with sessions() as db:
+                document = db.get(Document, document_id)
+                self.assertEqual(document.indexed_child_chunk_size, 999)
+                self.assertEqual(document.indexed_chunk_overlap, 111)
+                self.assertEqual(document.indexed_parent_chunk_size, 2500)
+                self.assertEqual(db.get(ProcessingJob, job_id).stage, "ready")

@@ -379,6 +379,9 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
             for chunk in list(document.chunks):
                 if str(chunk.id) in removed_ids: db.delete(chunk)
             document.chunks = next_chunks; document.content_checksum = checksum(text)
+            document.indexed_child_chunk_size = document_set.child_chunk_size
+            document.indexed_chunk_overlap = document_set.chunk_overlap
+            document.indexed_parent_chunk_size = document_set.parent_chunk_size
             db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
             if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
             else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1
@@ -455,7 +458,11 @@ def ingest_webhook_event(db: Session, connector: Connector, action: str, externa
         next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
         for chunk in list(document.chunks):
             if str(chunk.id) in removed_ids: db.delete(chunk)
-        document.chunks = next_chunks; document.content_checksum = checksum(text); db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
+        document.chunks = next_chunks; document.content_checksum = checksum(text)
+        document.indexed_child_chunk_size = document_set.child_chunk_size
+        document.indexed_chunk_overlap = document_set.chunk_overlap
+        document.indexed_parent_chunk_size = document_set.parent_chunk_size
+        db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
         resolved_source = source_url or f"webhook:{external_id}"
         if item: item.content_hash = digest; item.source_url = resolved_source; item.title = document.filename
         else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=resolved_source, title=document.filename))

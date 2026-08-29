@@ -67,7 +67,12 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             source_path = BASE_DIR / stored_source
             text = extract_text(source_path, document.content_type or "")
             text_checksum = checksum(text)
-            if document.content_checksum == text_checksum and document.chunks:
+            chunking_is_unchanged = (
+                document.indexed_child_chunk_size == chunk_size
+                and document.indexed_chunk_overlap == overlap
+                and document.indexed_parent_chunk_size == parent_size
+            )
+            if document.content_checksum == text_checksum and document.chunks and chunking_is_unchanged:
                 document.processing_error = None; job.status = "completed"; job.completed_at = datetime.now(timezone.utc)
                 _progress(db, document, job, 100, "unchanged")
                 return
@@ -95,6 +100,9 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
                 for chunk in document.chunks
             ])
             document.content_checksum = text_checksum
+            document.indexed_child_chunk_size = chunk_size
+            document.indexed_chunk_overlap = overlap
+            document.indexed_parent_chunk_size = parent_size
             document.processing_error = None
             job.status = "completed"
             job.completed_at = datetime.now(timezone.utc)
