@@ -149,7 +149,7 @@ def list_documents(
     response_model=DocumentResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def upload_document(
+def upload_document(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
@@ -173,7 +173,7 @@ async def upload_document(
 
     try:
         document_dir.mkdir(parents=True, exist_ok=False)
-        size = await _save_upload(file, original_path)
+        size = _save_upload(file, original_path)
         if size == 0:
             raise HTTPException(status_code=400, detail="The uploaded file is empty")
 
@@ -206,7 +206,7 @@ async def upload_document(
         shutil.rmtree(document_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail="Could not save document") from exc
     finally:
-        await file.close()
+        file.file.close()
 
 
 @router.post(
@@ -214,7 +214,7 @@ async def upload_document(
     response_model=IngestResponse,
     status_code=status.HTTP_201_CREATED,
 )
-async def ingest_document(
+def ingest_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     chunk_size: int = Query(default=1000, ge=200, le=4000),
@@ -248,7 +248,7 @@ async def ingest_document(
         document_dir = UPLOAD_DIR / str(document_id)
         document_dir.mkdir(parents=True, exist_ok=False)
         original_path = document_dir / f"original{expected_suffix}"
-        size = await _save_upload(file, original_path)
+        size = _save_upload(file, original_path)
         if size == 0:
             raise HTTPException(status_code=400, detail="The uploaded file is empty")
         document = Document(
@@ -282,7 +282,7 @@ async def ingest_document(
         if document_dir is not None: shutil.rmtree(document_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail="Could not queue document processing") from exc
     finally:
-        await file.close()
+        file.file.close()
 
 
 @router.post("/{document_id}/retry", response_model=IngestResponse)
@@ -304,10 +304,10 @@ def retry_document(document_id: uuid.UUID, background_tasks: BackgroundTasks, db
     return IngestResponse(**DocumentResponse.model_validate(document).model_dump(), job_id=job.id)
 
 
-async def _save_upload(file: UploadFile, destination: Path) -> int:
+def _save_upload(file: UploadFile, destination: Path) -> int:
     total_size = 0
     with destination.open("wb") as output:
-        while chunk := await file.read(1024 * 1024):
+        while chunk := file.file.read(1024 * 1024):
             total_size += len(chunk)
             if total_size > MAX_UPLOAD_SIZE:
                 raise HTTPException(
