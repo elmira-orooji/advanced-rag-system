@@ -32,6 +32,34 @@ class AnalyticsTimezoneTests(unittest.TestCase):
         self.assertEqual(result.daily[-1].queries, 1)
         self.assertEqual(sum(day.queries for day in result.daily), result.total_queries)
 
+    def test_feedback_coverage_counts_unique_answer_ids(self):
+        answer_id = uuid4()
+        answer = SimpleNamespace(
+            id=answer_id, user_id=uuid4(), assistant_id=None,
+            document_set_id=None, grounded=True, citation_count=0,
+            created_at=datetime(2026, 8, 27, 12, tzinfo=timezone.utc),
+        )
+        feedback = [
+            SimpleNamespace(answer_id=answer_id, rating=1, reason=None),
+            SimpleNamespace(answer_id=answer_id, rating=-1, reason="incorrect"),
+        ]
+        db = MagicMock()
+        db.scalars.side_effect = [
+            MagicMock(all=lambda: [answer]),
+            MagicMock(all=lambda: feedback),
+            MagicMock(all=lambda: []),
+            MagicMock(all=lambda: []),
+        ]
+        db.execute.return_value.all.return_value = []
+        db.query.return_value.filter.return_value.count.return_value = 0
+
+        with patch("app.api.routes.analytics.datetime", wraps=datetime) as clock:
+            clock.now.return_value = datetime(2026, 8, 27, 13, tzinfo=timezone.utc)
+            result = overview(days=7, db=db, admin=SimpleNamespace(organization_id=uuid4()))
+
+        self.assertEqual(result.total_queries, 1)
+        self.assertEqual(result.feedback_coverage, 100.0)
+
 
 if __name__ == "__main__":
     unittest.main()

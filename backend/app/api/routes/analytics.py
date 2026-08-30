@@ -87,7 +87,7 @@ def overview(days: int = Query(default=30, ge=7, le=90), db: Session = Depends(g
         period_days=days, total_queries=len(answers), active_users=len({item.user_id for item in answers}),
         grounded_rate=_rate(sum(item.grounded for item in answers), len(answers)),
         positive_feedback_rate=_rate(positive_count, len(feedback)) if feedback else None,
-        feedback_coverage=_rate(len(feedback), len(answers)), unanswered_queries=sum(not item.grounded for item in answers),
+        feedback_coverage=_rate(len(feedback_by_answer), len(answers)), unanswered_queries=sum(not item.grounded for item in answers),
         average_citations=round(sum(item.citation_count for item in answers) / len(answers), 1) if answers else 0,
         indexed_documents=indexed, failed_documents=failed,
         daily=[DailyMetric(date=value, queries=data["queries"], grounded=data["grounded"], negative_feedback=data["negative"]) for value, data in daily.items()],
