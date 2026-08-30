@@ -1,3 +1,4 @@
+import logging
 import threading
 from datetime import datetime, timedelta, timezone
 
@@ -9,6 +10,7 @@ from app.services.connector_sync import sync_connector
 from app.services.connector_lock import connector_sync_lock
 
 _started = False
+logger = logging.getLogger(__name__)
 
 
 def _delay(interval: str) -> timedelta:
@@ -36,18 +38,23 @@ def run_due_connector_syncs() -> int:
                 try:
                     sync_connector(db, item); item = db.get(Connector, connector_id); item.status = "ready"; item.last_synced_at = datetime.now(timezone.utc); item.last_error = None
                 except Exception as exc:
+                    logger.exception("Scheduled connector sync failed", extra={"connector_id": str(connector_id)})
                     db.rollback(); item = db.get(Connector, connector_id); item.status = "failed"; item.last_error = str(exc)[:500]
                 item.next_sync_at = datetime.now(timezone.utc) + _delay(item.schedule_interval) if item.schedule_enabled else None; db.commit(); processed += 1
     return processed
+
+
+def _scheduler_loop(stop_event: threading.Event) -> None:
+    while not stop_event.is_set():
+        try:
+            run_due_connector_syncs()
+        except Exception:
+            logger.exception("Connector scheduler iteration failed")
+        stop_event.wait(60)
 
 
 def start_connector_scheduler() -> None:
     global _started
     if _started: return
     _started = True
-    def loop():
-        while True:
-            try: run_due_connector_syncs()
-            except Exception: pass
-            threading.Event().wait(60)
-    threading.Thread(target=loop, name="connector-scheduler", daemon=True).start()
+    threading.Thread(target=_scheduler_loop, args=(threading.Event(),), name="connector-scheduler", daemon=True).start()
