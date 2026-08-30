@@ -86,7 +86,7 @@ export default function SidebarV2({
         className={`nexora-sidebar ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "is-open" : ""}`}
       >
         <header className="nexora-sidebar__brand" dir="ltr">
-          <img src="/brand/nexora-symbol.svg" alt="" width={30} height={30} />
+          <img src="/brand/nexora-symbol.svg" alt="" width={42} height={42} />
           <div className="nexora-sidebar__expanded nexora-sidebar__wordmark">
             <strong>Nexora</strong>
             <span>by elmira</span>
