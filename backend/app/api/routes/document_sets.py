@@ -39,7 +39,7 @@ def _get_set(db: Session, set_id: uuid.UUID, user: User, with_documents: bool = 
     return document_set
 
 
-def _response(document_set: DocumentSet, document_count: int, indexed_count: int, access_level: str = "manage") -> DocumentSetResponse:
+def _response(document_set: DocumentSet, document_count: int, indexed_count: int, access_level: str) -> DocumentSetResponse:
     return DocumentSetResponse(
         id=document_set.id,
         name=document_set.name,
@@ -78,7 +78,7 @@ def list_document_sets(
         statement = statement.where(DocumentSet.id.in_(allowed))
     rows = db.execute(statement).all()
     permission_map = {} if user.role == "admin" else dict(db.execute(select(DocumentSetPermission.document_set_id, DocumentSetPermission.permission).where(DocumentSetPermission.user_id == user.id)).all())
-    return [_response(item, total, indexed, permission_map.get(item.id, "manage")) for item, total, indexed in rows]
+    return [_response(item, total, indexed, "manage" if user.role == "admin" else permission_map[item.id]) for item, total, indexed in rows]
 
 
 @router.post("", response_model=DocumentSetResponse, status_code=status.HTTP_201_CREATED)
@@ -103,7 +103,7 @@ def create_document_set(
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="A document set with this name already exists") from exc
-    return _response(item, 0, 0)
+    return _response(item, 0, 0, "manage")
 
 
 @router.get("/{set_id}", response_model=DocumentSetDetail)
@@ -112,10 +112,10 @@ def get_document_set(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    require_set_access(db, user, set_id)
+    access_level = require_set_access(db, user, set_id)
     item = _get_set(db, set_id, user, with_documents=True)
     return DocumentSetDetail(
-        **_response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents)).model_dump(),
+        **_response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents), access_level).model_dump(),
         documents=item.documents,
     )
 
@@ -127,7 +127,7 @@ def update_document_set(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    require_set_access(db, user, set_id, "manage")
+    access_level = require_set_access(db, user, set_id, "manage")
     item = _get_set(db, set_id, user, with_documents=True)
     if payload.name is not None:
         item.name = payload.name.strip()
@@ -145,7 +145,7 @@ def update_document_set(
     except IntegrityError as exc:
         db.rollback()
         raise HTTPException(status_code=409, detail="A document set with this name already exists") from exc
-    return _response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents))
+    return _response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents), access_level)
 
 
 @router.delete("/{set_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -167,7 +167,7 @@ def add_document_to_set(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    require_set_access(db, user, set_id, "edit")
+    access_level = require_set_access(db, user, set_id, "edit")
     item = _get_set(db, set_id, user, with_documents=True)
     if user.role == "admin":
         # Organization admins may also organize documents not yet in any set.
@@ -182,7 +182,7 @@ def add_document_to_set(
         db.commit()
         db.refresh(item)
     return DocumentSetDetail(
-        **_response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents)).model_dump(),
+        **_response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents), access_level).model_dump(),
         documents=item.documents,
     )
 
@@ -194,7 +194,7 @@ def remove_document_from_set(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    require_set_access(db, user, set_id, "edit")
+    access_level = require_set_access(db, user, set_id, "edit")
     item = _get_set(db, set_id, user, with_documents=True)
     document = next((doc for doc in item.documents if doc.id == document_id), None)
     if document is None:
@@ -202,6 +202,6 @@ def remove_document_from_set(
     item.documents.remove(document)
     db.commit()
     return DocumentSetDetail(
-        **_response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents)).model_dump(),
+        **_response(item, len(item.documents), sum(doc.status == "indexed" for doc in item.documents), access_level).model_dump(),
         documents=item.documents,
     )

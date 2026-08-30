@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from app.api.routes.document_sets import add_document_to_set
+from app.api.routes.document_sets import add_document_to_set, get_document_set
 from app.schemas.document_set import DocumentMembershipRequest
 
 
@@ -92,3 +92,23 @@ class DocumentMembershipTests(unittest.TestCase):
         self.assertIn(self.document.id, params.values())
         self.assertEqual(self.target.documents, [])
         self.db.commit.assert_not_called()
+
+
+class DocumentSetDetailAccessTests(unittest.TestCase):
+    def test_detail_returns_members_actual_access_level(self):
+        set_id = uuid4()
+        user = SimpleNamespace(id=uuid4(), role="user", organization_id=uuid4())
+        item = SimpleNamespace(id=set_id, documents=[])
+        db = MagicMock()
+        db.execute.return_value.all.return_value = [(set_id, "view")]
+
+        with patch("app.api.routes.document_sets._get_set", return_value=item), patch(
+            "app.api.routes.document_sets._response"
+        ) as response, patch(
+            "app.api.routes.document_sets.DocumentSetDetail", side_effect=lambda **values: values
+        ):
+            response.return_value.model_dump.return_value = {"access_level": "view"}
+            result = get_document_set(set_id, db, user)
+
+        self.assertEqual(response.call_args.args[3], "view")
+        self.assertEqual(result["access_level"], "view")

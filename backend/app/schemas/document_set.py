@@ -50,7 +50,7 @@ class DocumentSetResponse(BaseModel):
     created_by_id: uuid.UUID
     document_count: int = 0
     indexed_document_count: int = 0
-    access_level: str = "manage"
+    access_level: str
     child_chunk_size: int
     chunk_overlap: int
     parent_chunk_size: int

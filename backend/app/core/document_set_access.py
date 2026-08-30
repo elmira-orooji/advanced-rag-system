@@ -20,10 +20,21 @@ def accessible_set_ids(db: Session, user: User, minimum: str = "view") -> set[uu
     return {set_id for set_id, level in rows if LEVELS[level] >= threshold}
 
 
-def require_set_access(db: Session, user: User, set_id: uuid.UUID, minimum: str = "view") -> None:
-    allowed = accessible_set_ids(db, user, minimum)
-    if allowed is not None and set_id not in allowed:
+def require_set_access(db: Session, user: User, set_id: uuid.UUID, minimum: str = "view") -> str:
+    if user.role == "admin":
+        allowed = accessible_set_ids(db, user, minimum)
+        if set_id not in allowed:
+            raise HTTPException(status_code=403, detail=f"{minimum.capitalize()} access to this knowledge set is required")
+        return "manage"
+
+    rows = db.execute(
+        select(DocumentSetPermission.document_set_id, DocumentSetPermission.permission)
+        .where(DocumentSetPermission.user_id == user.id)
+    ).all()
+    access_level = next((level for item_id, level in rows if item_id == set_id), None)
+    if access_level is None or LEVELS[access_level] < LEVELS[minimum]:
         raise HTTPException(status_code=403, detail=f"{minimum.capitalize()} access to this knowledge set is required")
+    return access_level
 
 
 def require_document_access(db: Session, user: User, document_id: uuid.UUID, minimum: str = "view") -> Document:
