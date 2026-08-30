@@ -86,10 +86,10 @@ export default function SidebarV2({
         className={`nexora-sidebar ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "is-open" : ""}`}
       >
         <header className="nexora-sidebar__brand" dir="ltr">
-          <img src="/brand/nexora-symbol.svg" alt="Nexora" width={30} height={30} />
+          <img src="/brand/nexora-symbol.svg" alt="" width={30} height={30} />
           <div className="nexora-sidebar__expanded nexora-sidebar__wordmark">
             <strong>Nexora</strong>
-            <span>{isFa ? "هوشمندی دانش" : "Knowledge intelligence"}</span>
+            <span>by elmira</span>
           </div>
           <button type="button" onClick={() => { setCollapsed((value) => !value); setMenuQuery(""); }} aria-label={collapsed ? expandLabel : labels.collapse} aria-expanded={!collapsed} title={collapsed ? expandLabel : labels.collapse} className="nexora-sidebar__collapse">
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}

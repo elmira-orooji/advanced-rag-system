@@ -1,3 +1,18 @@
+@font-face {
+  font-family: "Cyber Copix";
+  src: url("/fonts/cyber-copix/Cyber-Copix.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Adine Kirnberg Script";
+  src: url("/fonts/adine-kirnberg-script/adinekir.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* Scoped sidebar tokens: quiet surfaces, a single violet accent, no global theme changes. */
 .nexora-sidebar {
   --sb-bg: #0c1428;
@@ -55,9 +70,37 @@ html:not(.dark) .nexora-sidebar {
   padding: 18px 22px;
   flex-shrink: 0;
 }
-.nexora-sidebar__wordmark { min-width: 0; }
-.nexora-sidebar__wordmark strong { display: block; font-size: 16px; font-weight: 650; letter-spacing: -.4px; }
-.nexora-sidebar__wordmark span { display: block; margin-top: 2px; color: var(--sb-muted); font-size: 10px; }
+.nexora-sidebar__wordmark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  height: 30px;
+  padding-right: 1px;
+}
+.nexora-sidebar__wordmark strong {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  color: var(--sb-text);
+  font-family: "Cyber Copix", sans-serif;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 30px;
+  transform: scaleY(1.08);
+  transform-origin: center;
+}
+.nexora-sidebar__wordmark span {
+  position: absolute;
+  right: 0;
+  bottom: -7px;
+  color: var(--sb-muted);
+  font-family: "Adine Kirnberg Script", cursive;
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 1;
+  white-space: nowrap;
+}
 .nexora-sidebar__tools { display: grid; gap: 10px; padding: 0 16px 18px; flex-shrink: 0; }
 .nexora-sidebar__search {
   display: flex;
