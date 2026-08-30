@@ -51,6 +51,7 @@ export default function LoginPage() {
     setFocus,
   } = useForm<LoginSchemaType>({
     resolver: zodResolver(loginSchema) as never,
+    reValidateMode: "onSubmit",
     defaultValues: {
       username: "",
       password: "",
