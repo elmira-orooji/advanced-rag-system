@@ -307,7 +307,7 @@
 
 .nexora-login__field > p {
   color: var(--login-error);
-  margin-top: 8px;
+  margin-top: 5px;
 }
 
 .nexora-login__field > p svg, .nexora-login__notice svg, .nexora-login__error svg, .nexora-login__success svg {
@@ -1147,6 +1147,18 @@
   line-height: 1;
   letter-spacing: .015em;
   white-space: nowrap;
+}
+
+/* Authentication feedback stays in the form flow, without alert-card chrome. */
+.nexora-login__form .nexora-login__feedback {
+  min-height: 16px;
+  margin-block: -10px -6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
 /* Blend the dark sign-in panel into the hero's midnight-violet edge. */

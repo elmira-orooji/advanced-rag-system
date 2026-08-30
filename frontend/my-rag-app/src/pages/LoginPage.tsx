@@ -7,7 +7,6 @@ import { motion, useReducedMotion } from "framer-motion";
 import {
   Check,
   CircleAlert,
-  CircleCheck,
   Eye,
   EyeOff,
   Languages,
@@ -251,9 +250,8 @@ export default function LoginPage() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: reduceMotion ? 0 : 0.16 }}
                   role="alert"
-                  className="nexora-login__error"
+                  className="nexora-login__error nexora-login__feedback"
                 >
-                  <CircleAlert size={14} />
                   {serverError}
                 </motion.p>
               )}
@@ -264,9 +262,8 @@ export default function LoginPage() {
                   transition={{ duration: reduceMotion ? 0 : 0.16 }}
                   role="status"
                   aria-live="polite"
-                  className="nexora-login__success"
+                  className="nexora-login__success nexora-login__feedback"
                 >
-                  <CircleCheck size={16} />
                   <span>{successMessage}</span>
                 </motion.p>
               )}
@@ -327,7 +324,6 @@ function LoginField({
       </div>
       {error && (
         <p id={`${id}-error`} role="alert">
-          <CircleAlert size={12} />
           {error}
         </p>
       )}
