@@ -2,7 +2,8 @@ import math
 import re
 import uuid
 from time import perf_counter
-from collections import Counter
+from collections import Counter, OrderedDict
+from dataclasses import dataclass
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,6 +14,19 @@ from app.services.qdrant import QdrantClient
 
 TOKEN_PATTERN = re.compile(r"[\w\u0600-\u06ff]+", re.UNICODE)
 RRF_K = 60
+BM25_CACHE_SCOPES = 16
+
+
+@dataclass
+class _LexicalCorpus:
+    signature: tuple[tuple[str, str], ...]
+    rows: list[tuple[Chunk, str]]
+    document_lengths: list[int]
+    average_length: float
+    postings: dict[str, list[tuple[int, int]]]
+
+
+_lexical_cache: OrderedDict[tuple[str, ...], _LexicalCorpus] = OrderedDict()
 
 
 def _normalize(text: str) -> str:
@@ -24,29 +38,66 @@ def _tokens(text: str) -> list[str]:
     return [token for token in TOKEN_PATTERN.findall(_normalize(text)) if len(token) > 1]
 
 
-def _bm25(query: str, rows: list[tuple[Chunk, str]], limit: int) -> list[dict]:
+def _build_lexical_corpus(signature: tuple[tuple[str, str], ...], rows: list[tuple[Chunk, str]]) -> _LexicalCorpus:
+    document_lengths: list[int] = []
+    postings: dict[str, list[tuple[int, int]]] = {}
+    for index, (chunk, _) in enumerate(rows):
+        frequencies = Counter(_tokens(chunk.content))
+        document_lengths.append(sum(frequencies.values()))
+        for token, frequency in frequencies.items():
+            postings.setdefault(token, []).append((index, frequency))
+    average_length = sum(document_lengths) / len(document_lengths) if document_lengths else 1.0
+    return _LexicalCorpus(signature, rows, document_lengths, average_length or 1.0, postings)
+
+
+def _bm25(query: str, rows: list[tuple[Chunk, str]], limit: int, corpus: _LexicalCorpus | None = None) -> list[dict]:
     query_tokens = _tokens(query)
     if not query_tokens or not rows:
         return []
-    documents = [_tokens(chunk.content) for chunk, _ in rows]
-    average_length = sum(map(len, documents)) / len(documents) or 1
-    document_frequency = Counter(token for tokens in documents for token in set(tokens))
-    total = len(documents)
-    scored: list[tuple[float, Chunk, str]] = []
-    for (chunk, filename), tokens in zip(rows, documents):
-        frequencies = Counter(tokens)
-        score = 0.0
-        for token in query_tokens:
-            frequency = frequencies[token]
-            if not frequency:
-                continue
-            inverse_frequency = math.log(1 + (total - document_frequency[token] + 0.5) / (document_frequency[token] + 0.5))
-            denominator = frequency + 1.5 * (0.25 + 0.75 * len(tokens) / average_length)
-            score += inverse_frequency * frequency * 2.5 / denominator
-        if score > 0:
-            scored.append((score, chunk, filename))
+    corpus = corpus or _build_lexical_corpus((), rows)
+    total = len(rows)
+    scores: dict[int, float] = {}
+    for token in set(query_tokens):
+        posting = corpus.postings.get(token, [])
+        if not posting:
+            continue
+        document_frequency = len(posting)
+        inverse_frequency = math.log(1 + (total - document_frequency + 0.5) / (document_frequency + 0.5))
+        for index, frequency in posting:
+            denominator = frequency + 1.5 * (
+                0.25 + 0.75 * corpus.document_lengths[index] / corpus.average_length
+            )
+            scores[index] = scores.get(index, 0.0) + inverse_frequency * frequency * 2.5 / denominator
+    scored = [(score, *rows[index]) for index, score in scores.items() if score > 0]
     scored.sort(key=lambda item: item[0], reverse=True)
     return [{"id": str(chunk.id), "score": score, "payload": {"chunk_id": str(chunk.id), "document_id": str(chunk.document_id), "filename": filename, "chunk_index": chunk.chunk_index, "content": chunk.content}} for score, chunk, filename in scored[:limit]]
+
+
+def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
+    scope_key = tuple(sorted(str(value) for value in scoped_ids))
+    versions = db.execute(
+        select(Document.id, Document.updated_at).where(Document.id.in_(scoped_ids))
+    ).all()
+    signature = tuple(sorted(
+        (str(document_id), updated_at.isoformat() if updated_at is not None else "")
+        for document_id, updated_at in versions
+    ))
+    cached = _lexical_cache.get(scope_key)
+    if cached is not None and cached.signature == signature:
+        _lexical_cache.move_to_end(scope_key)
+        return cached
+
+    rows = list(db.execute(
+        select(Chunk, Document.filename)
+        .join(Document, Document.id == Chunk.document_id)
+        .where(Chunk.document_id.in_(scoped_ids), Chunk.is_active.is_(True))
+    ).all())
+    corpus = _build_lexical_corpus(signature, rows)
+    _lexical_cache[scope_key] = corpus
+    _lexical_cache.move_to_end(scope_key)
+    while len(_lexical_cache) > BM25_CACHE_SCOPES:
+        _lexical_cache.popitem(last=False)
+    return corpus
 
 
 def _proximity(query_terms: set[str], tokens: list[str]) -> float:
@@ -115,6 +166,8 @@ def _expand_parents(rows: list[tuple[Chunk, str]], ranked_children: list[dict], 
 
 
 def hybrid_search(db: Session, query: str, limit: int, document_id: str | None = None, document_ids: list[str] | None = None, trace: dict | None = None, vector_weight: float = 1.0, bm25_weight: float = 1.0, use_reranker: bool = True) -> list[dict]:
+    if vector_weight <= 0 and bm25_weight <= 0:
+        raise ValueError("At least one retrieval weight must be greater than zero")
     if document_id:
         scoped_ids = [uuid.UUID(document_id)]
     elif document_ids is not None:
@@ -125,11 +178,12 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
         raise ValueError("Hybrid search requires an explicit document scope")
     candidate_limit = min(max(limit * 4, 20), 80)
     started = perf_counter()
-    vector_results = QdrantClient().search(query=query, limit=candidate_limit, document_id=document_id, document_ids=document_ids)
-    vector_ms = round((perf_counter() - started) * 1000, 2)
+    vector_results = QdrantClient().search(query=query, limit=candidate_limit, document_id=document_id, document_ids=document_ids) if vector_weight > 0 else []
+    vector_ms = round((perf_counter() - started) * 1000, 2) if vector_weight > 0 else 0.0
     started = perf_counter()
-    rows = list(db.execute(select(Chunk, Document.filename).join(Document, Document.id == Chunk.document_id).where(Chunk.document_id.in_(scoped_ids), Chunk.is_active.is_(True))).all())
-    lexical_results = _bm25(query, rows, candidate_limit)
+    corpus = _lexical_corpus(db, scoped_ids)
+    rows = corpus.rows
+    lexical_results = _bm25(query, rows, candidate_limit, corpus) if bm25_weight > 0 else []
     active_chunks = {str(chunk.id): (chunk, filename) for chunk, filename in rows}
     lexical_ms = round((perf_counter() - started) * 1000, 2)
     fused: dict[str, dict] = {}

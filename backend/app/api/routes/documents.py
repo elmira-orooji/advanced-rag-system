@@ -1,5 +1,6 @@
 import shutil
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
@@ -64,6 +65,7 @@ def update_chunk(document_id: uuid.UUID, chunk_id: uuid.UUID, payload: ChunkUpda
         chunk.keywords, chunk.suggested_questions = enrich_chunk(payload.content)
     if payload.is_active is not None:
         chunk.is_active = payload.is_active
+    document.updated_at = datetime.now(timezone.utc)
     try:
         db.flush()
         _sync_active_chunks(document)
