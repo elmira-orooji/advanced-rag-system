@@ -20,8 +20,7 @@ from urllib.request import Request, HTTPSHandler, HTTPRedirectHandler, ProxyHand
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import BASE_DIR, UPLOAD_DIR
-from app.core.config import AWS_ACCESS_KEY_ID, AWS_REGION, AWS_SECRET_ACCESS_KEY, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN, MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET, MICROSOFT_TENANT_ID
+from app.core.config import BASE_DIR, CONNECTOR_CREDENTIALS, UPLOAD_DIR
 from app.models.chunk import Chunk
 from app.models.connector import Connector, ConnectorItem
 from app.models.document import Document
@@ -38,6 +37,19 @@ ALLOWED_EXTENSIONS = {".md", ".txt", ".rst", ".py", ".ts", ".tsx", ".js", ".json
 
 class ConnectorSyncError(RuntimeError):
     pass
+
+
+CLOUD_CONNECTORS = {"google_drive", "s3", "sharepoint"}
+
+
+def _organization_credentials(organization_id: uuid.UUID, connector_type: str) -> dict[str, str]:
+    organization = CONNECTOR_CREDENTIALS.get(str(organization_id), {})
+    credentials = organization.get(connector_type) if isinstance(organization, dict) else None
+    if not isinstance(credentials, dict):
+        raise ConnectorSyncError(
+            f"{connector_type} credentials are not configured for this organization"
+        )
+    return {str(key): str(value) for key, value in credentials.items()}
 
 
 @dataclass
@@ -227,11 +239,12 @@ def _bearer_download(url: str, token: str) -> bytes:
     return data
 
 
-def _google_drive(source_url: str) -> SourceSnapshot:
-    if not all((GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN)): raise ConnectorSyncError("Google Drive OAuth configuration is missing")
+def _google_drive(source_url: str, credentials: dict[str, str]) -> SourceSnapshot:
+    client_id = credentials.get("client_id", ""); client_secret = credentials.get("client_secret", ""); refresh_token = credentials.get("refresh_token", "")
+    if not all((client_id, client_secret, refresh_token)): raise ConnectorSyncError("Google Drive OAuth configuration is missing for this organization")
     match = re.search(r"/folders/([\w-]+)", source_url); folder_id = match.group(1) if match else parse_qs(urlparse(source_url).query).get("id", [None])[0]
     if not folder_id: raise ConnectorSyncError("Use a Google Drive folder URL")
-    token = _oauth_token("https://oauth2.googleapis.com/token", {"client_id": GOOGLE_CLIENT_ID, "client_secret": GOOGLE_CLIENT_SECRET, "refresh_token": GOOGLE_REFRESH_TOKEN, "grant_type": "refresh_token"})
+    token = _oauth_token("https://oauth2.googleapis.com/token", {"client_id": client_id, "client_secret": client_secret, "refresh_token": refresh_token, "grant_type": "refresh_token"})
     query = quote(f"'{folder_id}' in parents and trashed=false")
     data = _authorized_json(f"https://www.googleapis.com/drive/v3/files?q={query}&pageSize=1000&fields=nextPageToken,incompleteSearch,files(id,name,mimeType,webViewLink,modifiedTime)", token)
     results = []
@@ -246,11 +259,12 @@ def _google_drive(source_url: str) -> SourceSnapshot:
                           "files" in data and not data.get("nextPageToken") and not data.get("incompleteSearch"))
 
 
-def _sharepoint(source_url: str) -> SourceSnapshot:
-    if not all((MICROSOFT_TENANT_ID, MICROSOFT_CLIENT_ID, MICROSOFT_CLIENT_SECRET)): raise ConnectorSyncError("SharePoint OAuth configuration is missing")
+def _sharepoint(source_url: str, credentials: dict[str, str]) -> SourceSnapshot:
+    tenant_id = credentials.get("tenant_id", ""); client_id = credentials.get("client_id", ""); client_secret = credentials.get("client_secret", "")
+    if not all((tenant_id, client_id, client_secret)): raise ConnectorSyncError("SharePoint OAuth configuration is missing for this organization")
     parsed = urlparse(source_url)
     if parsed.hostname != "graph.microsoft.com" or "/children" not in parsed.path: raise ConnectorSyncError("Use a Microsoft Graph drive folder children URL")
-    token = _oauth_token(f"https://login.microsoftonline.com/{MICROSOFT_TENANT_ID}/oauth2/v2.0/token", {"client_id": MICROSOFT_CLIENT_ID, "client_secret": MICROSOFT_CLIENT_SECRET, "scope": "https://graph.microsoft.com/.default", "grant_type": "client_credentials"})
+    token = _oauth_token(f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token", {"client_id": client_id, "client_secret": client_secret, "scope": "https://graph.microsoft.com/.default", "grant_type": "client_credentials"})
     data = _authorized_json(source_url, token); results = []
     for item in data.get("value", []):
         name = item.get("name", ""); download = item.get("@microsoft.graph.downloadUrl")
@@ -261,9 +275,10 @@ def _sharepoint(source_url: str) -> SourceSnapshot:
                           "value" in data and not data.get("@odata.nextLink"))
 
 
-def _aws_signed_get(url: str) -> bytes:
-    if not all((AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION)):
-        raise ConnectorSyncError("S3 credentials or region are missing")
+def _aws_signed_get(url: str, credentials: dict[str, str]) -> bytes:
+    access_key_id = credentials.get("access_key_id", ""); secret_access_key = credentials.get("secret_access_key", ""); region = credentials.get("region", "")
+    if not all((access_key_id, secret_access_key, region)):
+        raise ConnectorSyncError("S3 credentials or region are missing for this organization")
     parsed = urlparse(url)
     if parsed.scheme != "https" or not parsed.hostname or not parsed.hostname.endswith(".amazonaws.com"):
         raise ConnectorSyncError("S3 requests must use an AWS HTTPS endpoint")
@@ -273,12 +288,12 @@ def _aws_signed_get(url: str) -> bytes:
     canonical_headers = f"host:{host}\nx-amz-content-sha256:{payload_hash}\nx-amz-date:{amz_date}\n"
     signed_headers = "host;x-amz-content-sha256;x-amz-date"
     canonical_request = "\n".join(("GET", quote(parsed.path or "/", safe="/-_.~"), canonical_query, canonical_headers, signed_headers, payload_hash))
-    scope = f"{date_stamp}/{AWS_REGION}/s3/aws4_request"
+    scope = f"{date_stamp}/{region}/s3/aws4_request"
     string_to_sign = "\n".join(("AWS4-HMAC-SHA256", amz_date, scope, hashlib.sha256(canonical_request.encode()).hexdigest()))
     sign = lambda key, value: hmac.new(key, value.encode(), hashlib.sha256).digest()
-    signing_key = sign(sign(sign(sign(("AWS4" + AWS_SECRET_ACCESS_KEY).encode(), date_stamp), AWS_REGION), "s3"), "aws4_request")
+    signing_key = sign(sign(sign(sign(("AWS4" + secret_access_key).encode(), date_stamp), region), "s3"), "aws4_request")
     signature = hmac.new(signing_key, string_to_sign.encode(), hashlib.sha256).hexdigest()
-    authorization = f"AWS4-HMAC-SHA256 Credential={AWS_ACCESS_KEY_ID}/{scope}, SignedHeaders={signed_headers}, Signature={signature}"
+    authorization = f"AWS4-HMAC-SHA256 Credential={access_key_id}/{scope}, SignedHeaders={signed_headers}, Signature={signature}"
     try:
         with _public_urlopen(Request(url, headers={"Authorization": authorization, "x-amz-date": amz_date, "x-amz-content-sha256": payload_hash}), timeout=30) as response:
             data = response.read(MAX_REMOTE_BYTES + 1)
@@ -287,7 +302,7 @@ def _aws_signed_get(url: str) -> bytes:
     return data
 
 
-def _s3(source_url: str) -> SourceSnapshot:
+def _s3(source_url: str, credentials: dict[str, str]) -> SourceSnapshot:
     parsed = urlparse(source_url); host = (parsed.hostname or "").lower(); path = parsed.path.lstrip("/")
     virtual = re.fullmatch(r"([a-z0-9][a-z0-9.-]{1,61}[a-z0-9])\.s3(?:\.[a-z0-9-]+)?\.amazonaws\.com", host)
     if virtual: bucket, prefix = virtual.group(1), path
@@ -296,8 +311,10 @@ def _s3(source_url: str) -> SourceSnapshot:
         parts = path.split("/", 1)
         if not regional or not parts[0]: raise ConnectorSyncError("Use an S3 HTTPS URL such as https://bucket.s3.region.amazonaws.com/prefix")
         bucket, prefix = parts[0], parts[1] if len(parts) > 1 else ""
-    endpoint = f"https://{bucket}.s3.{AWS_REGION}.amazonaws.com"
-    listing = _aws_signed_get(f"{endpoint}/?{urlencode({'list-type': '2', 'prefix': prefix})}")
+    region = credentials.get("region", "")
+    if not region: raise ConnectorSyncError("S3 region is missing for this organization")
+    endpoint = f"https://{bucket}.s3.{region}.amazonaws.com"
+    listing = _aws_signed_get(f"{endpoint}/?{urlencode({'list-type': '2', 'prefix': prefix})}", credentials)
     try: root = ET.fromstring(listing)
     except ET.ParseError as exc: raise ConnectorSyncError("S3 returned invalid object metadata") from exc
     results = []
@@ -305,7 +322,7 @@ def _s3(source_url: str) -> SourceSnapshot:
     for node in nodes[:100]:
         key = node.findtext("{*}Key") or ""
         if Path(key).suffix.lower() not in ALLOWED_EXTENSIONS: continue
-        object_url = f"{endpoint}/{quote(key, safe='/')}"; body = _aws_signed_get(object_url)
+        object_url = f"{endpoint}/{quote(key, safe='/')}"; body = _aws_signed_get(object_url, credentials)
         text = body.decode("utf-8", errors="replace").strip()
         if len(text) >= 20: results.append((key, Path(key).name[:255], text, object_url))
     return SourceSnapshot(results, {node.findtext("{*}Key") for node in nodes if node.findtext("{*}Key")},
@@ -350,14 +367,22 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
     fetchers = {"website": _website, "github": _github, "google_drive": _google_drive, "s3": _s3, "sharepoint": _sharepoint}
     fetcher = fetchers.get(connector.connector_type)
     if fetcher is None: raise ConnectorSyncError("Unsupported connector type")
-    snapshot = fetcher(connector.source_url)
+    document_set = None
+    if connector.connector_type in CLOUD_CONNECTORS:
+        document_set = db.get(DocumentSet, connector.document_set_id)
+        if document_set is None:
+            raise ConnectorSyncError("Connector knowledge set no longer exists")
+        credentials = _organization_credentials(document_set.organization_id, connector.connector_type)
+        snapshot = fetcher(connector.source_url, credentials)
+    else:
+        snapshot = fetcher(connector.source_url)
     sources = snapshot.sources
     existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
     created = updated = unchanged = deleted = 0
     removed_directories: list[Path] = []
     journal: dict[str, ExternalDocumentState] = {}
     qdrant = QdrantClient(); qdrant.ensure_collection()
-    document_set = db.get(DocumentSet, connector.document_set_id)
+    document_set = document_set or db.get(DocumentSet, connector.document_set_id)
     try:
         for external_id, title, text, source_url in sources:
             digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)

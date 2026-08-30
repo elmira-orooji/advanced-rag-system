@@ -15,6 +15,8 @@ from app.services import connector_sync as sync
 
 
 class ConnectorDeletionTests(unittest.TestCase):
+    s3_credentials = {"access_key_id": "test", "secret_access_key": "test", "region": "us-east-1"}
+
     def run_github_sync(self, count, truncated=False):
         body = b"A supported document with enough text."
         tree = [{"type": "blob", "path": f"{i}.md", "size": 100} for i in range(count)]
@@ -58,25 +60,27 @@ class ConnectorDeletionTests(unittest.TestCase):
 
     def test_s3_limit_marks_listing_incomplete(self):
         listing = ("<ListBucketResult><IsTruncated>false</IsTruncated>" + "".join(f"<Contents><Key>{i}.md</Key></Contents>" for i in range(101)) + "</ListBucketResult>").encode()
-        with patch.object(sync, "_aws_signed_get", side_effect=lambda url: listing if "list-type" in url else b"Enough text for this supported document."):
-            result = sync._s3("https://bucket.s3.amazonaws.com/")
+        with patch.object(sync, "_aws_signed_get", side_effect=lambda url, credentials: listing if "list-type" in url else b"Enough text for this supported document."):
+            result = sync._s3("https://bucket.s3.amazonaws.com/", self.s3_credentials)
         self.assertFalse(result.complete)
         self.assertIn("100.md", result.observed_ids)
 
     def test_s3_truncated_listing_is_incomplete(self):
         with patch.object(sync, "_aws_signed_get", return_value=b"<ListBucketResult><IsTruncated>true</IsTruncated></ListBucketResult>"):
-            self.assertFalse(sync._s3("https://bucket.s3.amazonaws.com/").complete)
+            self.assertFalse(sync._s3("https://bucket.s3.amazonaws.com/", self.s3_credentials).complete)
 
     def test_google_drive_pagination_and_incomplete_search_disable_deletion(self):
         for marker in ({"nextPageToken": "next"}, {"incompleteSearch": True}):
-            with self.subTest(marker=marker), patch.multiple(sync, GOOGLE_CLIENT_ID="test", GOOGLE_CLIENT_SECRET="test", GOOGLE_REFRESH_TOKEN="test"), patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", return_value={"files": [], **marker}) as request:
-                self.assertFalse(sync._google_drive("https://drive.google.com/drive/folders/folder").complete)
+            credentials = {"client_id": "test", "client_secret": "test", "refresh_token": "test"}
+            with self.subTest(marker=marker), patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", return_value={"files": [], **marker}) as request:
+                self.assertFalse(sync._google_drive("https://drive.google.com/drive/folders/folder", credentials).complete)
                 self.assertIn("nextPageToken", request.call_args.args[0])
                 self.assertIn("incompleteSearch", request.call_args.args[0])
 
     def test_sharepoint_next_link_disables_deletion(self):
-        with patch.multiple(sync, MICROSOFT_TENANT_ID="test", MICROSOFT_CLIENT_ID="test", MICROSOFT_CLIENT_SECRET="test"), patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", return_value={"value": [], "@odata.nextLink": "next"}):
-            self.assertFalse(sync._sharepoint("https://graph.microsoft.com/drive/root/children").complete)
+        credentials = {"tenant_id": "test", "client_id": "test", "client_secret": "test"}
+        with patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", return_value={"value": [], "@odata.nextLink": "next"}):
+            self.assertFalse(sync._sharepoint("https://graph.microsoft.com/drive/root/children", credentials).complete)
 
     def test_seen_but_skipped_file_is_preserved_even_with_complete_listing(self):
         db = MagicMock()
@@ -109,6 +113,42 @@ class ConnectorDeletionTests(unittest.TestCase):
         db.delete.assert_not_called()
         db.commit.assert_not_called()
         qdrant.assert_not_called()
+
+
+class ConnectorCredentialIsolationTests(unittest.TestCase):
+    def test_credentials_are_selected_by_organization_and_provider(self):
+        first, second = uuid4(), uuid4()
+        configured = {
+            str(first): {"google_drive": {"client_id": "first"}},
+            str(second): {"google_drive": {"client_id": "second"}},
+        }
+        with patch.object(sync, "CONNECTOR_CREDENTIALS", configured):
+            self.assertEqual(sync._organization_credentials(first, "google_drive")["client_id"], "first")
+            self.assertEqual(sync._organization_credentials(second, "google_drive")["client_id"], "second")
+
+    def test_cloud_connector_has_no_global_credential_fallback(self):
+        with patch.object(sync, "CONNECTOR_CREDENTIALS", {}), self.assertRaises(sync.ConnectorSyncError):
+            sync._organization_credentials(uuid4(), "s3")
+
+    def test_sync_passes_only_owning_organizations_credentials(self):
+        organization_id, set_id = uuid4(), uuid4()
+        connector = SimpleNamespace(
+            id=uuid4(), document_set_id=set_id, connector_type="google_drive",
+            source_url="https://drive.google.com/drive/folders/folder", last_sync_summary={},
+        )
+        document_set = SimpleNamespace(id=set_id, organization_id=organization_id)
+        db = MagicMock()
+        db.get.return_value = document_set
+        db.scalars.return_value.all.return_value = []
+        credentials = {"client_id": "owned", "client_secret": "secret", "refresh_token": "refresh"}
+        configured = {str(organization_id): {"google_drive": credentials}}
+
+        with patch.object(sync, "CONNECTOR_CREDENTIALS", configured), patch.object(
+            sync, "_google_drive", return_value=sync.SourceSnapshot([], set(), complete=False)
+        ) as fetch, patch.object(sync, "QdrantClient"):
+            sync.sync_connector(db, connector)
+
+        fetch.assert_called_once_with(connector.source_url, credentials)
 
 
 class ConnectorConsistencyTests(unittest.TestCase):
@@ -300,9 +340,9 @@ class ConnectorNetworkTests(unittest.TestCase):
             lambda: sync._authorized_json("https://example.com", "secret"),
             lambda: sync._bearer_download("https://example.com", "secret"),
             lambda: sync._oauth_token("https://example.com", {"secret": "value"}),
-            lambda: sync._aws_signed_get("https://bucket.s3.amazonaws.com/key"),
+            lambda: sync._aws_signed_get("https://bucket.s3.amazonaws.com/key", {"access_key_id": "test", "secret_access_key": "test", "region": "us-east-1"}),
         )
-        with patch.multiple(sync, AWS_ACCESS_KEY_ID="test", AWS_SECRET_ACCESS_KEY="test", AWS_REGION="us-east-1"), patch.object(sync.socket, "getaddrinfo", return_value=addresses("10.0.0.1")), patch.object(sync.socket, "socket") as sock:
+        with patch.object(sync.socket, "getaddrinfo", return_value=addresses("10.0.0.1")), patch.object(sync.socket, "socket") as sock:
             for call in calls:
                 with self.subTest(call=call), self.assertRaises(sync.ConnectorSyncError):
                     call()
