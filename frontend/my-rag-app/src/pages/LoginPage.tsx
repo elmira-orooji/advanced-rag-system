@@ -25,6 +25,20 @@ import type { LoginSchemaType } from "../schemas/loginSchema";
 import { authService } from "../services/authService";
 import "../styles/login.css";
 
+function loginErrorMessage(error: unknown, isRtl: boolean) {
+  const message = error instanceof Error ? error.message : "";
+  if (!isRtl) return message || "Unable to sign in. Please try again.";
+
+  const normalized = message.toLowerCase();
+  if (normalized.includes("incorrect username or password")) {
+    return "نام کاربری یا رمز عبور اشتباه است.";
+  }
+  if (normalized.includes("user is inactive")) {
+    return "حساب کاربری غیرفعال است.";
+  }
+  return "ورود انجام نشد. دوباره تلاش کنید.";
+}
+
 export default function LoginPage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
@@ -104,13 +118,7 @@ export default function LoginPage() {
       await new Promise((resolve) => window.setTimeout(resolve, 650));
       navigate("/home", { replace: true, state: { role: session.user.role } });
     } catch (error) {
-      setServerError(
-        error instanceof Error
-          ? error.message
-          : isRtl
-            ? "ورود انجام نشد. دوباره تلاش کنید."
-            : "Unable to sign in. Please try again.",
-      );
+      setServerError(loginErrorMessage(error, isRtl));
       setFocus("password");
     } finally {
       setIsLoading(false);
