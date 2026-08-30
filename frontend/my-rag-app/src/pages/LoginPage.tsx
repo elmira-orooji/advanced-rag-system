@@ -47,6 +47,7 @@ export default function LoginPage() {
     register,
     handleSubmit,
     formState: { errors },
+    clearErrors,
     setFocus,
   } = useForm<LoginSchemaType>({
     resolver: zodResolver(loginSchema) as never,
@@ -57,6 +58,14 @@ export default function LoginPage() {
       organization: "default",
     },
   });
+  const usernameField = register("username");
+  const passwordField = register("password");
+
+  const clearFieldFeedback = (field: "username" | "password") => {
+    clearErrors(field);
+    setServerError("");
+    setSuccessMessage("");
+  };
 
   useEffect(() => {
     const online = () => setIsOnline(true);
@@ -184,7 +193,11 @@ export default function LoginPage() {
                   autoFocus
                   aria-invalid={Boolean(errors.username)}
                   aria-describedby={errors.username ? "username-error" : undefined}
-                  {...register("username")}
+                  {...usernameField}
+                  onChange={(event) => {
+                    void usernameField.onChange(event);
+                    clearFieldFeedback("username");
+                  }}
                   placeholder={t.usernamePlaceholder}
                 />
               </LoginField>
@@ -221,11 +234,15 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   aria-invalid={Boolean(errors.password)}
                   aria-describedby={errors.password ? "password-error" : undefined}
-                  {...register("password")}
+                  {...passwordField}
+                  onChange={(event) => {
+                    void passwordField.onChange(event);
+                    clearFieldFeedback("password");
+                  }}
                   onKeyUp={updateCapsLock}
                   onKeyDown={updateCapsLock}
                   onBlur={(event) => {
-                    void register("password").onBlur(event);
+                    void passwordField.onBlur(event);
                     setCapsLock(false);
                   }}
                   placeholder={t.passwordPlaceholder}
