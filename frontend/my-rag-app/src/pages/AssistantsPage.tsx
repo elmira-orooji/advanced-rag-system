@@ -18,7 +18,19 @@ export default function AssistantsPage() {
   const [items, setItems] = useState<CustomAssistant[]>([]); const [sets, setSets] = useState<DocumentSet[]>([]); const [selected, setSelected] = useState<CustomAssistant | null>(null); const [editing, setEditing] = useState<CustomAssistant | "new" | null>(null); const [messages, setMessages] = useState<ChatMessage[]>([]); const [thinking, setThinking] = useState(false); const [loading, setLoading] = useState(true); const [mobileChat, setMobileChat] = useState(false);
   const c = fa ? { eyebrow: "دستیارهای تخصصی", title: "دستیارها", subtitle: "دستیارهای هوشمند با دستورالعمل و منابع دانشی اختصاصی.", add: "دستیار جدید", empty: "هنوز دستیاری ساخته نشده است", choose: "یک دستیار را برای شروع گفتگو انتخاب کنید", knowledge: "مجموعه دانش", inactive: "غیرفعال", active: "فعال", edit: "ویرایش", remove: "حذف", noKnowledge: "بدون مجموعه دانش" } : { eyebrow: "Specialized AI", title: "Assistants", subtitle: "Purpose-built assistants with focused instructions and trusted knowledge.", add: "New assistant", empty: "No assistants have been created yet", choose: "Choose an assistant to start a focused conversation", knowledge: "knowledge sets", inactive: "Inactive", active: "Active", edit: "Edit", remove: "Delete", noKnowledge: "No knowledge assigned" };
   const load = async () => { try { const [assistants, knowledgeSets] = await Promise.all([assistantService.list(), assistantService.listSets()]); setItems(assistants); setSets(knowledgeSets); setSelected((current) => assistants.find((x) => x.id === current?.id) || assistants.find((x) => x.is_active) || null); } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); } };
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    let active = true;
+    Promise.all([assistantService.list(), assistantService.listSets()])
+      .then(([assistants, knowledgeSets]) => {
+        if (!active) return;
+        setItems(assistants);
+        setSets(knowledgeSets);
+        setSelected(assistants.find((item) => item.is_active) || null);
+      })
+      .catch((error) => { if (active) toast.error((error as Error).message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
   const choose = (item: CustomAssistant) => { if (!item.is_active) return; setSelected(item); setMessages([]); setMobileChat(true); };
   const ask = async (content: string) => { if (!selected) return; setMessages((m) => [...m, { id: crypto.randomUUID(), role: "user", content, createdAt: new Date().toISOString() }]); setThinking(true); try { const result = await assistantService.ask(selected.id, content); setMessages((m) => [...m, { id: crypto.randomUUID(), role: "assistant", content: result.answer, responseId: result.response_id, grounded: result.grounded, answerBasis: result.answer_basis, createdAt: new Date().toISOString(), sources: result.citations.map((x) => ({ id: x.chunk_id, citationId: x.id, documentId: x.document_id, title: x.filename, chunkIndex: x.chunk_index, excerpt: x.excerpt, score: x.score, page: x.page, section: x.section })) }]); } catch (e) { toast.error((e as Error).message); } finally { setThinking(false); } };
   const remove = async (item: CustomAssistant) => { if (!await confirmAction(fa ? `دستیار «${item.name}» حذف شود؟` : `Delete “${item.name}”?`)) return; try { await assistantService.remove(item.id); toast.success(fa ? "دستیار حذف شد" : "Assistant deleted"); await load(); } catch (e) { toast.error((e as Error).message); } };
@@ -57,7 +69,7 @@ function AssistantDialog({ item, sets, fa, onClose, onSaved }: { item?: CustomAs
   }, []);
   const [name, setName] = useState(item?.name || ""); const [description, setDescription] = useState(item?.description || ""); const [instructions, setInstructions] = useState(item?.instructions || ""); const [selectedSets, setSelectedSets] = useState<string[]>(item?.document_set_ids || []); const [active, setActive] = useState(item?.is_active ?? true); const [saving, setSaving] = useState(false);
   const valid = name.trim().length >= 2 && instructions.trim().length >= 10;
-  const submit = async (e: React.FormEvent) => { e.preventDefault(); if (!valid) return; setSaving(true); const payload: AssistantPayload = { model_id: modelId.trim() || null, answer_mode: answerMode, name: name.trim(), description: description.trim(), instructions: instructions.trim(), document_set_ids: selectedSets, is_active: active }; try { item ? await assistantService.update(item.id, payload) : await assistantService.create(payload); toast.success(fa ? "دستیار ذخیره شد" : "Assistant saved"); onSaved(); } catch (error) { toast.error((error as Error).message); } finally { setSaving(false); } };
+  const submit = async (e: React.FormEvent) => { e.preventDefault(); if (!valid) return; setSaving(true); const payload: AssistantPayload = { model_id: modelId.trim() || null, answer_mode: answerMode, name: name.trim(), description: description.trim(), instructions: instructions.trim(), document_set_ids: selectedSets, is_active: active }; try { if (item) await assistantService.update(item.id, payload); else await assistantService.create(payload); toast.success(fa ? "دستیار ذخیره شد" : "Assistant saved"); onSaved(); } catch (error) { toast.error((error as Error).message); } finally { setSaving(false); } };
   return <dialog ref={modalRef} className="assistant-form-overlay" aria-labelledby="assistant-form-title" onCancel={(event) => { event.preventDefault(); onClose(); }} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <form onSubmit={submit} onMouseDown={(e) => e.stopPropagation()} className="assistant-dialog assistant-form" dir={fa ? "rtl" : "ltr"}>
       <header className="assistant-form-header">

@@ -20,6 +20,7 @@ import type { AppPage } from "../layouts/AppLayout";
 import { useTranslation } from "react-i18next";
 import type { ConversationSummary } from "../services/conversationService";
 import "../styles/sidebar.css";
+import { canManageUsers } from "../lib/permissions";
 
 interface SidebarV2Props {
   currentUser: AuthUser | null;
@@ -61,7 +62,7 @@ export default function SidebarV2({
     { id: "home" as const, label: labels.home, icon: Home },
     { id: "upload" as const, label: labels.upload, icon: FileUp },
     { id: "assistants" as const, label: labels.assistants, icon: Bot },
-    ...(currentUser?.role === "admin" ? [{ id: "users" as const, label: labels.users, icon: UserCog }] : []),
+    ...(canManageUsers(currentUser) ? [{ id: "users" as const, label: labels.users, icon: UserCog }] : []),
     { id: "settings" as const, label: labels.settings, icon: Settings },
   ];
   const normalizedQuery = menuQuery.trim().toLocaleLowerCase();
@@ -87,7 +88,7 @@ export default function SidebarV2({
       >
         <header className="nexora-sidebar__brand" dir="ltr">
           <div className="nexora-sidebar__brand-lockup">
-            <img src="/brand/nexora-symbol.svg" alt="" width={36} height={36} />
+            <img src="/brand/nexora-symbol.svg" alt="" width={30} height={30} />
             <div className="nexora-sidebar__expanded nexora-sidebar__wordmark">
               <strong>Nexora</strong>
               <span>by elmira</span>

@@ -1,7 +1,7 @@
 import type { LoginSchemaType } from "../schemas/loginSchema";
 import type { AuthSession, AuthUser, LoginResponse } from "../types/auth";
 
-const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
+const API_URL = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
 const SESSION_KEY = "knowledgeflow.auth";
 
 function parseError(payload: unknown, fallback: string) {
@@ -23,6 +23,7 @@ export const authService = {
   async login(data: LoginSchemaType): Promise<AuthSession> {
     const response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
+      credentials: "include",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         username: data.username.trim(),
@@ -36,8 +37,7 @@ export const authService = {
       throw new Error(parseError(payload, "Unable to sign in. Please try again."));
     }
     const session: AuthSession = {
-      accessToken: payload.access_token,
-      expiresAt: payload.expires_in === null ? null : Date.now() + payload.expires_in * 1000,
+      expiresAt: Date.now() + payload.expires_in * 1000,
       user: payload.user,
     };
     saveSession(session, data.rememberMe);
@@ -49,18 +49,18 @@ export const authService = {
     if (!raw) return null;
     try {
       const session = JSON.parse(raw) as AuthSession;
-      const invalidExpiry = session.expiresAt !== null && (
+      const invalidExpiry = (
         typeof session.expiresAt !== "number" ||
         !Number.isFinite(session.expiresAt) ||
         session.expiresAt <= Date.now()
       );
-      if (!session.accessToken || !session.user || invalidExpiry) {
-        this.logout();
+      if (!session.user || invalidExpiry) {
+        this.clearLocalSession();
         return null;
       }
       return session;
     } catch {
-      this.logout();
+      this.clearLocalSession();
       return null;
     }
   },
@@ -73,8 +73,19 @@ export const authService = {
     return this.getSession() !== null;
   },
 
-  logout() {
+  clearLocalSession() {
     localStorage.removeItem(SESSION_KEY);
     sessionStorage.removeItem(SESSION_KEY);
+  },
+
+  async logout() {
+    try {
+      await fetch(`${API_URL}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } finally {
+      this.clearLocalSession();
+    }
   },
 };

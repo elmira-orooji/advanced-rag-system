@@ -1,7 +1,7 @@
 import { confirmAction } from "../services/confirmation";
 import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import SidebarV2 from "../components/SidebarV2";
 import SettingsPage from "../pages/SettingsPage";
@@ -13,13 +13,36 @@ import ConversationPage from "../pages/ConversationPage";
 import { authService } from "../services/authService";
 import { conversationService, type ConversationSummary } from "../services/conversationService";
 import toast from "react-hot-toast";
+import { canManageUsers } from "../lib/permissions";
 
 export type AppPage = "home" | "chat" | "upload" | "assistants" | "users" | "settings";
 
+const PAGE_PATHS: Record<AppPage, string> = {
+  home: "/home",
+  chat: "/home/chat",
+  upload: "/home/knowledge",
+  assistants: "/home/assistants",
+  users: "/home/users",
+  settings: "/home/settings",
+};
+
+function routeState(pathname: string): { page: AppPage; conversationId: string | null; valid: boolean } {
+  const segments = pathname.slice("/home".length).split("/").filter(Boolean);
+  if (!segments.length) return { page: "home", conversationId: null, valid: true };
+  if (segments[0] === "chat" && segments.length <= 2) {
+    return { page: "chat", conversationId: segments[1] ?? null, valid: true };
+  }
+  const page = ({ knowledge: "upload", assistants: "assistants", users: "users", settings: "settings" } as const)[segments[0] as "knowledge" | "assistants" | "users" | "settings"];
+  return page && segments.length === 1
+    ? { page, conversationId: null, valid: true }
+    : { page: "home", conversationId: null, valid: false };
+}
+
 export default function AppLayout() {
   const navigate = useNavigate();
+  const location = useLocation();
   const currentUser = authService.getUser();
-  const [activePage, setActivePage] = useState<AppPage>("home");
+  const { page: activePage, conversationId: activeConversationId, valid: validRoute } = routeState(location.pathname);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -27,7 +50,6 @@ export default function AppLayout() {
     return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   });
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
 
   const loadConversations = () => {
     conversationService.list().then(setConversations).catch((error) => toast.error((error as Error).message));
@@ -41,23 +63,23 @@ export default function AppLayout() {
   }, [theme]);
 
   const selectPage = (page: AppPage) => {
-    setActivePage(page);
+    navigate(PAGE_PATHS[page]);
     setMobileMenuOpen(false);
   };
 
-  const handleLogout = () => {
-    authService.logout();
+  const handleLogout = async () => {
+    await authService.logout();
     navigate("/", { replace: true });
   };
 
   const newConversation = () => {
-    setActiveConversationId(null);
-    selectPage("chat");
+    navigate(PAGE_PATHS.chat);
+    setMobileMenuOpen(false);
   };
 
   const selectConversation = (id: string) => {
-    setActiveConversationId(id);
-    selectPage("chat");
+    navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`);
+    setMobileMenuOpen(false);
   };
 
   const renameConversation = async (item: ConversationSummary) => {
@@ -71,7 +93,7 @@ export default function AppLayout() {
     if (!await confirmAction(`Delete “${item.title}”? This cannot be undone.`)) return;
     try {
       await conversationService.remove(item.id);
-      if (activeConversationId === item.id) { setActiveConversationId(null); setActivePage("chat"); }
+      if (activeConversationId === item.id) navigate(PAGE_PATHS.chat, { replace: true });
       loadConversations();
       toast.success("Conversation deleted");
     } catch (error) { toast.error((error as Error).message); }
@@ -84,7 +106,7 @@ export default function AppLayout() {
         currentUser={currentUser}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
-        onLogout={handleLogout}
+        onLogout={() => void handleLogout()}
         setActivePage={selectPage}
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -122,11 +144,12 @@ export default function AppLayout() {
         </header>
 
         <main className="relative z-10 min-h-0 flex-1 overflow-hidden">
-          {activePage === "home" && (currentUser?.role === "admin" ? <AnalyticsPage /> : <ConversationPage conversationId={activeConversationId} onConversationChange={setActiveConversationId} onConversationsUpdated={loadConversations} />)}
-          {activePage === "chat" && <ConversationPage conversationId={activeConversationId} onConversationChange={setActiveConversationId} onConversationsUpdated={loadConversations} />}
+          {!validRoute && <Navigate to="/home" replace />}
+          {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <ConversationPage key="home-conversation" conversationId={null} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} />)}
+          {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} />}
           {activePage === "upload" && <UploadFilesPage />}
           {activePage === "assistants" && <AssistantsPage />}
-          {activePage === "users" && currentUser?.role === "admin" && <UsersPage />}
+          {activePage === "users" && (canManageUsers(currentUser) ? <UsersPage /> : <Navigate to="/home" replace />)}
           {activePage === "settings" && <SettingsPage theme={theme} setTheme={setTheme} />}
         </main>
       </section>

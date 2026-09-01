@@ -83,6 +83,9 @@ export default function ConversationPage({ conversationId, onConversationChange,
     return [...persisted, { id: "pending-user-message", role: "user" as const, content: pendingPrompt, createdAt: new Date().toISOString() }];
   }, [detail, pendingPrompt]);
   const selectedSet = sets.find((item) => item.id === selectedSetId);
+  const detailMatchesConversation = conversationId
+    ? detail?.id === conversationId
+    : detail === null;
 
   const send = async (content: string) => {
     setPendingPrompt(content);
@@ -107,7 +110,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
     }
   };
 
-  if (loading) return <div className="grid h-full place-items-center conversation-muted"><Loader2 className="animate-spin" /></div>;
+  if (loading || !detailMatchesConversation) return <div className="grid h-full place-items-center conversation-muted" role="status" aria-live="polite" aria-label={isFa ? "در حال بارگذاری گفتگو" : "Loading conversation"}><Loader2 className="animate-spin" aria-hidden="true" /></div>;
 
   if (!messages.length && !conversationId) {
     const suggestions = isFa
@@ -203,4 +206,3 @@ export default function ConversationPage({ conversationId, onConversationChange,
     <div className="conversation-dock relative z-20 shrink-0 px-0 pb-4 pt-3 sm:px-3 sm:pb-5"><ChatInput prominent disabled={sending || (!conversationId && !selectedSetId)} onSend={send} /><div className="mt-2 flex items-center justify-center gap-1.5 text-[9px] conversation-muted"><FileText size={10} />{isFa ? "پاسخ‌ها ممکن است خطا داشته باشند؛ منابع را بررسی کنید." : "AI can make mistakes. Verify important details in the cited sources."}</div></div>
   </div>;
 }
-

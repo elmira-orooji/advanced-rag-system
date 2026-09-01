@@ -1,9 +1,8 @@
-import { authService } from "./authService";
 import type { DocumentSet } from "./knowledgeService";
+import { apiRequest } from "./apiClient";
 
-const API = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
-const headers = (json = false) => ({ ...(json ? { "Content-Type": "application/json" } : {}), Authorization: `Bearer ${authService.getSession()?.accessToken || ""}` });
-async function request<T>(path: string, init?: RequestInit): Promise<T> { const response = await fetch(`${API}${path}`, init); if (response.status === 204) return undefined as T; const data = await response.json().catch(() => null); if (!response.ok) throw new Error(typeof data?.detail === "string" ? data.detail : "Request failed"); return data; }
+const headers = (json = false) => ({ ...(json ? { "Content-Type": "application/json" } : {}) });
+const request = <T,>(path: string, init?: RequestInit) => apiRequest<T>(path, init);
 
 export interface CustomAssistant { model_id: string | null; answer_mode: "sources" | "hybrid"; id: string; name: string; description: string | null; instructions: string; is_active: boolean; created_by_id: string; document_set_ids: string[]; document_set_names: string[]; created_at: string; updated_at: string; }
 export interface AssistantPayload { model_id: string | null; answer_mode: "sources" | "hybrid"; name: string; description?: string; instructions: string; document_set_ids: string[]; is_active: boolean; }

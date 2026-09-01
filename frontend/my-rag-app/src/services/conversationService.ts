@@ -1,6 +1,4 @@
-import { authService } from "./authService";
-
-const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
+import { apiRequest } from "./apiClient";
 
 export interface ConversationSummary {
   id: string;
@@ -35,17 +33,10 @@ export interface ConversationDetail extends ConversationSummary {
 }
 
 function headers() {
-  const token = authService.getSession()?.accessToken;
-  return { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) };
+  return { "Content-Type": "application/json" };
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
-  if (response.status === 204) return undefined as T;
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(typeof payload?.detail === "string" ? payload.detail : "Conversation request failed");
-  return payload as T;
-}
+const request = <T,>(path: string, init?: RequestInit) => apiRequest<T>(path, init, "Conversation request failed");
 
 export const conversationService = {
   list: () => request<ConversationSummary[]>("/conversations?limit=100", { headers: headers() }),

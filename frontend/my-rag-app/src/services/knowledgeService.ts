@@ -1,6 +1,4 @@
-import { authService } from "./authService";
-
-const API_URL = (import.meta.env.VITE_API_URL || "http://127.0.0.1:8000/api/v1").replace(/\/$/, "");
+import { apiFetch, apiRequest, apiUpload } from "./apiClient";
 
 export interface KnowledgeDocument {
   id: string;
@@ -104,23 +102,12 @@ export interface RetrieverVariant { config: RetrieverConfig; duration_ms: number
 export interface RetrieverComparison { question: string; overlap_count: number; rank_changes: Record<string, number>; variant_a: RetrieverVariant; variant_b: RetrieverVariant; }
 
 function headers(json = false) {
-  const token = authService.getSession()?.accessToken;
   return {
     ...(json ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_URL}${path}`, init);
-  if (response.status === 204) return undefined as T;
-  const payload = await response.json().catch(() => null);
-  if (!response.ok) {
-    const detail = payload?.detail;
-    throw new Error(typeof detail === "string" ? detail : detail?.message || "Request failed");
-  }
-  return payload as T;
-}
+const request = <T,>(path: string, init?: RequestInit) => apiRequest<T>(path, init);
 
 export const knowledgeService = {
   listSets: () => request<DocumentSet[]>("/document-sets", { headers: headers() }),
@@ -129,11 +116,11 @@ export const knowledgeService = {
   updateSet: (id: string, data: { name?: string; description?: string | null; child_chunk_size?: number; chunk_overlap?: number; parent_chunk_size?: number }) =>
     request<DocumentSet>(`/document-sets/${id}`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
   deleteSet: (id: string) => request<void>(`/document-sets/${id}`, { method: "DELETE", headers: headers() }),
-  listDocuments: (setId?: string) =>
-    request<KnowledgeDocument[]>(`/documents?limit=100${setId ? `&document_set_id=${encodeURIComponent(setId)}` : ""}`, { headers: headers() }),
+  listDocuments: (setId?: string, signal?: AbortSignal) =>
+    request<KnowledgeDocument[]>(`/documents?limit=100${setId ? `&document_set_id=${encodeURIComponent(setId)}` : ""}`, { headers: headers(), signal }),
   getDocument: (documentId: string) => request<DocumentDetail>(`/documents/${documentId}`, { headers: headers() }),
   getDocumentContent: async (documentId: string) => {
-    const response = await fetch(`${API_URL}/documents/${documentId}/content`, { headers: headers() });
+    const response = await apiFetch(`/documents/${documentId}/content`, { headers: headers() });
     if (!response.ok) throw new Error("Document preview is unavailable");
     return response.blob();
   },
@@ -141,11 +128,10 @@ export const knowledgeService = {
     request<DocumentChunk>(`/documents/${documentId}/chunks/${chunkId}`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
   enrichChunk: (documentId: string, chunkId: string) =>
     request<DocumentChunk>(`/documents/${documentId}/chunks/${chunkId}/enrich`, { method: "POST", headers: headers() }),
-  uploadDocument: async (file: File, setId: string) => {
+  uploadDocument: async (file: File, setId: string, onProgress: (progress: number) => void = () => undefined) => {
     const form = new FormData();
     form.append("file", file);
-    const document = await request<KnowledgeDocument>(`/documents/ingest?document_set_id=${encodeURIComponent(setId)}`, { method: "POST", headers: headers(), body: form });
-    return document;
+    return apiUpload<KnowledgeDocument>(`/documents/ingest?document_set_id=${encodeURIComponent(setId)}`, form, onProgress);
   },
   removeDocumentFromSet: (setId: string, documentId: string) =>
     request(`/document-sets/${setId}/documents/${documentId}`, { method: "DELETE", headers: headers() }),

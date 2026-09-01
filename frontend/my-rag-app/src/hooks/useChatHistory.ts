@@ -8,44 +8,27 @@ import type {
 
 const STORAGE_KEY = "knowledgeflow-chats";
 
+function readStoredChats() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return { sessions: [] as ChatSession[], activeSessionId: null as string | null };
+  try {
+    const sessions = JSON.parse(saved) as ChatSession[];
+    return { sessions, activeSessionId: sessions[0]?.id ?? null };
+  } catch (error) {
+    console.error("Failed to load chats:", error);
+    return { sessions: [] as ChatSession[], activeSessionId: null as string | null };
+  }
+}
+
 export function useChatHistory() {
+  const [initialChats] = useState(readStoredChats);
   const [sessions, setSessions] =
-    useState<ChatSession[]>([]);
+    useState<ChatSession[]>(initialChats.sessions);
 
   const [
     activeSessionId,
     setActiveSessionId,
-  ] = useState<string | null>(
-    null
-  );
-
-  /* Load chats from LocalStorage */
-  useEffect(() => {
-    const saved =
-      localStorage.getItem(
-        STORAGE_KEY
-      );
-
-    if (!saved) return;
-
-    try {
-      const parsed: ChatSession[] =
-        JSON.parse(saved);
-
-      setSessions(parsed);
-
-      if (parsed.length > 0) {
-        setActiveSessionId(
-          parsed[0].id
-        );
-      }
-    } catch (error) {
-      console.error(
-        "Failed to load chats:",
-        error
-      );
-    }
-  }, []);
+  ] = useState<string | null>(initialChats.activeSessionId);
 
   /* Save chats to LocalStorage */
   useEffect(() => {

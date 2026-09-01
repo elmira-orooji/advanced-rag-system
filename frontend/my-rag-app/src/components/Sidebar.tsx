@@ -212,9 +212,7 @@ export default function Sidebar({
     {/* Footer */}
     <div className="p-3 border-t border-inherit">
 <button
-  onClick={() =>
-    {onOpenUpload}
-  }
+  onClick={onOpenUpload}
   className="
     w-full
     flex

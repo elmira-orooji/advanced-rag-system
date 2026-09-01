@@ -10,14 +10,11 @@ export interface AuthUser {
 }
 
 export interface AuthSession {
-  accessToken: string;
-  expiresAt: number | null;
+  expiresAt: number;
   user: AuthUser;
 }
 
 export interface LoginResponse {
-  access_token: string;
-  token_type: "bearer";
-  expires_in: number | null;
+  expires_in: number;
   user: AuthUser;
 }

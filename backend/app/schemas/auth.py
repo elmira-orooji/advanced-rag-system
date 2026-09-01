@@ -21,7 +21,5 @@ class AuthUser(BaseModel):
 
 
 class LoginResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int | None
+    expires_in: int
     user: AuthUser

@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { confirmAction } from "../services/confirmation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import { useTranslation } from "react-i18next";
@@ -18,6 +18,19 @@ import { authService } from "../services/authService";
 import { knowledgeService, type DocumentSet, type KnowledgeDocument, type MetadataFilters, type ResearchResponse } from "../services/knowledgeService";
 import type { ChatMessage } from "../types/chat";
 import { connectorService, type Connector, type ConnectorType } from "../services/connectorService";
+import { runUploadQueue } from "../lib/uploadQueue";
+
+const DOCUMENT_POLL_BASE_DELAY = 1_500;
+const DOCUMENT_POLL_MAX_DELAY = 30_000;
+const MAX_CONCURRENT_UPLOADS = 3;
+
+type UploadTask = {
+  id: string;
+  filename: string;
+  progress: number;
+  status: "queued" | "uploading" | "success" | "error";
+  error?: string;
+};
 
 export default function UploadFilesPage() {
   const { i18n } = useTranslation();
@@ -30,7 +43,7 @@ export default function UploadFilesPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const [uploadTasks, setUploadTasks] = useState<UploadTask[]>([]);
   const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 1280px)").matches);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
@@ -45,6 +58,14 @@ export default function UploadFilesPage() {
   const [metadataFilters, setMetadataFilters] = useState<MetadataFilters>({});
   const [playgroundOpen, setPlaygroundOpen] = useState(false);
   const [chunkingOpen, setChunkingOpen] = useState(false);
+  const selectedSetIdRef = useRef(selectedSetId);
+  const uploading = uploadTasks.some((task) => task.status === "queued" || task.status === "uploading");
+
+  const applyDocuments = useCallback((items: KnowledgeDocument[]) => {
+    const availableIds = new Set(items.filter((item) => item.status === "indexed").map((item) => item.id));
+    setDocuments(items);
+    setSelectedDocumentIds((current) => current.filter((id) => availableIds.has(id)));
+  }, []);
 
   const copy = isFa ? {
     eyebrow: "مدیریت منابع", title: "پایگاه دانش", subtitle: "اسناد را در مجموعه‌های موضوعی سازمان‌دهی کنید و پاسخ‌ها را به همان محدوده محدود کنید.",
@@ -75,42 +96,99 @@ export default function UploadFilesPage() {
     finally { setLoading(false); }
   }, []);
 
-  useEffect(() => { void loadSets(); }, [loadSets]);
+  const refreshSetData = useCallback(async (setId: string) => {
+    const [nextDocuments, nextConnectors] = await Promise.all([
+      knowledgeService.listDocuments(setId),
+      connectorService.list(setId),
+    ]);
+    if (selectedSetIdRef.current !== setId) return;
+    applyDocuments(nextDocuments);
+    setConnectors(nextConnectors);
+  }, [applyDocuments]);
+
+  useEffect(() => { selectedSetIdRef.current = selectedSetId; }, [selectedSetId]);
   useEffect(() => {
-    if (!selectedSetId) { setDocuments([]); return; }
-    setLoading(true);
-    knowledgeService.listDocuments(selectedSetId)
-      .then(setDocuments)
-      .catch((error) => toast.error(error.message))
-      .finally(() => setLoading(false));
-    connectorService.list(selectedSetId).then(setConnectors).catch(() => setConnectors([]));
-    setChatMessages([]);
-    setSelectedDocumentIds([]);
-    setScopeOpen(false);
-  }, [selectedSetId]);
+    let active = true;
+    knowledgeService.listSets()
+      .then((result) => {
+        if (!active) return;
+        setSets(result);
+        setSelectedSetId((current) => current && result.some((item) => item.id === current) ? current : result[0]?.id || "");
+      })
+      .catch((error) => { if (active) toast.error((error as Error).message); })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, []);
   useEffect(() => {
-    const availableIds = new Set(documents.filter((item) => item.status === "indexed").map((item) => item.id));
-    setSelectedDocumentIds((current) => current.filter((id) => availableIds.has(id)));
-  }, [documents]);
+    const controller = new AbortController();
+    queueMicrotask(() => {
+      if (controller.signal.aborted) return;
+      if (!selectedSetId) applyDocuments([]);
+      else setLoading(true);
+      setChatMessages([]);
+      setSelectedDocumentIds([]);
+      setScopeOpen(false);
+    });
+    if (!selectedSetId) return () => controller.abort();
+    knowledgeService.listDocuments(selectedSetId, controller.signal)
+      .then((items) => { if (!controller.signal.aborted) applyDocuments(items); })
+      .catch((error) => { if (error instanceof DOMException && error.name === "AbortError") return; toast.error(error.message); })
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    connectorService.list(selectedSetId, controller.signal)
+      .then((items) => { if (!controller.signal.aborted) setConnectors(items); })
+      .catch((error) => { if (!(error instanceof DOMException && error.name === "AbortError") && !controller.signal.aborted) setConnectors([]); });
+    return () => controller.abort();
+  }, [applyDocuments, selectedSetId]);
+  const hasActiveDocuments = documents.some((item) => ["queued", "processing"].includes(item.status));
   useEffect(() => {
-    if (!selectedSetId || !documents.some((item) => ["queued", "processing"].includes(item.status))) return;
-    const timer = window.setInterval(() => {
-      knowledgeService.listDocuments(selectedSetId).then(setDocuments).catch(() => undefined);
-    }, 1500);
-    return () => window.clearInterval(timer);
-  }, [documents, selectedSetId]);
+    if (!selectedSetId || !hasActiveDocuments) return;
+    const controller = new AbortController();
+    let timer: number | undefined;
+    let retryDelay = DOCUMENT_POLL_BASE_DELAY;
+    const poll = async () => {
+      try {
+        const items = await knowledgeService.listDocuments(selectedSetId, controller.signal);
+        if (!controller.signal.aborted) {
+          applyDocuments(items);
+          retryDelay = DOCUMENT_POLL_BASE_DELAY;
+        }
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        retryDelay = Math.min(retryDelay * 2, DOCUMENT_POLL_MAX_DELAY);
+      } finally {
+        if (!controller.signal.aborted) timer = window.setTimeout(() => void poll(), retryDelay);
+      }
+    };
+    timer = window.setTimeout(() => void poll(), DOCUMENT_POLL_BASE_DELAY);
+    return () => {
+      controller.abort();
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
+  }, [applyDocuments, hasActiveDocuments, selectedSetId]);
 
   const onDrop = useCallback(async (files: File[]) => {
     if (!selectedSetId || !files.length) return;
-    setUploading(true);
-    try {
-      for (const file of files) await knowledgeService.uploadDocument(file, selectedSetId);
-      toast.success(isFa ? "اسناد پردازش و به مجموعه اضافه شدند" : "Documents processed and added to the set");
-      setDocuments(await knowledgeService.listDocuments(selectedSetId));
+    const uploadSetId = selectedSetId;
+    const batch = files.map((file) => ({ id: crypto.randomUUID(), file }));
+    setUploadTasks(batch.map(({ id, file }) => ({ id, filename: file.name, progress: 0, status: "queued" })));
+    const updateTask = (id: string, changes: Partial<UploadTask>) => {
+      setUploadTasks((tasks) => tasks.map((task) => task.id === id ? { ...task, ...changes } : task));
+    };
+    const { succeeded, failed } = await runUploadQueue({
+      items: batch,
+      concurrency: MAX_CONCURRENT_UPLOADS,
+      upload: async (entry, onProgress) => { await knowledgeService.uploadDocument(entry.file, uploadSetId, onProgress); },
+      onUpdate: (id, changes) => updateTask(id, changes),
+    });
+    if (succeeded > 0) {
+      toast.success(isFa ? `${succeeded.toLocaleString("fa-IR")} فایل با موفقیت بارگذاری شد` : `${succeeded} file${succeeded === 1 ? "" : "s"} uploaded successfully`);
+      await refreshSetData(uploadSetId);
       await loadSets();
-    } catch (error) { toast.error((error as Error).message); }
-    finally { setUploading(false); }
-  }, [isFa, loadSets, selectedSetId]);
+    }
+    if (failed > 0) {
+      toast.error(isFa ? `بارگذاری ${failed.toLocaleString("fa-IR")} فایل ناموفق بود` : `${failed} file${failed === 1 ? "" : "s"} failed to upload`);
+    }
+  }, [isFa, loadSets, refreshSetData, selectedSetId]);
 
   const { getInputProps, getRootProps, isDragActive, open } = useDropzone({
     onDrop, noClick: true, disabled: !selectedSetId || uploading, maxSize: 10 * 1024 * 1024,
@@ -166,15 +244,22 @@ export default function UploadFilesPage() {
         <section className="kb-sets shrink-0">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-xs font-semibold uppercase tracking-[.14em] kb-muted">{copy.sets}</h2>{isAdmin && <button onClick={() => setDialog("create")} className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold kb-accent hover:bg-[#7c27ff]/20"><Plus size={14} />{copy.newSet}</button>}</div>
           <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-white/10">
-            {sets.map((item) => <button key={item.id} onClick={() => setSelectedSetId(item.id)} aria-pressed={selectedSetId === item.id} className={`kb-set-card ${selectedSetId === item.id ? "is-active" : ""}`}><div className="flex items-start justify-between"><span className="kb-set-icon"><FolderKanban size={17} /></span>{selectedSetId === item.id && <span className="kb-selected-dot" />}</div><p className="mt-3 truncate text-sm font-semibold kb-text">{item.name}</p><p className="mt-1 line-clamp-1 text-[11px] kb-muted">{item.description || (isFa ? "بدون توضیحات" : "No description")}</p><p className="mt-3 text-[10px] kb-muted">{item.document_count} {copy.documents} · {item.indexed_document_count} {copy.indexed}</p></button>)}
+            {sets.map((item) => <button key={item.id} onClick={() => { selectedSetIdRef.current = item.id; setSelectedSetId(item.id); }} aria-pressed={selectedSetId === item.id} className={`kb-set-card ${selectedSetId === item.id ? "is-active" : ""}`}><div className="flex items-start justify-between"><span className="kb-set-icon"><FolderKanban size={17} /></span>{selectedSetId === item.id && <span className="kb-selected-dot" />}</div><p className="mt-3 truncate text-sm font-semibold kb-text">{item.name}</p><p className="mt-1 line-clamp-1 text-[11px] kb-muted">{item.description || (isFa ? "بدون توضیحات" : "No description")}</p><p className="mt-3 text-[10px] kb-muted">{item.document_count} {copy.documents} · {item.indexed_document_count} {copy.indexed}</p></button>)}
             {!loading && !sets.length && <button onClick={() => isAdmin && setDialog("create")} className="grid min-h-[132px] min-w-[230px] place-items-center rounded-2xl border border-dashed border-white/10 text-xs kb-muted"><span className="flex flex-col items-center gap-2"><BookOpen size={20} />{isAdmin ? copy.newSet : (isFa ? "مجموعه‌ای وجود ندارد" : "No knowledge sets")}</span></button>}
           </div>
         </section>
 
         <div className="kb-set-content flex min-h-0 flex-1 flex-col gap-4">
           {selectedSet && <div className="flex shrink-0 items-center justify-between gap-3"><div className="min-w-0"><h2 className="truncate text-lg font-semibold">{selectedSet.name}</h2><p className="mt-1 truncate text-xs kb-muted">{selectedSet.description}</p></div><div className="flex items-center gap-2">{(isAdmin || selectedSet.access_level === "edit" || selectedSet.access_level === "manage") && <button onClick={() => setConnectorDialog(true)} className="kb-connect flex h-9 items-center gap-1.5 px-3 text-[11px] font-medium"><Link2 size={13} />{copy.connect}</button>}{(isAdmin || selectedSet.access_level === "manage") && <div className="relative"><button aria-label={isFa ? "گزینه‌های مجموعه" : "Set options"} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} className="app-icon-button grid size-9 place-items-center rounded-xl kb-muted"><MoreHorizontal size={17} /></button>{menuOpen && <div className="nexora-dropdown absolute end-0 top-11 z-30 w-40 rounded-xl border border-white/10 bg-[#15121c] p-1.5 shadow-2xl"><button onClick={() => { setDialog("edit"); setMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs kb-text hover:bg-white/5"><Pencil size={13} />{copy.edit}</button><button onClick={deleteSet} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-rose-300/75 hover:bg-rose-400/5"><Trash2 size={13} />{copy.delete}</button></div>}</div>}</div></div>}
-          {connectors.length > 0 && <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">{connectors.map((connector) => <div key={connector.id} className="flex h-10 min-w-0 shrink-0 items-center gap-2 rounded-xl border border-white/[.07] bg-white/[.025] ps-3 pe-1.5"><span className="kb-accent">{connector.connector_type === "github" ? <Github size={13} /> : <Globe2 size={13} />}</span><span className="max-w-36 truncate text-[10px] kb-muted">{connector.name}</span><span className={`size-1.5 rounded-full ${connector.status === "ready" ? "bg-emerald-300" : connector.status === "failed" ? "bg-rose-300" : "bg-amber-300"}`} /><button title="Sync" disabled={syncingId === connector.id} onClick={async () => { setSyncingId(connector.id); try { const result = await connectorService.sync(selectedSetId, connector.id); toast.success(`${result.created} created · ${result.updated} updated`); setDocuments(await knowledgeService.listDocuments(selectedSetId)); setConnectors(await connectorService.list(selectedSetId)); await loadSets(); } catch (e) { toast.error((e as Error).message); } finally { setSyncingId(null); } }} className="grid size-7 place-items-center rounded-lg kb-muted hover:bg-white/5 hover:text-white"><RefreshCw size={12} className={syncingId === connector.id ? "animate-spin" : ""} /></button></div>)}</div>}
+          {connectors.length > 0 && <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">{connectors.map((connector) => <div key={connector.id} className="flex h-10 min-w-0 shrink-0 items-center gap-2 rounded-xl border border-white/[.07] bg-white/[.025] ps-3 pe-1.5"><span className="kb-accent">{connector.connector_type === "github" ? <Github size={13} /> : <Globe2 size={13} />}</span><span className="max-w-36 truncate text-[10px] kb-muted">{connector.name}</span><span className={`size-1.5 rounded-full ${connector.status === "ready" ? "bg-emerald-300" : connector.status === "failed" ? "bg-rose-300" : "bg-amber-300"}`} /><button title="Sync" disabled={syncingId === connector.id} onClick={async () => { const setId = selectedSetId; setSyncingId(connector.id); try { const result = await connectorService.sync(setId, connector.id); toast.success(`${result.created} created · ${result.updated} updated`); await refreshSetData(setId); await loadSets(); } catch (e) { toast.error((e as Error).message); } finally { setSyncingId(null); } }} className="grid size-7 place-items-center rounded-lg kb-muted hover:bg-white/5 hover:text-white"><RefreshCw size={12} className={syncingId === connector.id ? "animate-spin" : ""} /></button></div>)}</div>}
           {(isAdmin || selectedSet?.access_level === "edit" || selectedSet?.access_level === "manage") && selectedSet && <div {...getRootProps()} onClick={open} className={`knowledge-dropzone flex min-h-28 shrink-0 cursor-pointer items-center justify-center gap-4 rounded-[22px] p-4 transition ${isDragActive ? "is-active" : ""}`}><input {...getInputProps()} /><span className="kb-upload-icon">{uploading ? <span className="size-4 animate-spin rounded-full border-2 border-white/20 border-t-[#d9a6ff]" /> : <UploadCloud size={20} />}</span><div className="text-start"><p className="text-sm font-semibold kb-text">{copy.drop}</p><p className="mt-1 text-[11px] kb-muted">{copy.browse} · {copy.formats}</p></div></div>}
+          {uploadTasks.length > 0 && <section className="app-glass-panel shrink-0 rounded-2xl border border-white/[.07] p-3" aria-label={isFa ? "وضعیت بارگذاری فایل‌ها" : "File upload status"}>
+            <div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-semibold kb-muted">{isFa ? "صف بارگذاری" : "Upload queue"}</p>{!uploading && <button type="button" onClick={() => setUploadTasks([])} className="text-[9px] kb-muted hover:text-white">{isFa ? "پاک‌کردن" : "Clear"}</button>}</div>
+            <div className="grid gap-2 sm:grid-cols-2">{uploadTasks.map((task) => <article key={task.id} className="rounded-xl border border-white/[.06] bg-white/[.025] p-2.5" title={task.error}>
+              <div className="flex items-center gap-2"><span className={`grid size-7 shrink-0 place-items-center rounded-lg ${task.status === "error" ? "bg-rose-400/10 text-rose-300" : task.status === "success" ? "bg-emerald-400/10 text-emerald-300" : "bg-[#7c27ff]/15 kb-accent"}`}>{task.status === "uploading" ? <RefreshCw size={12} className="animate-spin" /> : task.status === "success" ? <Check size={13} /> : task.status === "error" ? <X size={13} /> : <FileText size={12} />}</span><div className="min-w-0 flex-1"><p className="truncate text-[10px] font-medium kb-text">{task.filename}</p><p className={`mt-0.5 text-[8px] ${task.status === "error" ? "text-rose-300/70" : "kb-muted"}`}>{task.status === "queued" ? (isFa ? "در صف" : "Queued") : task.status === "uploading" ? `${task.progress.toLocaleString(isFa ? "fa-IR" : "en-US")}%` : task.status === "success" ? (isFa ? "بارگذاری شد" : "Uploaded") : (task.error || (isFa ? "ناموفق" : "Failed"))}</p></div></div>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-white/[.06]"><div className={`h-full rounded-full transition-[width] duration-200 ${task.status === "error" ? "bg-rose-400/70" : task.status === "success" ? "bg-emerald-400/70" : "bg-gradient-to-r from-[#7c27ff] to-[#c43cff]"}`} style={{ width: `${task.progress}%` }} /></div>
+            </article>)}</div>
+          </section>}
           <section className="kb-library app-glass-panel flex min-h-0 flex-1 flex-col overflow-hidden">
             <div className="kb-library-toolbar flex shrink-0 flex-col gap-3 border-b border-white/[.07] p-4 sm:flex-row sm:items-center sm:justify-between"><h2 className="text-sm font-semibold">{copy.library}</h2><div className="flex gap-2"><label className="relative flex-1 sm:w-56"><Search size={14} className="absolute start-3 top-1/2 -translate-y-1/2 kb-muted" /><input value={query} onChange={(e) => setQuery(e.target.value)} aria-label={copy.search} placeholder={copy.search} className="h-9 w-full rounded-xl border border-white/[.09] bg-white/[.035] ps-9 pe-3 text-xs outline-none placeholder:text-white/20" /></label><label className="relative"><select aria-label={copy.allStatuses} value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="h-9 appearance-none rounded-xl border border-white/[.09] bg-[#0a1530] ps-3 pe-8 text-xs kb-muted"><option value="all">{copy.allStatuses}</option><option value="indexed">Indexed</option><option value="failed">Failed</option></select><ChevronDown size={13} className="absolute end-2.5 top-1/2 -translate-y-1/2 kb-muted" /></label></div></div>
             <div className="kb-document-list min-h-0 flex-1 divide-y divide-white/[.055] overflow-y-auto" tabIndex={0} role="region" aria-label={copy.library}>
@@ -210,7 +295,7 @@ export default function UploadFilesPage() {
       </div>
     </aside>
     {dialog && <SetDialog mode={dialog} item={dialog === "edit" ? selectedSet : undefined} isFa={isFa} copy={copy} onClose={() => setDialog(null)} onSaved={async () => { setDialog(null); await loadSets(); }} />}
-    {connectorDialog && selectedSetId && <CloudConnectorDialog setId={selectedSetId} isFa={isFa} onClose={() => setConnectorDialog(false)} onSaved={async () => { setConnectorDialog(false); setConnectors(await connectorService.list(selectedSetId)); setDocuments(await knowledgeService.listDocuments(selectedSetId)); await loadSets(); }} />}
+    {connectorDialog && selectedSetId && <CloudConnectorDialog setId={selectedSetId} isFa={isFa} onClose={() => setConnectorDialog(false)} onSaved={async () => { const setId = selectedSetId; setConnectorDialog(false); await refreshSetData(setId); await loadSets(); }} />}
     {playgroundOpen && selectedSetId && <RetrievalPlayground setId={selectedSetId} documentIds={selectedDocumentIds} filters={metadataFilters} isFa={isFa} canManage={Boolean(selectedSet && (isAdmin || selectedSet.access_level === "manage"))} onClose={() => setPlaygroundOpen(false)} />}
     {chunkingOpen && selectedSet && <ChunkingSettingsDialog item={selectedSet} isFa={isFa} onClose={() => setChunkingOpen(false)} onSaved={async () => { setChunkingOpen(false); await loadSets(); }} />}
   </motion.div>;

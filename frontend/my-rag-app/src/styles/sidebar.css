@@ -75,34 +75,34 @@ html:not(.dark) .nexora-sidebar {
   gap: 4px;
   flex-shrink: 0;
 }
-.nexora-sidebar__brand-lockup > img { width: 36px; height: 36px; flex-shrink: 0; }
+.nexora-sidebar__brand-lockup > img { width: 30px; height: 30px; flex-shrink: 0; }
 .nexora-sidebar__wordmark {
   position: relative;
   display: inline-flex;
   align-items: center;
   min-width: 0;
-  height: 36px;
+  height: 30px;
   padding-right: 1px;
 }
 .nexora-sidebar__wordmark strong {
   display: inline-flex;
   align-items: center;
-  height: 36px;
+  height: 30px;
   color: var(--sb-text);
   font-family: "Cyber Copix", sans-serif;
-  font-size: 29px;
+  font-size: 24px;
   font-weight: 400;
-  line-height: 36px;
+  line-height: 30px;
   transform: scaleY(1.12);
   transform-origin: center top;
 }
 .nexora-sidebar__wordmark span {
   position: absolute;
   right: 0;
-  bottom: -12px;
+  bottom: -7px;
   color: var(--sb-muted);
   font-family: "Adine Kirnberg Script", cursive;
-  font-size: 13px;
+  font-size: 10px;
   font-weight: 400;
   line-height: 1;
   white-space: nowrap;
