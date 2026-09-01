@@ -1,7 +1,6 @@
 import type { LoginSchemaType } from "../schemas/loginSchema";
 import type { AuthSession, AuthUser, LoginResponse } from "../types/auth";
-
-const API_URL = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
+import { API_URL } from "../config/api";
 const SESSION_KEY = "knowledgeflow.auth";
 
 function parseError(payload: unknown, fallback: string) {
