@@ -1,19 +1,26 @@
 import { confirmAction } from "../services/confirmation";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import SidebarV2 from "../components/SidebarV2";
-import SettingsPage from "../pages/SettingsPage";
-import UploadFilesPage from "../pages/UploadFilesPage";
-import UsersPage from "../pages/UsersPage";
-import AssistantsPage from "../pages/AssistantsPage";
-import AnalyticsPage from "../pages/AnalyticsPage";
-import ConversationPage from "../pages/ConversationPage";
 import { authService } from "../services/authService";
 import { conversationService, type ConversationSummary } from "../services/conversationService";
 import toast from "react-hot-toast";
 import { canManageUsers } from "../lib/permissions";
+
+const AnalyticsPage = lazy(() => import("../pages/AnalyticsPage"));
+const AssistantsPage = lazy(() => import("../pages/AssistantsPage"));
+const ConversationPage = lazy(() => import("../pages/ConversationPage"));
+const SettingsPage = lazy(() => import("../pages/SettingsPage"));
+const UploadFilesPage = lazy(() => import("../pages/UploadFilesPage"));
+const UsersPage = lazy(() => import("../pages/UsersPage"));
+
+function PageFallback() {
+  return <div className="grid h-full place-items-center" role="status" aria-label="Loading dashboard page">
+    <span className="size-6 animate-spin rounded-full border-2 border-white/10 border-t-[#c43cff]" />
+  </div>;
+}
 
 export type AppPage = "home" | "chat" | "upload" | "assistants" | "users" | "settings";
 
@@ -143,7 +150,7 @@ export default function AppLayout() {
           </span>
         </header>
 
-        <main className="relative z-10 min-h-0 flex-1 overflow-hidden">
+        <main className="relative z-10 min-h-0 flex-1 overflow-hidden"><Suspense fallback={<PageFallback />}>
           {!validRoute && <Navigate to="/home" replace />}
           {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <ConversationPage key="home-conversation" conversationId={null} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} />)}
           {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} />}
@@ -151,7 +158,7 @@ export default function AppLayout() {
           {activePage === "assistants" && <AssistantsPage />}
           {activePage === "users" && (canManageUsers(currentUser) ? <UsersPage /> : <Navigate to="/home" replace />)}
           {activePage === "settings" && <SettingsPage theme={theme} setTheme={setTheme} />}
-        </main>
+        </Suspense></main>
       </section>
     </div>
   );
