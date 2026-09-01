@@ -4,6 +4,8 @@ import "../styles/knowledge.css";
 import { Power, ChevronDown, UserPlus, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { userService, type ManagedUser } from "../services/userService";
+import { useTranslation } from "react-i18next";
+import { sectionCopy } from "../locales/copy";
 
 interface AddUserFormProps {
   isFa: boolean;
@@ -12,6 +14,7 @@ interface AddUserFormProps {
 }
 
 export default function AddUserForm({ isFa, onClose, onCreated }: AddUserFormProps) {
+  const { t } = useTranslation();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [jobTitle, setJobTitle] = useState("");
@@ -21,9 +24,7 @@ export default function AddUserForm({ isFa, onClose, onCreated }: AddUserFormPro
   const [error, setError] = useState("");
   const validUsername = /^[A-Za-z0-9_.-]{3,100}$/.test(username.trim());
   const valid = validUsername && password.length >= 8 && jobTitle.trim().length <= 120;
-  const copy = isFa
-    ? { title: "افزودن عضو", subtitle: "یک حساب جدید در فضای کاری فعلی ایجاد کنید.", username: "نام کاربری", usernameHint: "حداقل ۳ حرف؛ فقط حروف انگلیسی، عدد، نقطه، خط تیره و زیرخط", password: "رمز عبور موقت", passwordHint: "حداقل ۸ کاراکتر", job: "عنوان شغلی", jobPlaceholder: "برای مثال: مدیر محصول", role: "نقش", user: "کاربر", admin: "مدیر", active: "حساب فعال باشد", cancel: "انصراف", save: "ایجاد عضو", saving: "در حال ایجاد…", success: "عضو جدید ایجاد شد" }
-    : { title: "Add team member", subtitle: "Create a new account in the current workspace.", username: "Username", usernameHint: "At least 3 characters; letters, numbers, dot, dash, and underscore", password: "Temporary password", passwordHint: "At least 8 characters", job: "Job title", jobPlaceholder: "e.g. Product manager", role: "Role", user: "User", admin: "Admin", active: "Account is active", cancel: "Cancel", save: "Create member", saving: "Creating…", success: "Team member created" };
+  const copy = sectionCopy(t, "addUser", ["title", "subtitle", "username", "usernameHint", "password", "passwordHint", "job", "jobPlaceholder", "role", "user", "admin", "active", "cancel", "save", "saving", "success"]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();

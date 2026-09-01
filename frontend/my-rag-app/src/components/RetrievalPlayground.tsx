@@ -6,11 +6,14 @@ import { knowledgeService, type MetadataFilters, type PipelineTraceResponse } fr
 import "./RetrievalPlayground.css";
 import EvaluationDataset from "./EvaluationDataset";
 import RetrieverComparison from "./RetrieverComparison";
+import { useTranslation } from "react-i18next";
+import { sectionCopy } from "../locales/copy";
 
 type Props = { setId: string; documentIds: string[]; filters: MetadataFilters; isFa: boolean; canManage: boolean; onClose: () => void };
 const icons = { question: Search, retrieval: ListFilter, rerank: Sparkles, answer: Bot };
 
 export default function RetrievalPlayground({ setId, documentIds, filters, isFa, canManage, onClose }: Props) {
+  const { t } = useTranslation();
   const panel = useRef<HTMLElement>(null);
   const running = useRef(false);
   useEffect(() => {
@@ -26,12 +29,10 @@ export default function RetrievalPlayground({ setId, documentIds, filters, isFa,
   const [comparisonOpen, setComparisonOpen] = useState(false);
   const run = async () => { if (query.trim().length < 2 || running.current) return; running.current = true; setLoading(true); try { setTrace(await knowledgeService.tracePipeline(query.trim(), setId, limit, documentIds, filters)); } catch (error) { toast.error((error as Error).message); } finally { running.current = false; setLoading(false); } };
 
-  const labels = isFa ? { title: "ردیابی کامل RAG", sub: "سؤال ← بازیابی ← بازرتبه‌بندی ← پاسخ", placeholder: "یک سؤال آزمایشی وارد کنید", run: "اجرای کامل", total: "زمان کل", grounded: "پاسخ مستند", ungrounded: "بدون استناد", empty: "یک سؤال اجرا کنید تا مسیر کامل تصمیم‌گیری سیستم نمایش داده شود.", question: "سؤال", retrieval: "بازیابی", rerank: "بازرتبه‌بندی", answer: "پاسخ" } : { title: "Full RAG Trace", sub: "Question → Retrieval → Rerank → Answer", placeholder: "Enter a test question", run: "Run pipeline", total: "Total time", grounded: "Grounded", ungrounded: "Ungrounded", empty: "Run a question to inspect the complete decision path.", question: "Question", retrieval: "Retrieval", rerank: "Rerank", answer: "Answer" };
+  const labels = sectionCopy(t, "retrieval", ["title", "sub", "placeholder", "run", "total", "grounded", "ungrounded", "empty", "question", "retrieval", "rerank", "answer", "questionDescription", "retrievalDescription", "rerankDescription", "answerDescription"]);
 
   const steps = ["question", "retrieval", "rerank", "answer"] as const;
-  const descriptions = isFa
-    ? ["پرسش و محدودهٔ جست‌وجو", "یافتن بخش‌های مرتبط اسناد", "مرتب‌سازی بر اساس ارتباط", "تولید پاسخ با استناد به منابع"]
-    : ["Define your question and scope", "Find relevant document passages", "Rank the strongest matches", "Generate an answer with sources"];
+  const descriptions = [labels.questionDescription, labels.retrievalDescription, labels.rerankDescription, labels.answerDescription];
 
   return createPortal(<div className="app-shell trace-overlay" style={{ background: "#18213380", fontFamily: isFa ? "Vazirmatn, sans-serif" : "Inter, sans-serif" }} onMouseDown={onClose}>
     <aside ref={panel} className="trace-panel" dir={isFa ? "rtl" : "ltr"} role="dialog" aria-modal="true" aria-labelledby="trace-heading" onMouseDown={(event) => event.stopPropagation()} onKeyDown={(event) => {
