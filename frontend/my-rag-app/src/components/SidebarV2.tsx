@@ -21,6 +21,7 @@ import { useTranslation } from "react-i18next";
 import type { ConversationSummary } from "../services/conversationService";
 import "../styles/sidebar.css";
 import { canManageUsers } from "../lib/permissions";
+import { sectionCopy } from "../locales/copy";
 
 interface SidebarV2Props {
   currentUser: AuthUser | null;
@@ -53,11 +54,9 @@ export default function SidebarV2({
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [menuQuery, setMenuQuery] = useState("");
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
-  const labels = isFa
-    ? { home: "فضای کاری", upload: "پایگاه دانش", assistants: "دستیارها", users: "اعضای تیم", settings: "تنظیمات", newChat: "گفتگوی جدید", recent: "اخیر", navigation: "منوی اصلی", search: "جست‌وجو...", collapse: "جمع‌کردن منو", account: "حساب" }
-    : { home: "Workspace", upload: "Knowledge base", assistants: "Assistants", users: "Team members", settings: "Settings", newChat: "New conversation", recent: "Recent", navigation: "Navigation", search: "Search...", collapse: "Collapse sidebar", account: "account" };
+  const labels = sectionCopy(t, "sidebar", ["home", "upload", "assistants", "users", "settings", "newChat", "recent", "navigation", "search", "collapse", "account"]);
   const navigation = [
     { id: "home" as const, label: labels.home, icon: Home },
     { id: "upload" as const, label: labels.upload, icon: FileUp },

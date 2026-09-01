@@ -7,11 +7,12 @@ import toast from "react-hot-toast";
 import { analyticsService, type AnalyticsOverview, type DailyMetric, type RankedMetric } from "../services/analyticsService";
 import { authService } from "../services/authService";
 import "../styles/analytics.css";
+import { sectionCopy } from "../locales/copy";
 
 const CW = 760, CH = 250, TOP = 18, BOTTOM = 34;
 
 export default function AnalyticsPage() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const fa = i18n.language.startsWith("fa");
   const user = authService.getUser();
   const reducedMotion = useReducedMotion();
@@ -35,23 +36,7 @@ export default function AnalyticsPage() {
     setDays(value);
   };
 
-  const c = fa ? {
-    welcome: "خوش آمدید", subtitle: "خلاصهٔ فعالیت و وضعیت فضای کاری.", export: "خروجی داده‌ها",
-    queries: "کل پرسش‌ها", users: "کاربران فعال", grounded: "پاسخ‌های مستند", satisfaction: "رضایت کاربران",
-    noFeedback: "بدون بازخورد", unanswered: "بدون مدرک", coverage: "پوشش بازخورد", citations: "میانگین ارجاع",
-    performance: "عملکرد پاسخ‌گویی", performanceSub: "مقایسه پرسش‌ها و پاسخ‌های مستند در بازه انتخاب‌شده", query: "پرسش", groundedLabel: "مستند",
-    health: "سلامت پایگاه دانش", indexed: "سند آماده", failed: "سند ناموفق", healthy: "آماده پاسخ‌گویی",
-    quality: "کیفیت پاسخ", positive: "بازخورد مثبت", feedbackCoverage: "مشارکت در بازخورد",
-    assistants: "عملکرد دستیارها", knowledge: "عملکرد پایگاه‌های دانش", issues: "نیازمند توجه", empty: "هنوز داده‌ای وجود ندارد",
-  } : {
-    welcome: "Welcome back", subtitle: "An overview of your workspace activity.", export: "Export data",
-    queries: "Total queries", users: "Active users", grounded: "Grounded answers", satisfaction: "User satisfaction",
-    noFeedback: "No feedback", unanswered: "without evidence", coverage: "feedback coverage", citations: "avg. citations",
-    performance: "Answer performance", performanceSub: "Queries and grounded answers across the selected period", query: "Queries", groundedLabel: "Grounded",
-    health: "Knowledge health", indexed: "documents ready", failed: "documents failed", healthy: "Ready to answer",
-    quality: "Answer quality", positive: "Positive feedback", feedbackCoverage: "Feedback participation",
-    assistants: "Assistant performance", knowledge: "Knowledge base performance", issues: "Needs attention", empty: "No data available yet",
-  };
+  const c = sectionCopy(t, "analytics", ["welcome", "subtitle", "export", "queries", "users", "grounded", "satisfaction", "noFeedback", "unanswered", "coverage", "citations", "performance", "performanceSub", "query", "groundedLabel", "health", "indexed", "failed", "healthy", "quality", "positive", "feedbackCoverage", "assistants", "knowledge", "issues", "empty"]);
 
   const exportData = () => {
     if (!data) return;

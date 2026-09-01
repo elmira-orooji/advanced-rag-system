@@ -11,12 +11,13 @@ import { authService } from "../services/authService";
 import { assistantService, type AssistantPayload, type CustomAssistant } from "../services/assistantService";
 import type { DocumentSet } from "../services/knowledgeService";
 import type { ChatMessage } from "../types/chat";
+import { sectionCopy } from "../locales/copy";
 
 export default function AssistantsPage() {
-  const { i18n } = useTranslation(); const fa = i18n.language.startsWith("fa"); const admin = authService.getUser()?.role === "admin";
+  const { i18n, t } = useTranslation(); const fa = i18n.language.startsWith("fa"); const admin = authService.getUser()?.role === "admin";
   const reducedMotion = useReducedMotion();
   const [items, setItems] = useState<CustomAssistant[]>([]); const [sets, setSets] = useState<DocumentSet[]>([]); const [selected, setSelected] = useState<CustomAssistant | null>(null); const [editing, setEditing] = useState<CustomAssistant | "new" | null>(null); const [messages, setMessages] = useState<ChatMessage[]>([]); const [thinking, setThinking] = useState(false); const [loading, setLoading] = useState(true); const [mobileChat, setMobileChat] = useState(false);
-  const c = fa ? { eyebrow: "دستیارهای تخصصی", title: "دستیارها", subtitle: "دستیارهای هوشمند با دستورالعمل و منابع دانشی اختصاصی.", add: "دستیار جدید", empty: "هنوز دستیاری ساخته نشده است", choose: "یک دستیار را برای شروع گفتگو انتخاب کنید", knowledge: "مجموعه دانش", inactive: "غیرفعال", active: "فعال", edit: "ویرایش", remove: "حذف", noKnowledge: "بدون مجموعه دانش" } : { eyebrow: "Specialized AI", title: "Assistants", subtitle: "Purpose-built assistants with focused instructions and trusted knowledge.", add: "New assistant", empty: "No assistants have been created yet", choose: "Choose an assistant to start a focused conversation", knowledge: "knowledge sets", inactive: "Inactive", active: "Active", edit: "Edit", remove: "Delete", noKnowledge: "No knowledge assigned" };
+  const c = sectionCopy(t, "assistantsPage", ["eyebrow", "title", "subtitle", "add", "empty", "choose", "knowledge", "inactive", "active", "edit", "remove", "noKnowledge"]);
   const load = async () => { try { const [assistants, knowledgeSets] = await Promise.all([assistantService.list(), assistantService.listSets()]); setItems(assistants); setSets(knowledgeSets); setSelected((current) => assistants.find((x) => x.id === current?.id) || assistants.find((x) => x.is_active) || null); } catch (e) { toast.error((e as Error).message); } finally { setLoading(false); } };
   useEffect(() => {
     let active = true;

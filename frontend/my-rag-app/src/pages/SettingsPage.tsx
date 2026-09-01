@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Check, Languages, Moon, Palette, Sun } from "lucide-react";
 import "../styles/settings.css";
+import { sectionCopy } from "../locales/copy";
 
 interface SettingsPageProps {
   theme: "light" | "dark";
@@ -9,22 +10,10 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const reducedMotion = useReducedMotion();
-  const copy = isFa ? {
-    title: "تنظیمات", subtitle: "ظاهر و زبان رابط کاربری را انتخاب کنید.",
-    appearance: "ظاهر برنامه", appearanceSub: "تم مناسب محیط کاری خود را انتخاب کنید.",
-    light: "روشن", dark: "تیره", language: "زبان و جهت صفحه",
-    languageSub: "جهت صفحه متناسب با زبان انتخاب‌شده تنظیم می‌شود.",
-    ltr: "چپ به راست", rtl: "راست به چپ",
-  } : {
-    title: "Settings", subtitle: "Choose how your workspace looks and reads.",
-    appearance: "Appearance", appearanceSub: "Choose the theme that fits your environment.",
-    light: "Light", dark: "Dark", language: "Language & direction",
-    languageSub: "The interface direction follows your selected language.",
-    ltr: "Left to right", rtl: "Right to left",
-  };
+  const copy = sectionCopy(t, "settings", ["title", "subtitle", "appearance", "appearanceSub", "light", "dark", "language", "languageSub", "ltr", "rtl"]);
 
   const changeLanguage = (language: "en" | "fa") => {
     void i18n.changeLanguage(language);

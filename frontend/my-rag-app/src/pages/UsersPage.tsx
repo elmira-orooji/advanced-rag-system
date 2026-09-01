@@ -7,12 +7,13 @@ import toast from "react-hot-toast";
 import AddUserForm from "../components/AddUserForm";
 import { confirmAction } from "../services/confirmation";
 import { userService, type ManagedUser } from "../services/userService";
+import { sectionCopy } from "../locales/copy";
 
 export default function UsersPage() {
-  const { i18n } = useTranslation(); const fa = i18n.language.startsWith("fa");
+  const { i18n, t } = useTranslation(); const fa = i18n.language.startsWith("fa");
   const reducedMotion = useReducedMotion();
   const [users, setUsers] = useState<ManagedUser[]>([]); const [query, setQuery] = useState(""); const [role, setRole] = useState("all"); const [loading, setLoading] = useState(true); const [deleting, setDeleting] = useState<string | null>(null); const [showAddUser, setShowAddUser] = useState(false);
-  const c = fa ? { eyebrow: "مدیریت اعضا", title: "اعضای تیم", subtitle: "اعضای تیم را اضافه یا حذف کنید. حساب‌های مدیر قابل حذف نیستند.", add: "افزودن عضو", directory: "فهرست اعضا", search: "جست‌وجوی کاربر...", all: "همه نقش‌ها", admin: "مدیر", user: "کاربر", active: "فعال", inactive: "غیرفعال", remove: "حذف عضو" } : { eyebrow: "Team management", title: "Team members", subtitle: "Add or remove team members. Admin accounts cannot be deleted.", add: "Add member", directory: "Member directory", search: "Search users...", all: "All roles", admin: "Admin", user: "User", active: "Active", inactive: "Inactive", remove: "Delete member" };
+  const c = sectionCopy(t, "usersPage", ["eyebrow", "title", "subtitle", "add", "directory", "search", "all", "admin", "user", "active", "inactive", "remove"]);
   useEffect(() => {
     let cancelled = false;
     userService.list().then((items) => { if (!cancelled) setUsers(items); })
@@ -37,7 +38,6 @@ export default function UsersPage() {
     {showAddUser && <AddUserForm isFa={fa} onClose={() => setShowAddUser(false)} onCreated={(user) => { setUsers((items) => [user, ...items]); setShowAddUser(false); }} />}
   </motion.div>;
 }
-
 
 
 
