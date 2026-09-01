@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, useReducedMotion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import {
   Check,
   CircleAlert,
@@ -18,7 +19,6 @@ import {
   WifiOff,
 } from "lucide-react";
 
-import { translations } from "../constants/translations";
 import { useLanguage } from "../hooks/useLanguage";
 import { loginSchema } from "../schemas/loginSchema";
 import type { LoginSchemaType } from "../schemas/loginSchema";
@@ -43,6 +43,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const reduceMotion = useReducedMotion();
   const { language, changeLanguage } = useLanguage();
+  const { t: translate } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">(
     () =>
@@ -54,7 +55,12 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [serverError, setServerError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const t = translations[language];
+  const t = {
+    username: translate("login.username"), usernamePlaceholder: translate("login.usernamePlaceholder"),
+    password: translate("login.password"), passwordPlaceholder: translate("login.passwordPlaceholder"),
+    remember: translate("login.remember"), loading: translate("login.loading"), success: translate("login.success"),
+    changeLanguage: translate("login.changeLanguage"), showPassword: translate("login.showPassword"), hidePassword: translate("login.hidePassword"),
+  };
   const isRtl = language === "fa";
 
   const {

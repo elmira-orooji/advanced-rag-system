@@ -33,7 +33,7 @@ type UploadTask = {
 };
 
 export default function UploadFilesPage() {
-  const { i18n } = useTranslation();
+  const { i18n, t } = useTranslation();
   const reducedMotion = useReducedMotion();
   const isFa = i18n.language.startsWith("fa");
   const isAdmin = authService.getUser()?.role === "admin";
@@ -67,23 +67,12 @@ export default function UploadFilesPage() {
     setSelectedDocumentIds((current) => current.filter((id) => availableIds.has(id)));
   }, []);
 
-  const copy = isFa ? {
-    eyebrow: "مدیریت منابع", title: "پایگاه دانش", subtitle: "اسناد را در مجموعه‌های موضوعی سازمان‌دهی کنید و پاسخ‌ها را به همان محدوده محدود کنید.",
-    sets: "مجموعه‌های دانش", newSet: "مجموعه جدید", allDocs: "همه اسناد", documents: "سند", indexed: "آماده",
-    drop: "فایل را در این مجموعه رها کنید", browse: "یا برای انتخاب کلیک کنید", formats: "PDF و TXT تا ۱۰ مگابایت",
-    library: "اسناد مجموعه", search: "جست‌وجوی اسناد...", allStatuses: "همه وضعیت‌ها", empty: "این مجموعه هنوز سندی ندارد.",
-    chatTitle: "دستیار دانش", chatSub: "پرسش در محدوده مجموعه انتخاب‌شده", chatEmpty: "پاسخ‌های مبتنی بر مجموعه", chatHint: "یک مجموعه را انتخاب کنید و درباره اسناد آن سؤال بپرسید.", allSources: "همه اسناد مجموعه", selectedSources: "اسناد انتخاب‌شده", chooseSources: "انتخاب محدوده پاسخ", clearSelection: "استفاده از همه",
-    createTitle: "ایجاد مجموعه دانش", editTitle: "ویرایش مجموعه", name: "نام مجموعه", description: "توضیحات", cancel: "انصراف", save: "ذخیره", create: "ایجاد مجموعه", edit: "ویرایش", delete: "حذف مجموعه",
-    connect: "اتصال منبع", connected: "منابع متصل",
-  } : {
-    eyebrow: "Source management", title: "Knowledge base", subtitle: "Organize documents into focused collections and keep every answer within the right scope.",
-    sets: "Knowledge sets", newSet: "New set", allDocs: "All documents", documents: "documents", indexed: "ready",
-    drop: "Drop files into this set", browse: "or click to browse", formats: "PDF and TXT up to 10 MB",
-    library: "Set documents", search: "Search documents...", allStatuses: "All statuses", empty: "This set has no documents yet.",
-    chatTitle: "Knowledge assistant", chatSub: "Search within the selected set", chatEmpty: "Set-grounded answers", chatHint: "Select a knowledge set, then ask questions across its documents.", allSources: "All documents in set", selectedSources: "Selected documents", chooseSources: "Choose answer scope", clearSelection: "Use all documents",
-    createTitle: "Create knowledge set", editTitle: "Edit knowledge set", name: "Set name", description: "Description", cancel: "Cancel", save: "Save changes", create: "Create set", edit: "Edit", delete: "Delete set",
-    connect: "Connect source", connected: "Connected sources",
-  };
+  const copy = Object.fromEntries([
+    "eyebrow", "title", "subtitle", "sets", "newSet", "allDocs", "documents", "indexed", "drop", "browse", "formats",
+    "library", "search", "allStatuses", "empty", "chatTitle", "chatSub", "chatEmpty", "chatHint", "allSources",
+    "selectedSources", "chooseSources", "clearSelection", "createTitle", "editTitle", "name", "description", "cancel",
+    "save", "create", "edit", "delete", "connect", "connected",
+  ].map((key) => [key, t(`knowledge.${key}`)])) as Record<string, string>;
 
   const selectedSet = sets.find((item) => item.id === selectedSetId);
 
