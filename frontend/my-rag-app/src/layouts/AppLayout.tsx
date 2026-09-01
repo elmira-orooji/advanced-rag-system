@@ -4,10 +4,12 @@ import { Menu } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import SidebarV2 from "../components/SidebarV2";
+import RenameConversationDialog from "../components/RenameConversationDialog";
 import { authService } from "../services/authService";
 import { conversationService, type ConversationSummary } from "../services/conversationService";
 import toast from "react-hot-toast";
 import { canManageUsers } from "../lib/permissions";
+import { useTranslation } from "react-i18next";
 
 const AnalyticsPage = lazy(() => import("../pages/AnalyticsPage"));
 const AssistantsPage = lazy(() => import("../pages/AssistantsPage"));
@@ -46,6 +48,7 @@ function routeState(pathname: string): { page: AppPage; conversationId: string |
 }
 
 export default function AppLayout() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const currentUser = authService.getUser();
@@ -57,6 +60,7 @@ export default function AppLayout() {
     return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
   });
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [conversationToRename, setConversationToRename] = useState<ConversationSummary | null>(null);
 
   const loadConversations = () => {
     conversationService.list().then(setConversations).catch((error) => toast.error((error as Error).message));
@@ -89,11 +93,12 @@ export default function AppLayout() {
     setMobileMenuOpen(false);
   };
 
-  const renameConversation = async (item: ConversationSummary) => {
-    const title = window.prompt("Conversation title", item.title)?.trim();
-    if (!title || title === item.title) return;
-    try { await conversationService.rename(item.id, title); loadConversations(); }
-    catch (error) { toast.error((error as Error).message); }
+  const renameConversation = async (title: string) => {
+    if (!conversationToRename) return;
+    await conversationService.rename(conversationToRename.id, title);
+    setConversations((current) => current.map((item) => item.id === conversationToRename.id ? { ...item, title } : item));
+    setConversationToRename(null);
+    toast.success(t("conversationRename.success"));
   };
 
   const deleteConversation = async (item: ConversationSummary) => {
@@ -119,9 +124,17 @@ export default function AppLayout() {
         activeConversationId={activeConversationId}
         onNewConversation={newConversation}
         onSelectConversation={selectConversation}
-        onRenameConversation={(item) => void renameConversation(item)}
+        onRenameConversation={setConversationToRename}
         onDeleteConversation={(item) => void deleteConversation(item)}
       />
+
+      {conversationToRename && (
+        <RenameConversationDialog
+          conversation={conversationToRename}
+          onClose={() => setConversationToRename(null)}
+          onRename={renameConversation}
+        />
+      )}
 
       <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
