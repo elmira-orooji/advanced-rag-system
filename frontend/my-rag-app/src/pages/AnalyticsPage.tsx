@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Activity, ArrowDownToLine, Bot, CircleAlert, Database, FileCheck2, MessageSquareText, UsersRound } from "lucide-react";
+import { Activity, ArrowDownToLine, Bot, CircleAlert, Database, FileCheck2, MessageSquareText, UsersRound, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 
@@ -127,7 +127,7 @@ export default function AnalyticsPage() {
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return <div className={`analytics-panel ${className}`}>{children}</div>;
 }
-function Metric({ icon: Icon, label, value, detail }: { icon: ComponentType<{ size?: number; className?: string }>; label: string; value: string; detail: string }) {
+function Metric({ icon: Icon, label, value, detail }: { icon: LucideIcon; label: string; value: string; detail: string }) {
   return <div className="analytics-metric" title={detail}>
     <div className="analytics-metric__label"><span>{label}</span><Icon size={16} /></div>
     <p className="analytics-metric__value">{value}</p>
@@ -145,6 +145,6 @@ function TrendChart({ daily, fa }: { daily: DailyMetric[]; fa: boolean }) {
 function path(values: number[], max: number) { return values.map((value, index) => { const x = values.length === 1 ? CW / 2 : index / (values.length - 1) * CW; const y = TOP + (1 - value / max) * (CH - TOP - BOTTOM); return `${index ? "L" : "M"} ${x.toFixed(1)},${y.toFixed(1)}`; }).join(" "); }
 function labels(length: number) { if (length <= 5) return Array.from({ length }, (_, index) => index); return [...new Set([0, Math.floor((length - 1) / 4), Math.floor((length - 1) / 2), Math.floor((length - 1) * .75), length - 1])]; }
 function Legend({ color, label, dashed = false }: { color: string; label: string; dashed?: boolean }) { return <span className="flex items-center gap-1.5"><span className="w-4 border-t-2" style={{ borderColor: color, borderStyle: dashed ? "dashed" : "solid" }} />{label}</span>; }
-function Ranking({ title, icon: Icon, items, empty }: { title: string; icon: ComponentType<{ size?: number; className?: string }>; items: RankedMetric[]; empty: string }) { const max = Math.max(1, ...items.map((item) => item.queries)); return <Card className="p-5"><div className="flex items-center justify-between"><h2 className="text-xs font-semibold">{title}</h2><Icon size={15} className="an-muted" /></div><div className="mt-4 space-y-4">{items.length ? items.slice(0, 5).map((item, index) => <div key={item.id || item.name}><div className="mb-2 flex items-center gap-2"><span className="grid size-5 place-items-center rounded an-surface text-[10px] an-muted">{index + 1}</span><span className="min-w-0 flex-1 truncate text-[10px] an-muted">{item.name}</span><span className="text-[10px] an-muted">{item.queries}</span><span className="rounded an-surface px-1.5 py-0.5 text-[10px] an-muted">{item.grounded_rate}%</span></div><div className="analytics-track ms-7 h-1 overflow-hidden rounded-full"><div className="h-full rounded-full analytics-bar" style={{ width: `${item.queries / max * 100}%` }} /></div></div>) : <Empty text={empty} />}</div></Card>; }
+function Ranking({ title, icon: Icon, items, empty }: { title: string; icon: LucideIcon; items: RankedMetric[]; empty: string }) { const max = Math.max(1, ...items.map((item) => item.queries)); return <Card className="p-5"><div className="flex items-center justify-between"><h2 className="text-xs font-semibold">{title}</h2><Icon size={15} className="an-muted" /></div><div className="mt-4 space-y-4">{items.length ? items.slice(0, 5).map((item, index) => <div key={item.id || item.name}><div className="mb-2 flex items-center gap-2"><span className="grid size-5 place-items-center rounded an-surface text-[10px] an-muted">{index + 1}</span><span className="min-w-0 flex-1 truncate text-[10px] an-muted">{item.name}</span><span className="text-[10px] an-muted">{item.queries}</span><span className="rounded an-surface px-1.5 py-0.5 text-[10px] an-muted">{item.grounded_rate}%</span></div><div className="analytics-track ms-7 h-1 overflow-hidden rounded-full"><div className="h-full rounded-full analytics-bar" style={{ width: `${item.queries / max * 100}%` }} /></div></div>) : <Empty text={empty} />}</div></Card>; }
 function Empty({ text }: { text: string }) { return <div className="grid min-h-28 place-items-center text-[10px] an-muted">{text}</div>; }
 function fmt(value: number) { return Intl.NumberFormat("en", { notation: value >= 1000 ? "compact" : "standard", maximumFractionDigits: 1 }).format(value); }
