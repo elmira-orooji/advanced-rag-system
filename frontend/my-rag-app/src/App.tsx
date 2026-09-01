@@ -14,6 +14,7 @@ import { AUTH_EXPIRED_EVENT } from "./services/apiClient";
 
 const AppLayout = lazy(() => import("./layouts/AppLayout"));
 const SharedChatPage = lazy(() => import("./pages/SharedChatPage"));
+const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 function RouteFallback() {
   return <div className="grid min-h-[100dvh] place-items-center bg-[#080d1c] text-white" role="status" aria-label="Loading page">
@@ -70,6 +71,7 @@ export default function App() {
           element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><AppLayout /></Suspense></ProtectedRoute>}
         />
         <Route path="/share/:visibility/:token" element={<Suspense fallback={<RouteFallback />}><SharedChatPage /></Suspense>} />
+        <Route path="*" element={<Suspense fallback={<RouteFallback />}><NotFoundPage /></Suspense>} />
       </Routes>
     </BrowserRouter>
   );
