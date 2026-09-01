@@ -31,14 +31,3 @@ export interface ChatMessage {
   research?: { steps: Array<{ query: string; evidence_count: number }>; evidenceReviewed: number };
 }
 
-export interface ChatSession {
-  id: string;
-
-  title: string;
-
-  messages: ChatMessage[];
-
-  createdAt: string;
-
-  updatedAt: string;
-}
