@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { KeyboardEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, useReducedMotion } from "framer-motion";
@@ -23,6 +23,7 @@ import { useLanguage } from "../hooks/useLanguage";
 import { loginSchema } from "../schemas/loginSchema";
 import type { LoginSchemaType } from "../schemas/loginSchema";
 import { authService } from "../services/authService";
+import { getPostLoginDestination } from "../utils/authNavigation";
 import "../styles/login.css";
 
 function loginErrorMessage(error: unknown, isRtl: boolean) {
@@ -41,6 +42,7 @@ function loginErrorMessage(error: unknown, isRtl: boolean) {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const reduceMotion = useReducedMotion();
   const { language, changeLanguage } = useLanguage();
   const { t: translate } = useTranslation();
@@ -122,7 +124,8 @@ export default function LoginPage() {
       const session = await authService.login(data);
       setSuccessMessage(t.success);
       await new Promise((resolve) => window.setTimeout(resolve, 650));
-      navigate("/home", { replace: true, state: { role: session.user.role } });
+      const destination = getPostLoginDestination(location.state);
+      navigate(destination, { replace: true, state: { role: session.user.role } });
     } catch (error) {
       setServerError(loginErrorMessage(error, isRtl));
       setFocus("password");

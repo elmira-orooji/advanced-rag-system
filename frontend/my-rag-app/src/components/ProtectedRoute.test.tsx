@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import ProtectedRoute from "./ProtectedRoute";
 
@@ -12,10 +12,15 @@ const user = {
   organization_slug: "nexora",
 };
 
-function renderRoutes() {
-  return render(<MemoryRouter initialEntries={["/home/settings"]}>
+function LoginDestination() {
+  const location = useLocation();
+  return <div>Login destination: {(location.state as { from?: string } | null)?.from}</div>;
+}
+
+function renderRoutes(initialEntry = "/home/settings") {
+  return render(<MemoryRouter initialEntries={[initialEntry]}>
     <Routes>
-      <Route path="/" element={<div>Login page</div>} />
+      <Route path="/" element={<LoginDestination />} />
       <Route path="/home/settings" element={<ProtectedRoute><div>Private settings</div></ProtectedRoute>} />
     </Routes>
   </MemoryRouter>);
@@ -24,7 +29,12 @@ function renderRoutes() {
 describe("ProtectedRoute", () => {
   it("redirects an unauthenticated visitor to login", () => {
     renderRoutes();
-    expect(screen.getByText("Login page")).toBeInTheDocument();
+    expect(screen.getByText("Login destination: /home/settings")).toBeInTheDocument();
+  });
+
+  it("preserves query parameters and the hash in the login destination", () => {
+    renderRoutes("/home/settings?tab=security#sessions");
+    expect(screen.getByText("Login destination: /home/settings?tab=security#sessions")).toBeInTheDocument();
   });
 
   it("allows a user with a valid session", () => {

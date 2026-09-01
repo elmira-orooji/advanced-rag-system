@@ -5,6 +5,7 @@ import {
 } from "react-router-dom";
 
 import LoginPage from "./pages/LoginPage";
+import GuestRoute from "./components/GuestRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { lazy, Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
@@ -63,7 +64,7 @@ export default function App() {
       <Routes>
         <Route
           path="/"
-          element={<LoginPage />}
+          element={<GuestRoute><LoginPage /></GuestRoute>}
         />
 
         <Route
