@@ -6,7 +6,7 @@ import time
 import uuid
 
 from app.core.config import DOCUMENT_JOB_POLL_SECONDS
-from app.services.document_jobs import claim_document_job, process_document_job, recover_document_jobs
+from app.services.document_jobs import claim_document_job, maintain_document_job_lease, process_document_job, recover_document_jobs
 
 logger = logging.getLogger(__name__)
 _stopping = False
@@ -36,7 +36,8 @@ def run() -> None:
             time.sleep(DOCUMENT_JOB_POLL_SECONDS)
             continue
         try:
-            process_document_job(job_id, claimed=True)
+            with maintain_document_job_lease(job_id, worker_id):
+                process_document_job(job_id, claimed=True)
         except Exception:
             logger.exception("Unhandled document job failure", extra={"job_id": str(job_id)})
 

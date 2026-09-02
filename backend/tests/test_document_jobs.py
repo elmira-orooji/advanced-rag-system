@@ -9,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models.processing_job import ProcessingJob
-from app.services.document_jobs import claim_document_job, recover_document_jobs
+from app.services.document_jobs import claim_document_job, recover_document_jobs, refresh_document_job_lease
 from app.services import document_jobs
 from app.db.database import Base
 from app.models.document import Document
@@ -60,6 +60,22 @@ class DocumentJobRecoveryTests(unittest.TestCase):
             job = db.get(ProcessingJob, queued_id)
             self.assertEqual((job.status, job.worker_id, job.attempts), ("running", "worker-1", 1))
             self.assertIsNotNone(job.locked_at)
+
+    def test_heartbeat_only_refreshes_the_current_owner(self):
+        job_id = uuid4()
+        old_time = datetime.now(timezone.utc) - timedelta(minutes=5)
+        with self.sessions() as db:
+            db.add(ProcessingJob(id=job_id, organization_id=uuid4(), document_id=uuid4(), status="running", worker_id="worker-1", locked_at=old_time))
+            db.commit()
+
+        with patch("app.services.document_jobs.SessionLocal", self.sessions):
+            self.assertFalse(refresh_document_job_lease(job_id, "worker-2"))
+            self.assertTrue(refresh_document_job_lease(job_id, "worker-1"))
+
+        with self.sessions() as db:
+            refreshed = db.get(ProcessingJob, job_id)
+            self.assertEqual(refreshed.worker_id, "worker-1")
+            self.assertGreater(refreshed.locked_at.replace(tzinfo=timezone.utc), old_time)
 
 
 class DocumentIndexRetryTests(unittest.TestCase):

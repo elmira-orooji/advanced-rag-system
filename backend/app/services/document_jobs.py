@@ -1,10 +1,13 @@
 import uuid
+import logging
+import threading
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import selectinload
 
-from app.core.config import BASE_DIR, DOCUMENT_JOB_LEASE_SECONDS
+from app.core.config import BASE_DIR, DOCUMENT_JOB_HEARTBEAT_SECONDS, DOCUMENT_JOB_LEASE_SECONDS
 from app.db.database import SessionLocal
 from app.models.document import Document
 from app.models.processing_job import ProcessingJob
@@ -12,6 +15,8 @@ from app.services.document_extractor import extract_text
 from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
 from app.services.incremental_index import checksum, incremental_chunks
+
+logger = logging.getLogger(__name__)
 
 
 def recover_document_jobs() -> int:
@@ -50,6 +55,45 @@ def claim_document_job(worker_id: str) -> uuid.UUID | None:
         job.worker_id = worker_id
         job.locked_at = now
         return job.id
+
+
+def refresh_document_job_lease(job_id: uuid.UUID, worker_id: str) -> bool:
+    """Refresh a lease only while the same worker still owns the running job."""
+    with SessionLocal() as db:
+        result = db.execute(
+            update(ProcessingJob)
+            .where(
+                ProcessingJob.id == job_id,
+                ProcessingJob.status == "running",
+                ProcessingJob.worker_id == worker_id,
+            )
+            .values(locked_at=datetime.now(timezone.utc))
+        )
+        db.commit()
+        return result.rowcount == 1
+
+
+@contextmanager
+def maintain_document_job_lease(job_id: uuid.UUID, worker_id: str):
+    """Keep the claim alive while blocking extraction and Qdrant calls run."""
+    stop_event = threading.Event()
+
+    def heartbeat() -> None:
+        while not stop_event.wait(DOCUMENT_JOB_HEARTBEAT_SECONDS):
+            try:
+                if not refresh_document_job_lease(job_id, worker_id):
+                    logger.error("Document job lease ownership was lost", extra={"job_id": str(job_id), "worker_id": worker_id})
+                    return
+            except Exception:
+                logger.exception("Document job heartbeat failed", extra={"job_id": str(job_id), "worker_id": worker_id})
+
+    thread = threading.Thread(target=heartbeat, name=f"document-heartbeat-{job_id}", daemon=True)
+    thread.start()
+    try:
+        yield
+    finally:
+        stop_event.set()
+        thread.join(timeout=DOCUMENT_JOB_HEARTBEAT_SECONDS + 1)
 
 
 def _progress(db, document: Document, job: ProcessingJob, value: int, stage: str) -> None:
