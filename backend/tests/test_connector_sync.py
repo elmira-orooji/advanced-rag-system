@@ -22,7 +22,9 @@ class ConnectorDeletionTests(unittest.TestCase):
         tree = [{"type": "blob", "path": f"{i}.md", "size": 100} for i in range(count)]
         metadata = json.dumps({"tree": tree, "truncated": truncated}).encode()
         db = MagicMock()
-        connector = SimpleNamespace(id=uuid4(), document_set_id=uuid4(), connector_type="github", source_url="https://github.com/owner/repo")
+        connector_id = uuid4()
+        document_set_id = uuid4()
+        connector = SimpleNamespace(id=connector_id, document_set_id=document_set_id, connector_type="github", source_url="https://github.com/owner/repo")
         items = [SimpleNamespace(external_id=f"{i}.md", document_id=uuid4(), content_hash=hashlib.sha256(body).hexdigest()) for i in range(count)]
         missing = SimpleNamespace(external_id="absent.md", document_id=uuid4())
         db.scalars.return_value.all.return_value = items + [missing]
@@ -32,12 +34,20 @@ class ConnectorDeletionTests(unittest.TestCase):
             storage_path="uploads/absent/source.txt",
             extracted_text_path="uploads/absent/extracted.txt",
             chunks=[],
-            document_sets=[SimpleNamespace(id=connector.document_set_id)],
+            document_sets=[SimpleNamespace(id=document_set_id)],
         )
-        db.get.return_value = document
-        with patch.object(sync, "_validate_public_url"), patch.object(sync, "_fetch", side_effect=lambda url, *args: (metadata if "api.github.com" in url else body, "text/plain", url)), patch.object(sync, "QdrantClient") as qdrant, patch.object(sync.shutil, "rmtree") as remove:
-            result = sync.sync_connector(db, connector)
-        db.close.assert_called_once()
+        def get_side_effect(model, key):
+            if model is sync.Connector:
+                return connector
+            if model is sync.DocumentSet:
+                return SimpleNamespace(id=document_set_id, organization_id=uuid4())
+            return document
+        db.get.side_effect = get_side_effect
+        session_factory = MagicMock(return_value=db)
+        db.__enter__ = MagicMock(return_value=db)
+        db.__exit__ = MagicMock(return_value=False)
+        with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "_validate_public_url"), patch.object(sync, "_fetch", side_effect=lambda url, *args: (metadata if "api.github.com" in url else body, "text/plain", url)), patch.object(sync, "QdrantClient") as qdrant, patch.object(sync.shutil, "rmtree") as remove:
+            result = sync.sync_connector(connector_id)
         return result, db, qdrant.return_value, remove
 
     def test_github_limit_does_not_delete_unfetched_documents(self):
@@ -87,7 +97,10 @@ class ConnectorDeletionTests(unittest.TestCase):
         db = MagicMock()
         item = SimpleNamespace(external_id="short.md", document_id=uuid4())
         db.scalars.return_value.all.return_value = [item]
-        connector = SimpleNamespace(id=uuid4(), document_set_id=uuid4(), connector_type="github", source_url="https://github.com/owner/repo")
+        connector_id = uuid4()
+        document_set_id = uuid4()
+        connector = SimpleNamespace(id=connector_id, document_set_id=document_set_id, connector_type="github", source_url="https://github.com/owner/repo")
+        document_set = SimpleNamespace(id=document_set_id, organization_id=uuid4())
         metadata = json.dumps({"tree": [{"type": "blob", "path": "short.md", "size": 3}, {"type": "blob", "path": "large.md", "size": 400000}], "truncated": False}).encode()
         # A supported file keeps this fetch successful; the short and oversized
         # files must still be recorded as present in the source inventory.
@@ -98,8 +111,18 @@ class ConnectorDeletionTests(unittest.TestCase):
         def fetch(url, *args):
             data = json.dumps(metadata).encode() if "api.github.com" in url else (b"abc" if "short.md" in url else body)
             return data, "text/plain", url
-        with patch.object(sync, "_validate_public_url"), patch.object(sync, "_fetch", side_effect=fetch), patch.object(sync, "QdrantClient") as qdrant:
-            result = sync.sync_connector(db, connector)
+        def get_side_effect(model, key):
+            if model is sync.Connector:
+                return connector
+            if model is sync.DocumentSet:
+                return document_set
+            return None
+        db.get.side_effect = get_side_effect
+        session_factory = MagicMock(return_value=db)
+        db.__enter__ = MagicMock(return_value=db)
+        db.__exit__ = MagicMock(return_value=False)
+        with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "_validate_public_url"), patch.object(sync, "_fetch", side_effect=fetch), patch.object(sync, "QdrantClient") as qdrant:
+            result = sync.sync_connector(connector_id)
         self.assertEqual(result["deletion_skipped"], 0)
         self.assertEqual(result["deleted"], 0)
         db.delete.assert_not_called()
@@ -107,10 +130,15 @@ class ConnectorDeletionTests(unittest.TestCase):
 
     def test_failed_fetch_does_not_start_reconciliation(self):
         db = MagicMock()
-        connector = SimpleNamespace(id=uuid4(), document_set_id=uuid4(), connector_type="github", source_url="https://github.com/owner/repo")
-        with patch.object(sync, "_github", side_effect=sync.ConnectorSyncError("Download failed")), patch.object(sync, "QdrantClient") as qdrant:
+        connector_id = uuid4()
+        connector = SimpleNamespace(id=connector_id, document_set_id=uuid4(), connector_type="github", source_url="https://github.com/owner/repo")
+        db.get.return_value = connector
+        session_factory = MagicMock(return_value=db)
+        db.__enter__ = MagicMock(return_value=db)
+        db.__exit__ = MagicMock(return_value=False)
+        with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "_github", side_effect=sync.ConnectorSyncError("Download failed")), patch.object(sync, "QdrantClient") as qdrant:
             with self.assertRaises(sync.ConnectorSyncError):
-                sync.sync_connector(db, connector)
+                sync.sync_connector(connector_id)
         db.delete.assert_not_called()
         db.commit.assert_not_called()
         qdrant.assert_not_called()
@@ -133,21 +161,31 @@ class ConnectorCredentialIsolationTests(unittest.TestCase):
 
     def test_sync_passes_only_owning_organizations_credentials(self):
         organization_id, set_id = uuid4(), uuid4()
+        connector_id = uuid4()
         connector = SimpleNamespace(
-            id=uuid4(), document_set_id=set_id, connector_type="google_drive",
+            id=connector_id, document_set_id=set_id, connector_type="google_drive",
             source_url="https://drive.google.com/drive/folders/folder", last_sync_summary={},
         )
         document_set = SimpleNamespace(id=set_id, organization_id=organization_id)
         db = MagicMock()
-        db.get.return_value = document_set
+        def get_side_effect(model, key):
+            if model is sync.Connector:
+                return connector
+            if model is sync.DocumentSet:
+                return document_set
+            return None
+        db.get.side_effect = get_side_effect
         db.scalars.return_value.all.return_value = []
         credentials = {"client_id": "owned", "client_secret": "secret", "refresh_token": "refresh"}
         configured = {str(organization_id): {"google_drive": credentials}}
+        session_factory = MagicMock(return_value=db)
+        db.__enter__ = MagicMock(return_value=db)
+        db.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(sync, "CONNECTOR_CREDENTIALS", configured), patch.object(
+        with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "CONNECTOR_CREDENTIALS", configured), patch.object(
             sync, "_google_drive", return_value=sync.SourceSnapshot([], set(), complete=False)
         ) as fetch, patch.object(sync, "QdrantClient"):
-            sync.sync_connector(db, connector)
+            sync.sync_connector(connector_id)
 
         fetch.assert_called_once_with(connector.source_url, credentials)
 
@@ -155,20 +193,29 @@ class ConnectorCredentialIsolationTests(unittest.TestCase):
 class ConnectorConsistencyTests(unittest.TestCase):
     def test_connector_document_uses_extracted_file_as_retryable_source(self):
         document_id, set_id = uuid4(), uuid4()
-        connector = SimpleNamespace(id=uuid4(), document_set_id=set_id, connector_type="website", source_url="https://example.com", last_sync_summary={})
+        connector_id = uuid4()
+        connector = SimpleNamespace(id=connector_id, document_set_id=set_id, connector_type="website", source_url="https://example.com", last_sync_summary={})
         item = SimpleNamespace(external_id="https://example.com", document_id=document_id, content_hash="old", source_url="", title="Old")
         document_set = SimpleNamespace(id=set_id, organization_id=uuid4(), child_chunk_size=800, chunk_overlap=120, parent_chunk_size=2400)
         document = SimpleNamespace(id=document_id, filename="Old", storage_path=None, extracted_text_path=None, chunks=[], document_sets=[document_set], processing_error=None, status="indexed", content_checksum=None)
         db = MagicMock()
         db.scalars.return_value.all.return_value = [item]
-        db.get.side_effect = lambda model, key: document_set if model is sync.DocumentSet else document
+        def get_side_effect(model, key):
+            if model is sync.Connector:
+                return connector
+            if model is sync.DocumentSet:
+                return document_set
+            return document
+        db.get.side_effect = get_side_effect
+        session_factory = MagicMock(return_value=db)
+        db.__enter__ = MagicMock(return_value=db)
+        db.__exit__ = MagicMock(return_value=False)
         snapshot = sync.SourceSnapshot([("https://example.com", "Page", "new content", "https://example.com")], {"https://example.com"}, complete=True)
         base = Path.cwd() / "storage" / f"connector-source-{uuid4()}"
         try:
             upload_dir = base / "uploads"
-            real_relative = sync.document_storage_relative
-            with patch.object(sync, "BASE_DIR", base), patch.object(sync, "UPLOAD_DIR", upload_dir), patch.object(sync, "document_storage_relative", side_effect=real_relative), patch.object(sync, "_website", return_value=snapshot), patch.object(sync, "incremental_chunks", return_value=([], [], [])), patch.object(sync, "QdrantClient"):
-                sync.sync_connector(db, connector)
+            with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "BASE_DIR", base), patch.object(sync, "UPLOAD_DIR", upload_dir), patch.object(sync, "document_storage_relative", side_effect=lambda path: path.relative_to(upload_dir).as_posix()), patch.object(sync, "_website", return_value=snapshot), patch.object(sync, "incremental_chunks", return_value=([], [], [])), patch.object(sync, "QdrantClient"):
+                sync.sync_connector(connector_id)
             self.assertEqual(document.storage_path, document.extracted_text_path)
             resolved = (upload_dir / document.storage_path).resolve()
             self.assertTrue(resolved.is_file())
@@ -212,8 +259,17 @@ class ConnectorConsistencyTests(unittest.TestCase):
         )
         db = MagicMock()
         db.scalars.return_value.all.return_value = [item]
-        db.get.side_effect = lambda model, key: document_set if model is sync.DocumentSet else document
+        def get_side_effect(model, key):
+            if model is sync.Connector:
+                return connector
+            if model is sync.DocumentSet:
+                return document_set
+            return document
+        db.get.side_effect = get_side_effect
         db.commit.side_effect = commit_failure
+        session_factory = MagicMock(return_value=db)
+        db.__enter__ = MagicMock(return_value=db)
+        db.__exit__ = MagicMock(return_value=False)
         snapshot = sync.SourceSnapshot(
             [("https://example.com", "New title", "new remote content", "https://example.com")],
             {"https://example.com"},
@@ -228,6 +284,7 @@ class ConnectorConsistencyTests(unittest.TestCase):
             extracted.write_text("old extracted content", encoding="utf-8")
             document.extracted_text_path = extracted.relative_to(base).as_posix()
             with (
+                patch.object(sync, "SessionLocal", session_factory),
                 patch.object(sync, "BASE_DIR", base),
                 patch.object(sync, "UPLOAD_DIR", upload),
                 patch.object(sync, "_website", return_value=snapshot),
@@ -238,7 +295,7 @@ class ConnectorConsistencyTests(unittest.TestCase):
                 if qdrant_failure is not None:
                     client.replace_document_chunks.side_effect = [qdrant_failure, None]
                 with self.assertRaises(Exception):
-                    sync.sync_connector(db, connector)
+                    sync.sync_connector(connector_id)
                 restored = extracted.read_text(encoding="utf-8")
         finally:
             shutil.rmtree(base, ignore_errors=True)

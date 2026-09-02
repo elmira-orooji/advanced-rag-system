@@ -37,7 +37,7 @@ def run_due_connector_syncs() -> int:
                     continue
                 item.status = "syncing"; item.last_error = None; item.next_sync_at = now + _delay(item.schedule_interval) if item.schedule_enabled else None; db.commit()
                 try:
-                    sync_connector(db, item); item = db.get(Connector, connector_id); item.status = "ready"; item.last_synced_at = datetime.now(timezone.utc); item.last_error = None
+                    sync_connector(connector_id); item = db.get(Connector, connector_id); item.status = "ready"; item.last_synced_at = datetime.now(timezone.utc); item.last_error = None
                 except Exception as exc:
                     logger.exception("Scheduled connector sync failed", extra={"connector_id": str(connector_id)})
                     db.rollback(); item = db.get(Connector, connector_id); item.status = "failed"; item.last_error = str(exc)[:500]

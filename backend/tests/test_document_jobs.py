@@ -191,14 +191,13 @@ class DocumentIndexRetryTests(unittest.TestCase):
                 self.assertEqual((failed_job.status, failed_job.error_type), ("retrying", "QdrantError"))
                 self.assertIsNotNone(failed_job.next_attempt_at)
                 document = db.get(Document, document_id)
-                self.assertEqual(len(document.chunks), 2)
+                self.assertEqual(len(document.chunks), 0)
                 self.assertNotEqual(document.status, "indexed")
                 self.assertIsNone(document.content_checksum)
-                expected = {str(chunk.id): chunk.content for chunk in document.chunks}
                 db.get(ProcessingJob, job_id).status = "retrying"
                 db.get(ProcessingJob, job_id).next_attempt_at = None
                 db.commit()
-            self.assertNotEqual(vectors, expected)
+            self.assertEqual(vectors, {})
             # A second failed attempt must not mark the document indexed either.
             fail_next = True
             self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
@@ -207,14 +206,16 @@ class DocumentIndexRetryTests(unittest.TestCase):
                 self.assertEqual(db.get(ProcessingJob, job_id).status, "retrying")
                 self.assertEqual(db.get(Document, document_id).status, "queued")
                 self.assertIsNone(db.get(Document, document_id).content_checksum)
+                self.assertEqual(len(db.get(Document, document_id).chunks), 0)
                 db.get(ProcessingJob, job_id).status = "retrying"
                 db.get(ProcessingJob, job_id).next_attempt_at = None
                 db.commit()
             vectors["stale-point-without-sql-row"] = "old content"
             self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
             document_jobs.process_document_job(job_id, worker_id)
-            self.assertEqual(vectors, expected)
             with sessions() as db:
+                expected = {str(chunk.id): chunk.content for chunk in db.get(Document, document_id).chunks}
+                self.assertEqual(vectors, expected)
                 self.assertEqual(db.get(ProcessingJob, job_id).status, "completed")
                 self.assertEqual(db.get(Document, document_id).status, "indexed")
                 self.assertEqual(db.get(Document, document_id).content_checksum, document_jobs.checksum("source text"))
