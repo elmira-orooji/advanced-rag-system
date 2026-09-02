@@ -71,6 +71,7 @@ class AuthCookieTests(unittest.TestCase):
         cookie = response.headers["set-cookie"]
         self.assertIn(f"{AUTH_COOKIE_NAME}=signed-token", cookie)
         self.assertIn("HttpOnly", cookie)
+        self.assertIn("Secure", cookie)
         self.assertIn("SameSite=lax", cookie)
         self.assertNotIn("Max-Age", cookie)
         self.assertEqual(result.expires_in, AUTH_SESSION_SECONDS)

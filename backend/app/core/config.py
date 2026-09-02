@@ -4,11 +4,34 @@ import json
 import os
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+_TRUE_VALUES = {"1", "true", "yes", "on"}
+_FALSE_VALUES = {"0", "false", "no", "off"}
+_NON_PRODUCTION_ENVIRONMENTS = {"development", "test"}
 
 
 def _load_environment(env_file: Path = BASE_DIR / ".env") -> None:
     """Load local defaults without replacing host-provided configuration."""
     load_dotenv(env_file, override=False)
+
+
+def _boolean_setting(name: str, *, default: bool) -> bool:
+    raw_value = os.getenv(name)
+    if raw_value is None:
+        return default
+
+    normalized = raw_value.strip().lower()
+    if normalized in _TRUE_VALUES:
+        return True
+    if normalized in _FALSE_VALUES:
+        return False
+    raise RuntimeError(f"{name} must be a boolean value")
+
+
+def _validate_cookie_security(environment: str, secure: bool) -> None:
+    if not secure and environment not in _NON_PRODUCTION_ENVIRONMENTS:
+        raise RuntimeError(
+            "AUTH_COOKIE_SECURE may only be disabled when APP_ENV is development or test"
+        )
 
 
 _load_environment()
@@ -29,8 +52,10 @@ MAX_UPLOAD_SIZE = 10 * 1024 * 1024
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "")
 if len(AUTH_SECRET_KEY) < 32:
     raise RuntimeError("AUTH_SECRET_KEY must be set to at least 32 characters")
+APP_ENV = os.getenv("APP_ENV", "production").strip().lower()
 AUTH_COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "nexora_session")
-AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes", "on"}
+AUTH_COOKIE_SECURE = _boolean_setting("AUTH_COOKIE_SECURE", default=True)
+_validate_cookie_security(APP_ENV, AUTH_COOKIE_SECURE)
 AUTH_SESSION_SECONDS = int(os.getenv("AUTH_SESSION_SECONDS", str(8 * 60 * 60)))
 AUTH_REMEMBER_SECONDS = int(os.getenv("AUTH_REMEMBER_SECONDS", str(30 * 24 * 60 * 60)))
 AUTH_FAILURE_WINDOW_SECONDS = int(os.getenv("AUTH_FAILURE_WINDOW_SECONDS", "900"))
