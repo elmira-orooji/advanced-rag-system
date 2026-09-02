@@ -174,9 +174,8 @@ class ConnectorLockTests(unittest.TestCase):
         @contextmanager
         def busy(*args):
             yield False
-        with patch("app.api.routes.connectors.require_set_access"), patch("app.api.routes.connectors.connector_sync_lock", busy), patch("app.api.routes.connectors.sync_connector") as perform:
+        with patch("app.api.routes.connectors.require_set_access"), patch("app.api.routes.connectors.connector_sync_lock", busy):
             with self.assertRaises(HTTPException) as raised:
                 sync(set_id, connector_id, db, MagicMock())
         self.assertEqual(raised.exception.status_code, 409)
-        perform.assert_not_called()
         db.commit.assert_not_called()

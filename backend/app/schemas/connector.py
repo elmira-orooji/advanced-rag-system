@@ -64,8 +64,5 @@ class ConnectorResponse(BaseModel):
 
 class SyncResponse(BaseModel):
     connector_id: uuid.UUID
-    discovered: int
-    created: int
-    updated: int
-    unchanged: int
-    deleted: int
+    status: str
+    message: str | None = None

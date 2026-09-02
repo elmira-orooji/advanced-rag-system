@@ -23,8 +23,11 @@ def run_due_connector_syncs() -> int:
             # Claim only the row we will process before commit releases its lock.
             item = db.scalar(select(Connector).where(
                 Connector.connector_type != "webhook", Connector.id.not_in(attempted),
-                or_(Connector.status == "syncing", and_(Connector.schedule_enabled.is_(True), Connector.next_sync_at <= now)),
-            ).order_by(Connector.next_sync_at, Connector.id).with_for_update(skip_locked=True).limit(1))
+                or_(
+                    Connector.status == "syncing",
+                    and_(Connector.schedule_enabled.is_(True), Connector.next_sync_at <= now),
+                ),
+            ).order_by(Connector.status.desc(), Connector.next_sync_at, Connector.id).with_for_update(skip_locked=True).limit(1))
             if item is None:
                 break
             connector_id = item.id

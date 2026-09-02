@@ -14,9 +14,8 @@ from app.models.connector import Connector
 from app.models.document_set import DocumentSet
 from app.models.user import User
 from app.schemas.connector import ConnectorCreate, ConnectorResponse, ConnectorScheduleUpdate, SyncResponse, WebhookConnectorCreate, WebhookConnectorCreated, WebhookEvent, WebhookEventResponse
-from app.services.connector_sync import ConnectorSyncError, ingest_webhook_event, sync_connector
+from app.services.connector_sync import ConnectorSyncError, ingest_webhook_event
 from app.services.connector_lock import connector_sync_lock
-from app.services.qdrant import QdrantError
 
 router = APIRouter(prefix="/document-sets/{set_id}/connectors", tags=["connectors"])
 
@@ -71,14 +70,10 @@ def sync(set_id: uuid.UUID, connector_id: uuid.UUID, db: Session = Depends(get_d
     with connector_sync_lock(db.get_bind(), connector_id) as acquired:
         if not acquired:
             raise HTTPException(status_code=409, detail="Connector is already syncing")
-        item.status = "syncing"; item.last_error = None; db.commit()
-        try:
-            result = sync_connector(db, item)
-        except (ConnectorSyncError, QdrantError) as exc:
-            db.rollback(); item = db.get(Connector, connector_id); item.status = "failed"; item.last_error = str(exc)[:500]; db.commit()
-            raise HTTPException(status_code=422 if isinstance(exc, ConnectorSyncError) else 502, detail=str(exc)) from exc
-        item = db.get(Connector, connector_id); item.status = "ready"; item.last_synced_at = datetime.now(timezone.utc); item.last_error = None; item.next_sync_at = _next(item.schedule_interval) if item.schedule_enabled else None; db.commit()
-        return SyncResponse(connector_id=item.id, **result)
+        item.status = "syncing"; item.last_error = None; item.next_sync_at = _next(item.schedule_interval) if item.schedule_enabled else None; db.commit()
+    # The actual sync now runs in the scheduler worker so the HTTP request returns
+    # immediately and cannot be interrupted by client timeouts.
+    return SyncResponse(connector_id=item.id, status="queued", message="Connector sync has been scheduled")
 
 
 @router.patch("/{connector_id}/schedule", response_model=ConnectorResponse)
