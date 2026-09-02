@@ -6,6 +6,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 from sqlalchemy import create_engine
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import sessionmaker
 
 from app.models.processing_job import ProcessingJob
@@ -41,6 +42,12 @@ class DocumentJobRecoveryTests(unittest.TestCase):
             self.assertEqual(db.get(ProcessingJob, live_id).status, "running")
             for status, job_id in ids.items():
                 self.assertEqual(db.get(ProcessingJob, job_id).status, status)
+
+    def test_recovery_query_uses_skip_locked(self):
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+        expired = document_jobs._expired_document_job_ids(cutoff)
+        sql = str(expired.compile(dialect=postgresql.dialect()))
+        self.assertIn("FOR UPDATE SKIP LOCKED", sql)
 
     def test_empty_queue_returns_zero(self):
         with patch("app.services.document_jobs.SessionLocal", self.sessions):

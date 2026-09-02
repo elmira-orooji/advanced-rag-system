@@ -19,21 +19,33 @@ from app.services.incremental_index import checksum, incremental_chunks
 logger = logging.getLogger(__name__)
 
 
-def recover_document_jobs() -> int:
-    """Release only claims whose worker lease has expired."""
-    cutoff = datetime.now(timezone.utc) - timedelta(seconds=DOCUMENT_JOB_LEASE_SECONDS)
-    with SessionLocal() as db:
-        jobs = list(db.scalars(select(ProcessingJob).where(
+def _expired_document_job_ids(cutoff: datetime):
+    return (
+        select(ProcessingJob.id)
+        .where(
             ProcessingJob.status == "running",
             (ProcessingJob.locked_at.is_(None)) | (ProcessingJob.locked_at < cutoff),
-        )).all())
-        for job in jobs:
-            job.status = "queued"
-            job.stage = "queued"
-            job.worker_id = None
-            job.locked_at = None
-        db.commit()
-        return len(jobs)
+        )
+        .with_for_update(skip_locked=True)
+    )
+
+
+def recover_document_jobs() -> int:
+    """Atomically release expired claims without waiting on active heartbeats."""
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=DOCUMENT_JOB_LEASE_SECONDS)
+    expired = _expired_document_job_ids(cutoff).cte("expired_document_jobs")
+    statement = (
+        update(ProcessingJob)
+        .where(
+            ProcessingJob.id.in_(select(expired.c.id)),
+            ProcessingJob.status == "running",
+            (ProcessingJob.locked_at.is_(None)) | (ProcessingJob.locked_at < cutoff),
+        )
+        .values(status="queued", stage="queued", worker_id=None, locked_at=None)
+        .returning(ProcessingJob.id)
+    )
+    with SessionLocal() as db, db.begin():
+        return len(list(db.scalars(statement)))
 
 
 def claim_document_job(worker_id: str) -> uuid.UUID | None:
