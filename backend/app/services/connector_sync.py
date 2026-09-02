@@ -62,6 +62,12 @@ class SourceSnapshot:
     complete: bool = False
 
 
+# Maximum number of documents to hold in memory before flushing to DB.
+# This prevents unbounded RAM growth for large connectors while keeping
+# transaction boundaries manageable.
+STREAM_BATCH_SIZE = 50
+
+
 @dataclass
 class ExternalDocumentState:
     document_id: str
@@ -403,48 +409,70 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
     else:
         snapshot = fetcher(source_url)
 
-    # --- Apply phase -----------------------------------------------------------
-    # Own a fresh session so the caller's transaction is never touched.
+    # --- Apply phase (Streaming Batch) -----------------------------------------
+    # Process sources in fixed-size batches to bound RAM usage. Each batch gets
+    # its own DB session and Qdrant client, then memory is released before the
+    # next batch starts. Deletion logic runs only once after all batches complete.
+    sources = snapshot.sources
+    total_discovered = len(sources)
+    created = updated = unchanged = deleted = 0
+    removed_directories: list[Path] = []
+
+    for batch_start in range(0, max(total_discovered, 1), STREAM_BATCH_SIZE):
+        batch = sources[batch_start : batch_start + STREAM_BATCH_SIZE]
+        with SessionLocal() as db:
+            connector = db.get(Connector, connector_id)
+            if connector is None:
+                raise ConnectorSyncError("Connector no longer exists")
+            existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
+            journal: dict[str, ExternalDocumentState] = {}
+            qdrant = QdrantClient(); qdrant.ensure_collection()
+            document_set = db.get(DocumentSet, document_set_id)
+            if document_set is None:
+                raise ConnectorSyncError("Connector knowledge set no longer exists")
+            try:
+                for external_id, title, text, source_url in batch:
+                    digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
+                    if item and item.content_hash == digest:
+                        document = db.get(Document, item.document_id)
+                        if document is not None and not document.storage_path and document.extracted_text_path:
+                            document.storage_path = document.extracted_text_path
+                        unchanged += 1
+                        continue
+                    document = db.get(Document, item.document_id) if item else Document(organization_id=document_set.organization_id, filename=title, content_type="text/plain", status="chunked", source_type=connector.connector_type, tags=[])
+                    if not item: db.add(document); db.flush(); document.document_sets.append(document_set)
+                    document_id = str(document.id)
+                    if document_id not in journal:
+                        journal[document_id] = _capture_external_state(document, existed=item is not None)
+                    directory = UPLOAD_DIR / document_id; directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
+                    source_path = document_storage_relative(extracted)
+                    document.storage_path = source_path; document.extracted_text_path = source_path; document.filename = title; document.processing_error = None
+                    next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
+                    for chunk in list(document.chunks):
+                        if str(chunk.id) in removed_ids: db.delete(chunk)
+                    document.chunks = next_chunks; document.content_checksum = checksum(text)
+                    document.indexed_child_chunk_size = document_set.child_chunk_size
+                    document.indexed_chunk_overlap = document_set.chunk_overlap
+                    document.indexed_parent_chunk_size = document_set.parent_chunk_size
+                    db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
+                    if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
+                    else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1
+                db.commit()
+            except Exception as exc:
+                db.rollback()
+                _restore_external_states(qdrant, list(journal.values()), exc)
+                raise
+
+    # --- Deletion & Summary phase ----------------------------------------------
+    # Runs once after all batches; safe because observed_ids covers the full run.
     with SessionLocal() as db:
         connector = db.get(Connector, connector_id)
         if connector is None:
             raise ConnectorSyncError("Connector no longer exists")
-        sources = snapshot.sources
         existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
-        created = updated = unchanged = deleted = 0
-        removed_directories: list[Path] = []
         journal: dict[str, ExternalDocumentState] = {}
         qdrant = QdrantClient(); qdrant.ensure_collection()
-        document_set = db.get(DocumentSet, document_set_id)
-        if document_set is None:
-            raise ConnectorSyncError("Connector knowledge set no longer exists")
         try:
-            for external_id, title, text, source_url in sources:
-                digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
-                if item and item.content_hash == digest:
-                    document = db.get(Document, item.document_id)
-                    if document is not None and not document.storage_path and document.extracted_text_path:
-                        document.storage_path = document.extracted_text_path
-                    unchanged += 1
-                    continue
-                document = db.get(Document, item.document_id) if item else Document(organization_id=document_set.organization_id, filename=title, content_type="text/plain", status="chunked", source_type=connector.connector_type, tags=[])
-                if not item: db.add(document); db.flush(); document.document_sets.append(document_set)
-                document_id = str(document.id)
-                if document_id not in journal:
-                    journal[document_id] = _capture_external_state(document, existed=item is not None)
-                directory = UPLOAD_DIR / document_id; directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
-                source_path = document_storage_relative(extracted)
-                document.storage_path = source_path; document.extracted_text_path = source_path; document.filename = title; document.processing_error = None
-                next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
-                for chunk in list(document.chunks):
-                    if str(chunk.id) in removed_ids: db.delete(chunk)
-                document.chunks = next_chunks; document.content_checksum = checksum(text)
-                document.indexed_child_chunk_size = document_set.child_chunk_size
-                document.indexed_chunk_overlap = document_set.chunk_overlap
-                document.indexed_parent_chunk_size = document_set.parent_chunk_size
-                db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
-                if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
-                else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1
             for external_id, item in existing.items():
                 # Absence in a capped or paginated response is not evidence of deletion.
                 if not snapshot.complete or external_id in snapshot.observed_ids:
@@ -465,7 +493,7 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
                 else:
                     db.delete(item)
                 deleted += 1
-            result = {"discovered": len(sources), "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted, "deletion_skipped": int(not snapshot.complete)}
+            result = {"discovered": total_discovered, "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted, "deletion_skipped": int(not snapshot.complete)}
             connector.last_sync_summary = result
             db.commit()
         except Exception as exc:
