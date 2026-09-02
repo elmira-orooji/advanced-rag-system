@@ -16,6 +16,7 @@ from app.models.user import User
 from app.schemas.connector import ConnectorCreate, ConnectorResponse, ConnectorScheduleUpdate, SyncResponse, WebhookConnectorCreate, WebhookConnectorCreated, WebhookEvent, WebhookEventResponse
 from app.services.connector_sync import ConnectorSyncError, ingest_webhook_event
 from app.services.connector_lock import connector_sync_lock
+from app.services.qdrant import QdrantError
 
 router = APIRouter(prefix="/document-sets/{set_id}/connectors", tags=["connectors"])
 
