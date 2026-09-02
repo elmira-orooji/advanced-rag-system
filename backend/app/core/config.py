@@ -33,6 +33,11 @@ AUTH_COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "nexora_session")
 AUTH_COOKIE_SECURE = os.getenv("AUTH_COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes", "on"}
 AUTH_SESSION_SECONDS = int(os.getenv("AUTH_SESSION_SECONDS", str(8 * 60 * 60)))
 AUTH_REMEMBER_SECONDS = int(os.getenv("AUTH_REMEMBER_SECONDS", str(30 * 24 * 60 * 60)))
+AUTH_FAILURE_WINDOW_SECONDS = int(os.getenv("AUTH_FAILURE_WINDOW_SECONDS", "900"))
+AUTH_ACCOUNT_FAILURE_LIMIT = int(os.getenv("AUTH_ACCOUNT_FAILURE_LIMIT", "5"))
+AUTH_IP_FAILURE_LIMIT = int(os.getenv("AUTH_IP_FAILURE_LIMIT", "30"))
+AUTH_LOCK_BASE_SECONDS = int(os.getenv("AUTH_LOCK_BASE_SECONDS", "30"))
+AUTH_LOCK_MAX_SECONDS = int(os.getenv("AUTH_LOCK_MAX_SECONDS", "900"))
 FRONTEND_ORIGINS = [
     origin.strip()
     for origin in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")

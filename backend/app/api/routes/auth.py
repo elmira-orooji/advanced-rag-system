@@ -1,3 +1,4 @@
+import logging
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -5,20 +6,22 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.security import create_access_token, decode_access_token, verify_password
 from app.core.config import (
     AUTH_COOKIE_NAME,
     AUTH_COOKIE_SECURE,
     AUTH_REMEMBER_SECONDS,
     AUTH_SESSION_SECONDS,
 )
+from app.core.security import create_access_token, decode_access_token, verify_password
 from app.db.database import get_db
 from app.models.user import User
 from app.models.organization import Organization
 from app.schemas.auth import AuthUser, LoginRequest, LoginResponse
+from app.services.login_throttle import clear_account_failures, record_failure, retry_after, throttle_keys
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 bearer = HTTPBearer(auto_error=False)
+logger = logging.getLogger(__name__)
 
 
 def get_current_user(
@@ -50,16 +53,26 @@ def get_current_user(
 
 
 @router.post("/login", response_model=LoginResponse)
-def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
-    organization = db.scalar(select(Organization).where(Organization.slug == payload.organization.strip().lower()))
-    user = db.scalar(select(User).where(User.username == payload.username.strip(), User.organization_id == organization.id)) if organization else None
+def login(payload: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
+    organization_slug = payload.organization.strip().lower()
+    username = payload.username.strip()
+    client_ip = request.client.host if request.client else "unknown"
+    keys = throttle_keys(organization_slug, username, client_ip)
+    wait_seconds = retry_after(db, keys)
+    if wait_seconds is not None:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many login attempts. Try again later.", headers={"Retry-After": str(wait_seconds)})
+    organization = db.scalar(select(Organization).where(Organization.slug == organization_slug))
+    user = db.scalar(select(User).where(User.username == username, User.organization_id == organization.id)) if organization else None
     if user is None or not verify_password(payload.password, user.password_hash):
+        lock_seconds = record_failure(db, keys)
+        logger.warning("Login failed", extra={"account_key": keys[0], "ip_key": keys[1], "locked_seconds": lock_seconds})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive")
+    clear_account_failures(db, keys[0])
 
     expires_in = AUTH_REMEMBER_SECONDS if payload.remember_me else AUTH_SESSION_SECONDS
     response.set_cookie(

@@ -37,6 +37,9 @@ function loginErrorMessage(error: unknown, isRtl: boolean) {
   if (normalized.includes("user is inactive")) {
     return "حساب کاربری غیرفعال است.";
   }
+  if (normalized.includes("too many login attempts")) {
+    return "تعداد تلاش‌های ورود بیش از حد مجاز است. کمی بعد دوباره امتحان کنید.";
+  }
   return "ورود انجام نشد. دوباره تلاش کنید.";
 }
 

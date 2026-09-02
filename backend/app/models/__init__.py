@@ -9,9 +9,10 @@ from app.models.document_set import DocumentSet
 from app.models.document_set_permission import DocumentSetPermission
 from app.models.evaluation_case import EvaluationCase
 from app.models.llm_usage import LLMUsage
+from app.models.login_throttle import LoginThrottle
 from app.models.message import Message
 from app.models.organization import Organization
 from app.models.processing_job import ProcessingJob
 from app.models.user import User
 
-__all__ = ["AnswerFeedback", "AnswerRecord", "Assistant", "ChatShare", "Chunk", "Connector", "ConnectorItem", "Conversation", "Document", "DocumentSet", "DocumentSetPermission", "EvaluationCase", "LLMUsage", "Message", "Organization", "ProcessingJob", "User"]
+__all__ = ["AnswerFeedback", "AnswerRecord", "Assistant", "ChatShare", "Chunk", "Connector", "ConnectorItem", "Conversation", "Document", "DocumentSet", "DocumentSetPermission", "EvaluationCase", "LLMUsage", "LoginThrottle", "Message", "Organization", "ProcessingJob", "User"]

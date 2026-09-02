@@ -27,6 +27,10 @@ def request_with_cookie(value: str) -> Request:
     )
 
 
+def login_request() -> Request:
+    return Request({"type": "http", "method": "POST", "path": "/api/v1/auth/login", "query_string": b"", "headers": [], "scheme": "https", "server": ("testserver", 443), "client": ("203.0.113.10", 50000)})
+
+
 class AuthCookieTests(unittest.TestCase):
     def setUp(self):
         organization_id = uuid4()
@@ -49,7 +53,7 @@ class AuthCookieTests(unittest.TestCase):
         db.scalar.side_effect = [self.organization, self.user]
         response = Response()
 
-        with patch("app.api.routes.auth.verify_password", return_value=True), patch(
+        with patch("app.api.routes.auth.retry_after", return_value=None), patch("app.api.routes.auth.clear_account_failures"), patch("app.api.routes.auth.verify_password", return_value=True), patch(
             "app.api.routes.auth.create_access_token", return_value="signed-token"
         ):
             result = login(
@@ -60,6 +64,7 @@ class AuthCookieTests(unittest.TestCase):
                     remember_me=False,
                 ),
                 response,
+                login_request(),
                 db,
             )
 
@@ -76,7 +81,7 @@ class AuthCookieTests(unittest.TestCase):
         db.scalar.side_effect = [self.organization, self.user]
         response = Response()
 
-        with patch("app.api.routes.auth.verify_password", return_value=True), patch(
+        with patch("app.api.routes.auth.retry_after", return_value=None), patch("app.api.routes.auth.clear_account_failures"), patch("app.api.routes.auth.verify_password", return_value=True), patch(
             "app.api.routes.auth.create_access_token", return_value="signed-token"
         ):
             result = login(
@@ -87,6 +92,7 @@ class AuthCookieTests(unittest.TestCase):
                     remember_me=True,
                 ),
                 response,
+                login_request(),
                 db,
             )
 
