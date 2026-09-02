@@ -4,15 +4,15 @@ import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import selectinload
 
-from app.core.config import BASE_DIR, DOCUMENT_JOB_HEARTBEAT_SECONDS, DOCUMENT_JOB_LEASE_SECONDS
+from app.core.config import BASE_DIR, DOCUMENT_JOB_HEARTBEAT_SECONDS, DOCUMENT_JOB_LEASE_SECONDS, DOCUMENT_JOB_MAX_ATTEMPTS, DOCUMENT_JOB_RETRY_BASE_SECONDS, DOCUMENT_JOB_RETRY_MAX_SECONDS
 from app.db.database import SessionLocal
 from app.models.document import Document
 from app.models.processing_job import ProcessingJob
 from app.services.document_extractor import extract_text
-from app.services.qdrant import QdrantClient
+from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
 from app.services.incremental_index import checksum, incremental_chunks
 
@@ -55,22 +55,51 @@ def recover_document_jobs() -> int:
 def claim_document_job(worker_id: str) -> uuid.UUID | None:
     """Atomically claim the oldest available job across competing workers."""
     with SessionLocal() as db, db.begin():
+        now = datetime.now(timezone.utc)
         job = db.scalar(
             select(ProcessingJob)
-            .where(ProcessingJob.status.in_(["queued", "retrying"]))
+            .where(
+                ProcessingJob.status.in_(["queued", "retrying"]),
+                or_(ProcessingJob.next_attempt_at.is_(None), ProcessingJob.next_attempt_at <= now),
+            )
             .order_by(ProcessingJob.created_at, ProcessingJob.id)
             .with_for_update(skip_locked=True)
             .limit(1)
         )
         if job is None:
             return None
-        now = datetime.now(timezone.utc)
         job.status = "running"
         job.attempts += 1
         job.started_at = now
         job.worker_id = worker_id
         job.locked_at = now
+        job.next_attempt_at = None
         return job.id
+
+
+def _retryable_document_error(exc: Exception) -> bool:
+    if isinstance(exc, QdrantError):
+        return exc.status_code is None or exc.status_code in {408, 429} or exc.status_code >= 500
+    return isinstance(exc, (TimeoutError, ConnectionError))
+
+
+def _retry_delay(attempts: int) -> int:
+    return min(DOCUMENT_JOB_RETRY_BASE_SECONDS * (2 ** max(0, attempts - 1)), DOCUMENT_JOB_RETRY_MAX_SECONDS)
+
+
+def _document_failure_values(exc: Exception, attempts: int, now: datetime) -> dict:
+    retrying = _retryable_document_error(exc) and attempts < DOCUMENT_JOB_MAX_ATTEMPTS
+    return {
+        "status": "retrying" if retrying else "dead_letter",
+        "stage": "retry_wait" if retrying else "dead_letter",
+        "error": str(exc)[:500],
+        "error_type": type(exc).__name__,
+        "next_attempt_at": now + timedelta(seconds=_retry_delay(attempts)) if retrying else None,
+        "dead_lettered_at": None if retrying else now,
+        "completed_at": None if retrying else now,
+        "worker_id": None,
+        "locked_at": None,
+    }
 
 
 def refresh_document_job_lease(job_id: uuid.UUID, worker_id: str) -> bool:
@@ -224,6 +253,9 @@ def process_document_job(
             document = db.get(Document, job.document_id) if job else None
             if job and document:
                 message = str(exc)[:500]
+                now = datetime.now(timezone.utc)
+                failure_values = _document_failure_values(exc, job.attempts, now)
+                retrying = failure_values["status"] == "retrying"
                 result = db.execute(
                     update(ProcessingJob)
                     .where(
@@ -231,11 +263,11 @@ def process_document_job(
                         ProcessingJob.status == "running",
                         ProcessingJob.worker_id == worker_id,
                     )
-                    .values(status="failed", error=message, completed_at=datetime.now(timezone.utc), worker_id=None, locked_at=None)
+                    .values(**failure_values)
                 )
                 if result.rowcount != 1:
                     db.rollback()
                     return
-                document.status = "failed"; document.processing_error = message
-                document.processing_stage = "failed"; document.processing_progress = job.progress
+                document.status = "queued" if retrying else "failed"; document.processing_error = message
+                document.processing_stage = "retry_wait" if retrying else "dead_letter"; document.processing_progress = job.progress
                 db.commit()

@@ -1,5 +1,4 @@
 import unittest
-import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -68,6 +67,48 @@ class DocumentJobRecoveryTests(unittest.TestCase):
             job = db.get(ProcessingJob, queued_id)
             self.assertEqual((job.status, job.worker_id, job.attempts), ("running", "worker-1", 1))
             self.assertIsNotNone(job.locked_at)
+
+    def test_future_retry_is_not_claimed_until_due(self):
+        job_id = uuid4()
+        with self.sessions() as db:
+            db.add(ProcessingJob(
+                id=job_id,
+                organization_id=uuid4(),
+                document_id=uuid4(),
+                status="retrying",
+                next_attempt_at=datetime.now(timezone.utc) + timedelta(minutes=5),
+            ))
+            db.commit()
+
+        with patch("app.services.document_jobs.SessionLocal", self.sessions):
+            self.assertIsNone(claim_document_job("worker"))
+
+    def test_retry_policy_classifies_transient_and_permanent_errors(self):
+        self.assertTrue(document_jobs._retryable_document_error(QdrantError("unavailable", status_code=503)))
+        self.assertTrue(document_jobs._retryable_document_error(QdrantError("limited", status_code=429)))
+        self.assertTrue(document_jobs._retryable_document_error(TimeoutError("timeout")))
+        self.assertFalse(document_jobs._retryable_document_error(QdrantError("bad request", status_code=400)))
+        self.assertFalse(document_jobs._retryable_document_error(ValueError("invalid document")))
+
+    def test_retry_delay_is_exponential_and_capped(self):
+        with patch("app.services.document_jobs.DOCUMENT_JOB_RETRY_BASE_SECONDS", 10), patch("app.services.document_jobs.DOCUMENT_JOB_RETRY_MAX_SECONDS", 25):
+            self.assertEqual(document_jobs._retry_delay(1), 10)
+            self.assertEqual(document_jobs._retry_delay(2), 20)
+            self.assertEqual(document_jobs._retry_delay(3), 25)
+
+    def test_transient_failures_exhaust_into_dead_letter(self):
+        now = datetime.now(timezone.utc)
+        with patch("app.services.document_jobs.DOCUMENT_JOB_MAX_ATTEMPTS", 3), patch("app.services.document_jobs.DOCUMENT_JOB_RETRY_BASE_SECONDS", 10):
+            retry = document_jobs._document_failure_values(QdrantError("unavailable", status_code=503), 2, now)
+            exhausted = document_jobs._document_failure_values(QdrantError("unavailable", status_code=503), 3, now)
+            permanent = document_jobs._document_failure_values(ValueError("invalid document"), 1, now)
+
+        self.assertEqual(retry["status"], "retrying")
+        self.assertEqual(retry["next_attempt_at"], now + timedelta(seconds=20))
+        self.assertIsNone(retry["dead_lettered_at"])
+        self.assertEqual(exhausted["status"], "dead_letter")
+        self.assertEqual(exhausted["dead_lettered_at"], now)
+        self.assertEqual(permanent["status"], "dead_letter")
 
     def test_heartbeat_only_refreshes_the_current_owner(self):
         job_id = uuid4()
@@ -138,7 +179,7 @@ class DocumentIndexRetryTests(unittest.TestCase):
             vectors.clear()
             write_vectors(document_id, filename, chunks)
         generated = [("first chunk", 0, "parent"), ("second chunk", 0, "parent")]
-        with tempfile.TemporaryDirectory() as directory, patch.object(document_jobs, "BASE_DIR", Path(directory)), patch.object(document_jobs, "SessionLocal", sessions), patch.object(document_jobs, "extract_text", return_value="source text"), patch.object(document_jobs, "hierarchical_chunks", return_value=generated), patch("app.services.incremental_index.hierarchical_chunks", return_value=generated), patch("app.services.incremental_index.enrich_chunk", return_value=([], [])), patch.object(document_jobs, "QdrantClient") as factory:
+        with patch.object(document_jobs, "BASE_DIR", Path.cwd()), patch.object(document_jobs, "SessionLocal", sessions), patch.object(document_jobs, "extract_text", return_value="source text"), patch.object(document_jobs, "hierarchical_chunks", return_value=generated), patch("app.services.incremental_index.hierarchical_chunks", return_value=generated), patch("app.services.incremental_index.enrich_chunk", return_value=([], [])), patch("pathlib.Path.write_text"), patch.object(document_jobs, "QdrantClient") as factory:
             client = factory.return_value
             client.upsert_chunks.side_effect = write_vectors
             client.replace_document_chunks.side_effect = replace_vectors
@@ -146,13 +187,16 @@ class DocumentIndexRetryTests(unittest.TestCase):
             self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
             document_jobs.process_document_job(job_id, worker_id)
             with sessions() as db:
-                self.assertEqual(db.get(ProcessingJob, job_id).status, "failed")
+                failed_job = db.get(ProcessingJob, job_id)
+                self.assertEqual((failed_job.status, failed_job.error_type), ("retrying", "QdrantError"))
+                self.assertIsNotNone(failed_job.next_attempt_at)
                 document = db.get(Document, document_id)
                 self.assertEqual(len(document.chunks), 2)
                 self.assertNotEqual(document.status, "indexed")
                 self.assertIsNone(document.content_checksum)
                 expected = {str(chunk.id): chunk.content for chunk in document.chunks}
                 db.get(ProcessingJob, job_id).status = "retrying"
+                db.get(ProcessingJob, job_id).next_attempt_at = None
                 db.commit()
             self.assertNotEqual(vectors, expected)
             # A second failed attempt must not mark the document indexed either.
@@ -160,10 +204,11 @@ class DocumentIndexRetryTests(unittest.TestCase):
             self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
             document_jobs.process_document_job(job_id, worker_id)
             with sessions() as db:
-                self.assertEqual(db.get(ProcessingJob, job_id).status, "failed")
-                self.assertEqual(db.get(Document, document_id).status, "failed")
+                self.assertEqual(db.get(ProcessingJob, job_id).status, "retrying")
+                self.assertEqual(db.get(Document, document_id).status, "queued")
                 self.assertIsNone(db.get(Document, document_id).content_checksum)
                 db.get(ProcessingJob, job_id).status = "retrying"
+                db.get(ProcessingJob, job_id).next_attempt_at = None
                 db.commit()
             vectors["stale-point-without-sql-row"] = "old content"
             self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)

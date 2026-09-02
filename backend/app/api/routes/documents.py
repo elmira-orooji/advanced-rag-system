@@ -298,7 +298,8 @@ def retry_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: 
         db.add(job)
     elif job.status in {"queued", "running", "retrying"}:
         raise HTTPException(status_code=409, detail="Document processing is already active")
-    job.status = "retrying"; job.progress = 0; job.stage = "queued"; job.error = None; job.completed_at = None
+    job.status = "retrying"; job.progress = 0; job.stage = "queued"; job.error = None; job.error_type = None; job.completed_at = None
+    job.next_attempt_at = None; job.dead_lettered_at = None
     job.worker_id = None; job.locked_at = None
     document.status = "queued"; document.processing_progress = 0; document.processing_stage = "queued"; document.processing_error = None
     db.commit(); db.refresh(job); db.refresh(document)

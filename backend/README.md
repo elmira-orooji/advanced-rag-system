@@ -19,7 +19,9 @@ More than one document worker may run at the same time. Jobs are claimed with
 database row locks, and abandoned claims return to the queue after
 `DOCUMENT_JOB_LEASE_SECONDS`. Active workers refresh their lease every
 `DOCUMENT_JOB_HEARTBEAT_SECONDS`, including during blocking extraction and
-Qdrant operations.
+Qdrant operations. Transient failures use exponential backoff up to
+`DOCUMENT_JOB_MAX_ATTEMPTS`; permanent and exhausted jobs enter the
+`dead_letter` state and can still be retried manually.
 
 The connector scheduler is also a separate process. Run one scheduler instance;
 it handles `SIGINT` and `SIGTERM` cleanly and is independent of the number of API
