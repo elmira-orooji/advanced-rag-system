@@ -1,5 +1,6 @@
 import unittest
 import tempfile
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 from uuid import uuid4
@@ -8,7 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models.processing_job import ProcessingJob
-from app.services.document_jobs import recover_document_jobs
+from app.services.document_jobs import claim_document_job, recover_document_jobs
 from app.services import document_jobs
 from app.db.database import Base
 from app.models.document import Document
@@ -22,40 +23,43 @@ class DocumentJobRecoveryTests(unittest.TestCase):
         self.sessions = sessionmaker(bind=self.engine, expire_on_commit=True)
         self.addCleanup(self.engine.dispose)
 
-    def test_unfinished_jobs_are_committed_then_requeued_by_id(self):
-        ids = {status: uuid4() for status in ("queued", "running", "retrying", "completed", "failed")}
+    def test_only_abandoned_running_jobs_are_requeued(self):
+        ids = {status: uuid4() for status in ("queued", "retrying", "completed", "failed")}
+        stale_id, live_id = uuid4(), uuid4()
         with self.sessions() as db:
             for status, job_id in ids.items():
                 db.add(ProcessingJob(id=job_id, organization_id=uuid4(), document_id=uuid4(), status=status, stage="original"))
+            db.add(ProcessingJob(id=stale_id, organization_id=uuid4(), document_id=uuid4(), status="running", stage="indexing", worker_id="dead", locked_at=datetime.now(timezone.utc) - timedelta(hours=2)))
+            db.add(ProcessingJob(id=live_id, organization_id=uuid4(), document_id=uuid4(), status="running", stage="indexing", worker_id="live", locked_at=datetime.now(timezone.utc)))
             db.commit()
 
-        def check_persisted_job(job_id):
-            with self.sessions() as db:
-                job = db.get(ProcessingJob, job_id)
-                self.assertEqual((job.status, job.stage), ("queued", "queued"))
-
-        with patch("app.services.document_jobs.SessionLocal", self.sessions), patch("app.services.document_jobs.enqueue_document_job", side_effect=check_persisted_job) as enqueue:
-            self.assertEqual(recover_document_jobs(), 3)
-        self.assertCountEqual([call.args[0] for call in enqueue.call_args_list], [ids[status] for status in ("queued", "running", "retrying")])
+        with patch("app.services.document_jobs.SessionLocal", self.sessions), patch("app.services.document_jobs.DOCUMENT_JOB_LEASE_SECONDS", 3600):
+            self.assertEqual(recover_document_jobs(), 1)
         with self.sessions() as db:
-            for status in ("completed", "failed"):
-                job = db.get(ProcessingJob, ids[status])
-                self.assertEqual((job.status, job.stage), (status, "original"))
+            stale = db.get(ProcessingJob, stale_id)
+            self.assertEqual((stale.status, stale.stage, stale.worker_id, stale.locked_at), ("queued", "queued", None, None))
+            self.assertEqual(db.get(ProcessingJob, live_id).status, "running")
+            for status, job_id in ids.items():
+                self.assertEqual(db.get(ProcessingJob, job_id).status, status)
 
     def test_empty_queue_returns_zero(self):
-        with patch("app.services.document_jobs.SessionLocal", self.sessions), patch("app.services.document_jobs.enqueue_document_job") as enqueue:
+        with patch("app.services.document_jobs.SessionLocal", self.sessions):
             self.assertEqual(recover_document_jobs(), 0)
-        enqueue.assert_not_called()
 
-
-    def test_failed_commit_does_not_enqueue_jobs(self):
+    def test_claim_persists_owner_and_attempt_before_returning(self):
+        queued_id = uuid4()
         with self.sessions() as db:
-            db.add(ProcessingJob(organization_id=uuid4(), document_id=uuid4(), status="running"))
+            db.add(ProcessingJob(id=queued_id, organization_id=uuid4(), document_id=uuid4(), status="queued", chunk_size=900, chunk_overlap=100))
             db.commit()
-        with patch("app.services.document_jobs.SessionLocal", self.sessions), patch("sqlalchemy.orm.Session.commit", side_effect=RuntimeError("Commit failed")), patch("app.services.document_jobs.enqueue_document_job") as enqueue:
-            with self.assertRaisesRegex(RuntimeError, "Commit failed"):
-                recover_document_jobs()
-        enqueue.assert_not_called()
+
+        with patch("app.services.document_jobs.SessionLocal", self.sessions):
+            self.assertEqual(claim_document_job("worker-1"), queued_id)
+            self.assertIsNone(claim_document_job("worker-2"))
+
+        with self.sessions() as db:
+            job = db.get(ProcessingJob, queued_id)
+            self.assertEqual((job.status, job.worker_id, job.attempts), ("running", "worker-1", 1))
+            self.assertIsNotNone(job.locked_at)
 
 
 class DocumentIndexRetryTests(unittest.TestCase):

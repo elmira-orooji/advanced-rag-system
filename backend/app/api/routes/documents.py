@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from pypdf import PdfReader
 from sqlalchemy import select
@@ -33,7 +33,6 @@ from app.schemas.document import (
 from app.services.document_extractor import ExtractionError, extract_text
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
-from app.services.document_jobs import enqueue_document_job
 from app.services.chunk_enrichment import enrich_chunk
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -215,7 +214,6 @@ def upload_document(
     status_code=status.HTTP_201_CREATED,
 )
 def ingest_document(
-    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     chunk_size: int = Query(default=1000, ge=200, le=4000),
     overlap: int = Query(default=200, ge=0, le=1000),
@@ -223,6 +221,7 @@ def ingest_document(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
+    target_set: DocumentSet | None = None
     if document_set_id is None:
         if user.role != "admin":
             raise HTTPException(status_code=403, detail="A permitted knowledge set is required")
@@ -260,15 +259,17 @@ def ingest_document(
         db.flush()
         if document_set_id is not None:
             document.document_sets.append(target_set)
-        job = ProcessingJob(organization_id=user.organization_id, document_id=document.id)
+        job = ProcessingJob(
+            organization_id=user.organization_id,
+            document_id=document.id,
+            chunk_size=target_set.child_chunk_size if target_set is not None else chunking.chunk_size,
+            chunk_overlap=target_set.chunk_overlap if target_set is not None else chunking.overlap,
+            parent_chunk_size=target_set.parent_chunk_size if target_set is not None else None,
+        )
         db.add(job)
         db.commit()
         db.refresh(document)
         db.refresh(job)
-        if document_set_id is not None:
-            background_tasks.add_task(enqueue_document_job, job.id, target_set.child_chunk_size, target_set.chunk_overlap, target_set.parent_chunk_size)
-        else:
-            background_tasks.add_task(enqueue_document_job, job.id, chunking.chunk_size, chunking.overlap)
         return IngestResponse(
             **DocumentResponse.model_validate(document).model_dump(),
             job_id=job.id,
@@ -286,7 +287,7 @@ def ingest_document(
 
 
 @router.post("/{document_id}/retry", response_model=IngestResponse)
-def retry_document(document_id: uuid.UUID, background_tasks: BackgroundTasks, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def retry_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     document = db.scalar(select(Document).where(Document.id == document_id, Document.organization_id == user.organization_id))
     if document is None:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -298,9 +299,9 @@ def retry_document(document_id: uuid.UUID, background_tasks: BackgroundTasks, db
     elif job.status in {"queued", "running", "retrying"}:
         raise HTTPException(status_code=409, detail="Document processing is already active")
     job.status = "retrying"; job.progress = 0; job.stage = "queued"; job.error = None; job.completed_at = None
+    job.worker_id = None; job.locked_at = None
     document.status = "queued"; document.processing_progress = 0; document.processing_stage = "queued"; document.processing_error = None
     db.commit(); db.refresh(job); db.refresh(document)
-    background_tasks.add_task(enqueue_document_job, job.id)
     return IngestResponse(**DocumentResponse.model_validate(document).model_dump(), job_id=job.id)
 
 

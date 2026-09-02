@@ -1,11 +1,10 @@
 import uuid
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.core.config import BASE_DIR
+from app.core.config import BASE_DIR, DOCUMENT_JOB_LEASE_SECONDS
 from app.db.database import SessionLocal
 from app.models.document import Document
 from app.models.processing_job import ProcessingJob
@@ -14,25 +13,43 @@ from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
 from app.services.incremental_index import checksum, incremental_chunks
 
-_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="document-jobs")
-
-
-def enqueue_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overlap: int | None = None, parent_size: int | None = None) -> None:
-    _executor.submit(process_document_job, job_id, chunk_size, overlap, parent_size)
-
 
 def recover_document_jobs() -> int:
+    """Release only claims whose worker lease has expired."""
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=DOCUMENT_JOB_LEASE_SECONDS)
     with SessionLocal() as db:
-        jobs = list(db.scalars(select(ProcessingJob).where(ProcessingJob.status.in_(["queued", "running", "retrying"]))).all())
-        # Keep scalar IDs before commit expires the ORM instances.
-        job_ids = [job.id for job in jobs]
+        jobs = list(db.scalars(select(ProcessingJob).where(
+            ProcessingJob.status == "running",
+            (ProcessingJob.locked_at.is_(None)) | (ProcessingJob.locked_at < cutoff),
+        )).all())
         for job in jobs:
             job.status = "queued"
             job.stage = "queued"
+            job.worker_id = None
+            job.locked_at = None
         db.commit()
-    for job_id in job_ids:
-        enqueue_document_job(job_id)
-    return len(job_ids)
+        return len(jobs)
+
+
+def claim_document_job(worker_id: str) -> uuid.UUID | None:
+    """Atomically claim the oldest available job across competing workers."""
+    with SessionLocal() as db, db.begin():
+        job = db.scalar(
+            select(ProcessingJob)
+            .where(ProcessingJob.status.in_(["queued", "retrying"]))
+            .order_by(ProcessingJob.created_at, ProcessingJob.id)
+            .with_for_update(skip_locked=True)
+            .limit(1)
+        )
+        if job is None:
+            return None
+        now = datetime.now(timezone.utc)
+        job.status = "running"
+        job.attempts += 1
+        job.started_at = now
+        job.worker_id = worker_id
+        job.locked_at = now
+        return job.id
 
 
 def _progress(db, document: Document, job: ProcessingJob, value: int, stage: str) -> None:
@@ -41,26 +58,37 @@ def _progress(db, document: Document, job: ProcessingJob, value: int, stage: str
     document.processing_progress = value
     document.processing_stage = stage
     document.status = "processing" if value < 100 else "indexed"
+    job.locked_at = datetime.now(timezone.utc) if value < 100 else None
     db.commit()
 
 
-def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overlap: int | None = None, parent_size: int | None = None) -> None:
+def process_document_job(
+    job_id: uuid.UUID,
+    chunk_size: int | None = None,
+    overlap: int | None = None,
+    parent_size: int | None = None,
+    *,
+    claimed: bool = False,
+) -> None:
     with SessionLocal() as db:
         job = db.get(ProcessingJob, job_id)
-        if job is None or job.status not in {"queued", "retrying"}:
+        allowed_statuses = {"running"} if claimed else {"queued", "retrying"}
+        if job is None or job.status not in allowed_statuses:
             return
         document = db.scalar(select(Document).options(selectinload(Document.chunks), selectinload(Document.document_sets)).where(Document.id == job.document_id))
         if document is None:
             return
-        job.status = "running"
-        job.attempts += 1
-        job.started_at = datetime.now(timezone.utc)
+        if not claimed:
+            job.status = "running"
+            job.attempts += 1
+            job.started_at = datetime.now(timezone.utc)
+            job.locked_at = job.started_at
         _progress(db, document, job, 10, "extracting")
         try:
             settings = document.document_sets[0] if document.document_sets else None
-            chunk_size = chunk_size or (settings.child_chunk_size if settings else 800)
-            overlap = overlap if overlap is not None else (settings.chunk_overlap if settings else 120)
-            parent_size = parent_size or (settings.parent_chunk_size if settings else 2400)
+            chunk_size = chunk_size or job.chunk_size or (settings.child_chunk_size if settings else 800)
+            overlap = overlap if overlap is not None else (job.chunk_overlap if job.chunk_overlap is not None else (settings.chunk_overlap if settings else 120))
+            parent_size = parent_size or job.parent_chunk_size or (settings.parent_chunk_size if settings else 2400)
             stored_source = document.storage_path or document.extracted_text_path
             if not stored_source:
                 raise RuntimeError("Document file is unavailable")
@@ -74,6 +102,7 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             )
             if document.content_checksum == text_checksum and document.chunks and chunking_is_unchanged:
                 document.processing_error = None; job.status = "completed"; job.completed_at = datetime.now(timezone.utc)
+                job.worker_id = None
                 _progress(db, document, job, 100, "unchanged")
                 return
             extracted_path = source_path.parent / "extracted.txt"
@@ -106,6 +135,7 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             document.processing_error = None
             job.status = "completed"
             job.completed_at = datetime.now(timezone.utc)
+            job.worker_id = None
             _progress(db, document, job, 100, "ready")
         except Exception as exc:
             db.rollback()
@@ -114,6 +144,7 @@ def process_document_job(job_id: uuid.UUID, chunk_size: int | None = None, overl
             if job and document:
                 message = str(exc)[:500]
                 job.status = "failed"; job.error = message; job.completed_at = datetime.now(timezone.utc)
+                job.worker_id = None; job.locked_at = None
                 document.status = "failed"; document.processing_error = message
                 document.processing_stage = "failed"; document.processing_progress = job.progress
                 db.commit()

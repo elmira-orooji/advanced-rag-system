@@ -63,6 +63,8 @@ AUTH_ACCOUNT_FAILURE_LIMIT = int(os.getenv("AUTH_ACCOUNT_FAILURE_LIMIT", "5"))
 AUTH_IP_FAILURE_LIMIT = int(os.getenv("AUTH_IP_FAILURE_LIMIT", "30"))
 AUTH_LOCK_BASE_SECONDS = int(os.getenv("AUTH_LOCK_BASE_SECONDS", "30"))
 AUTH_LOCK_MAX_SECONDS = int(os.getenv("AUTH_LOCK_MAX_SECONDS", "900"))
+DOCUMENT_JOB_POLL_SECONDS = float(os.getenv("DOCUMENT_JOB_POLL_SECONDS", "1"))
+DOCUMENT_JOB_LEASE_SECONDS = int(os.getenv("DOCUMENT_JOB_LEASE_SECONDS", "3600"))
 FRONTEND_ORIGINS = [
     origin.strip()
     for origin in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
