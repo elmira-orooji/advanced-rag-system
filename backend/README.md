@@ -21,4 +21,5 @@ database row locks, and abandoned claims return to the queue after
 
 The connector scheduler is also a separate process. Run one scheduler instance;
 it handles `SIGINT` and `SIGTERM` cleanly and is independent of the number of API
-workers.
+workers. Remote connector discovery releases its SQLAlchemy Session connection
+while OAuth and network downloads are in progress.

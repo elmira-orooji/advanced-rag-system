@@ -37,6 +37,7 @@ class ConnectorDeletionTests(unittest.TestCase):
         db.get.return_value = document
         with patch.object(sync, "_validate_public_url"), patch.object(sync, "_fetch", side_effect=lambda url, *args: (metadata if "api.github.com" in url else body, "text/plain", url)), patch.object(sync, "QdrantClient") as qdrant, patch.object(sync.shutil, "rmtree") as remove:
             result = sync.sync_connector(db, connector)
+        db.close.assert_called_once()
         return result, db, qdrant.return_value, remove
 
     def test_github_limit_does_not_delete_unfetched_documents(self):
@@ -106,7 +107,7 @@ class ConnectorDeletionTests(unittest.TestCase):
 
     def test_failed_fetch_does_not_start_reconciliation(self):
         db = MagicMock()
-        connector = SimpleNamespace(connector_type="github", source_url="https://github.com/owner/repo")
+        connector = SimpleNamespace(id=uuid4(), document_set_id=uuid4(), connector_type="github", source_url="https://github.com/owner/repo")
         with patch.object(sync, "_github", side_effect=sync.ConnectorSyncError("Download failed")), patch.object(sync, "QdrantClient") as qdrant:
             with self.assertRaises(sync.ConnectorSyncError):
                 sync.sync_connector(db, connector)

@@ -365,24 +365,42 @@ def _github(source_url: str) -> SourceSnapshot:
 
 def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
     fetchers = {"website": _website, "github": _github, "google_drive": _google_drive, "s3": _s3, "sharepoint": _sharepoint}
-    fetcher = fetchers.get(connector.connector_type)
+    connector_id = getattr(connector, "id", None)
+    connector_type = connector.connector_type
+    source_url = connector.source_url
+    document_set_id = connector.document_set_id
+    fetcher = fetchers.get(connector_type)
     if fetcher is None: raise ConnectorSyncError("Unsupported connector type")
-    document_set = None
-    if connector.connector_type in CLOUD_CONNECTORS:
-        document_set = db.get(DocumentSet, connector.document_set_id)
+    organization_id = None
+    if connector_type in CLOUD_CONNECTORS:
+        document_set = db.get(DocumentSet, document_set_id)
         if document_set is None:
             raise ConnectorSyncError("Connector knowledge set no longer exists")
-        credentials = _organization_credentials(document_set.organization_id, connector.connector_type)
-        snapshot = fetcher(connector.source_url, credentials)
+        organization_id = document_set.organization_id
+
+    # Remote discovery can take minutes. Release the Session connection before
+    # OAuth and downloads, then reopen it only while applying the snapshot.
+    db.close()
+    if connector_type in CLOUD_CONNECTORS:
+        credentials = _organization_credentials(organization_id, connector_type)
+        snapshot = fetcher(source_url, credentials)
     else:
-        snapshot = fetcher(connector.source_url)
+        snapshot = fetcher(source_url)
+
+    if connector_id is None:
+        raise ConnectorSyncError("Connector has no persistent identity")
+    connector = db.get(Connector, connector_id)
+    if connector is None:
+        raise ConnectorSyncError("Connector no longer exists")
     sources = snapshot.sources
     existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
     created = updated = unchanged = deleted = 0
     removed_directories: list[Path] = []
     journal: dict[str, ExternalDocumentState] = {}
     qdrant = QdrantClient(); qdrant.ensure_collection()
-    document_set = document_set or db.get(DocumentSet, connector.document_set_id)
+    document_set = db.get(DocumentSet, document_set_id)
+    if document_set is None:
+        raise ConnectorSyncError("Connector knowledge set no longer exists")
     try:
         for external_id, title, text, source_url in sources:
             digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
@@ -416,7 +434,7 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
                 continue
             document = db.get(Document, item.document_id)
             if document is not None:
-                other_sets = [value for value in document.document_sets if value.id != connector.document_set_id]
+                other_sets = [value for value in document.document_sets if value.id != document_set_id]
                 if other_sets:
                     document.document_sets = other_sets
                     db.delete(item)
