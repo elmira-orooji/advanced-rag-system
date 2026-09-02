@@ -5,7 +5,13 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 
-load_dotenv(BASE_DIR / ".env", override=True)
+
+def _load_environment(env_file: Path = BASE_DIR / ".env") -> None:
+    """Load local defaults without replacing host-provided configuration."""
+    load_dotenv(env_file, override=False)
+
+
+_load_environment()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 QDRANT_URL = os.getenv("QDRANT_URL", "").rstrip("/")
