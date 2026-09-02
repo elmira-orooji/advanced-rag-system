@@ -194,6 +194,9 @@ def process_document_job(
         document = db.scalar(select(Document).options(selectinload(Document.chunks), selectinload(Document.document_sets)).where(Document.id == job.document_id))
         if document is None:
             return
+        qdrant = None
+        qdrant_touched = False
+        previous_vectors: list[dict[str, object]] = []
         _progress(db, document, job, worker_id, 10, "extracting")
         try:
             settings = document.document_sets[0] if document.document_sets else None
@@ -224,20 +227,26 @@ def process_document_job(
             contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
             if not contents:
                 raise RuntimeError("Document contains no text to index")
-            next_chunks, _, removed_ids = incremental_chunks(document, text, chunk_size, overlap, parent_size)
-            for chunk in list(document.chunks):
-                if str(chunk.id) in removed_ids: db.delete(chunk)
-            document.chunks = next_chunks
-            db.flush()
             _progress(db, document, job, worker_id, 65, "indexing")
-            client = QdrantClient()
-            client.ensure_collection()
-            # SQL chunks may survive a failed/partial Qdrant write. Reconcile the
-            # whole document, including stale vectors whose SQL rows are gone.
-            client.replace_document_chunks(str(document.id), document.filename, [
+            previous_vectors = [
                 {"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content}
                 for chunk in document.chunks
-            ])
+            ]
+            next_chunks, _, removed_ids = incremental_chunks(document, text, chunk_size, overlap, parent_size)
+            pending_chunks = [
+                {"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content}
+                for chunk in next_chunks
+            ]
+            qdrant = QdrantClient()
+            qdrant.ensure_collection()
+            # External state must be updated before mutating SQL rows so a failure
+            # leaves the database untouched and the retry contract consistent.
+            qdrant_touched = True
+            qdrant.replace_document_chunks(str(document.id), document.filename, pending_chunks)
+            for chunk in list(document.chunks):
+                if str(chunk.id) in removed_ids:
+                    db.delete(chunk)
+            document.chunks = next_chunks
             document.content_checksum = text_checksum
             document.indexed_child_chunk_size = chunk_size
             document.indexed_chunk_overlap = overlap
@@ -246,6 +255,13 @@ def process_document_job(
             _progress(db, document, job, worker_id, 100, "ready", completed=True)
         except Exception as exc:
             db.rollback()
+            if qdrant_touched and qdrant is not None:
+                try:
+                    qdrant.replace_document_chunks(str(document.id), document.filename, previous_vectors)
+                except Exception as compensation_error:
+                    logger.exception("Could not restore document vectors after indexing failure", extra={"job_id": str(job_id), "document_id": str(document.id)})
+                    if hasattr(exc, "add_note"):
+                        exc.add_note(f"Qdrant compensation failed: {compensation_error}")
             if isinstance(exc, DocumentJobOwnershipLost):
                 logger.warning("Stopped document processing after lease ownership changed", extra={"job_id": str(job_id), "worker_id": worker_id})
                 return
