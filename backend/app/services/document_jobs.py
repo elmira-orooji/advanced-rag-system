@@ -120,31 +120,27 @@ def _progress(db, document: Document, job: ProcessingJob, value: int, stage: str
 
 def process_document_job(
     job_id: uuid.UUID,
-    chunk_size: int | None = None,
-    overlap: int | None = None,
-    parent_size: int | None = None,
-    *,
-    claimed: bool = False,
+    worker_id: str,
 ) -> None:
     with SessionLocal() as db:
-        job = db.get(ProcessingJob, job_id)
-        allowed_statuses = {"running"} if claimed else {"queued", "retrying"}
-        if job is None or job.status not in allowed_statuses:
+        job = db.scalar(
+            select(ProcessingJob).where(
+                ProcessingJob.id == job_id,
+                ProcessingJob.status == "running",
+                ProcessingJob.worker_id == worker_id,
+            )
+        )
+        if job is None:
             return
         document = db.scalar(select(Document).options(selectinload(Document.chunks), selectinload(Document.document_sets)).where(Document.id == job.document_id))
         if document is None:
             return
-        if not claimed:
-            job.status = "running"
-            job.attempts += 1
-            job.started_at = datetime.now(timezone.utc)
-            job.locked_at = job.started_at
         _progress(db, document, job, 10, "extracting")
         try:
             settings = document.document_sets[0] if document.document_sets else None
-            chunk_size = chunk_size or job.chunk_size or (settings.child_chunk_size if settings else 800)
-            overlap = overlap if overlap is not None else (job.chunk_overlap if job.chunk_overlap is not None else (settings.chunk_overlap if settings else 120))
-            parent_size = parent_size or job.parent_chunk_size or (settings.parent_chunk_size if settings else 2400)
+            chunk_size = job.chunk_size or (settings.child_chunk_size if settings else 800)
+            overlap = job.chunk_overlap if job.chunk_overlap is not None else (settings.chunk_overlap if settings else 120)
+            parent_size = job.parent_chunk_size or (settings.parent_chunk_size if settings else 2400)
             stored_source = document.storage_path or document.extracted_text_path
             if not stored_source:
                 raise RuntimeError("Document file is unavailable")

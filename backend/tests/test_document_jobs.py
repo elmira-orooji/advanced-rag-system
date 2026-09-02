@@ -84,6 +84,19 @@ class DocumentJobRecoveryTests(unittest.TestCase):
             self.assertEqual(refreshed.worker_id, "worker-1")
             self.assertGreater(refreshed.locked_at.replace(tzinfo=timezone.utc), old_time)
 
+    def test_processing_cannot_bypass_claim_or_use_another_owner(self):
+        job_id = uuid4()
+        with self.sessions() as db:
+            db.add(ProcessingJob(id=job_id, organization_id=uuid4(), document_id=uuid4(), status="queued"))
+            db.commit()
+
+        with patch("app.services.document_jobs.SessionLocal", self.sessions), patch.object(document_jobs, "_progress") as progress:
+            document_jobs.process_document_job(job_id, "worker-without-claim")
+            self.assertEqual(claim_document_job("owner"), job_id)
+            document_jobs.process_document_job(job_id, "different-worker")
+
+        progress.assert_not_called()
+
 
 class DocumentIndexRetryTests(unittest.TestCase):
     def test_retry_resends_committed_chunks_after_partial_qdrant_failure(self):
@@ -113,7 +126,9 @@ class DocumentIndexRetryTests(unittest.TestCase):
             client = factory.return_value
             client.upsert_chunks.side_effect = write_vectors
             client.replace_document_chunks.side_effect = replace_vectors
-            document_jobs.process_document_job(job_id)
+            worker_id = "test-worker"
+            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
+            document_jobs.process_document_job(job_id, worker_id)
             with sessions() as db:
                 self.assertEqual(db.get(ProcessingJob, job_id).status, "failed")
                 document = db.get(Document, document_id)
@@ -126,7 +141,8 @@ class DocumentIndexRetryTests(unittest.TestCase):
             self.assertNotEqual(vectors, expected)
             # A second failed attempt must not mark the document indexed either.
             fail_next = True
-            document_jobs.process_document_job(job_id)
+            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
+            document_jobs.process_document_job(job_id, worker_id)
             with sessions() as db:
                 self.assertEqual(db.get(ProcessingJob, job_id).status, "failed")
                 self.assertEqual(db.get(Document, document_id).status, "failed")
@@ -134,7 +150,8 @@ class DocumentIndexRetryTests(unittest.TestCase):
                 db.get(ProcessingJob, job_id).status = "retrying"
                 db.commit()
             vectors["stale-point-without-sql-row"] = "old content"
-            document_jobs.process_document_job(job_id)
+            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
+            document_jobs.process_document_job(job_id, worker_id)
             self.assertEqual(vectors, expected)
             with sessions() as db:
                 self.assertEqual(db.get(ProcessingJob, job_id).status, "completed")
@@ -143,16 +160,22 @@ class DocumentIndexRetryTests(unittest.TestCase):
                 db.get(ProcessingJob, job_id).status = "retrying"
                 db.commit()
             factory.reset_mock()
-            document_jobs.process_document_job(job_id)
+            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
+            document_jobs.process_document_job(job_id, worker_id)
             factory.assert_not_called()
             with sessions() as db:
                 self.assertEqual(db.get(ProcessingJob, job_id).stage, "unchanged")
 
             with sessions() as db:
-                db.get(ProcessingJob, job_id).status = "retrying"
+                job = db.get(ProcessingJob, job_id)
+                job.status = "retrying"
+                job.chunk_size = 999
+                job.chunk_overlap = 111
+                job.parent_chunk_size = 2500
                 db.commit()
             factory.reset_mock()
-            document_jobs.process_document_job(job_id, chunk_size=999, overlap=111, parent_size=2500)
+            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
+            document_jobs.process_document_job(job_id, worker_id)
             factory.assert_called_once()
             with sessions() as db:
                 document = db.get(Document, document_id)

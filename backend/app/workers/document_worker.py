@@ -37,7 +37,7 @@ def run() -> None:
             continue
         try:
             with maintain_document_job_lease(job_id, worker_id):
-                process_document_job(job_id, claimed=True)
+                process_document_job(job_id, worker_id)
         except Exception:
             logger.exception("Unhandled document job failure", extra={"job_id": str(job_id)})
 
