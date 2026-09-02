@@ -9,6 +9,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.models.connector import Connector
 from app.services import connector_scheduler as scheduler
+from app.workers import connector_scheduler_worker as scheduler_worker
 from app.services.connector_scheduler import run_due_connector_syncs
 from app.services.connector_lock import connector_sync_lock
 
@@ -120,8 +121,8 @@ class ConnectorSchedulerTests(unittest.TestCase):
     def test_scheduler_loop_logs_iteration_failure_and_continues(self):
         stop_event = MagicMock()
         stop_event.is_set.side_effect = [False, False, True]
-        with patch.object(scheduler, "run_due_connector_syncs", side_effect=[RuntimeError("Database unavailable"), 0]) as run, patch.object(scheduler.logger, "exception") as logged:
-            scheduler._scheduler_loop(stop_event)
+        with patch.object(scheduler_worker, "run_due_connector_syncs", side_effect=[RuntimeError("Database unavailable"), 0]) as run, patch.object(scheduler_worker.logger, "exception") as logged:
+            scheduler_worker.scheduler_loop(stop_event)
         self.assertEqual(run.call_count, 2)
         logged.assert_called_once_with("Connector scheduler iteration failed")
         self.assertEqual(stop_event.wait.call_count, 2)
