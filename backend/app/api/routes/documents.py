@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.config import BASE_DIR, MAX_UPLOAD_SIZE, UPLOAD_DIR
+from app.core.config import BASE_DIR, MAX_UPLOAD_SIZE, UPLOAD_DIR, document_storage_relative, resolve_document_path
 from app.core.document_set_access import require_document_access, require_set_access
 from app.api.routes.auth import get_current_user
 from app.db.database import get_db
@@ -184,8 +184,8 @@ def upload_document(
             organization_id=user.organization_id,
             filename=safe_filename,
             content_type=content_type,
-            storage_path=original_path.relative_to(BASE_DIR).as_posix(),
-            extracted_text_path=extracted_path.relative_to(BASE_DIR).as_posix(),
+            storage_path=document_storage_relative(original_path),
+            extracted_text_path=document_storage_relative(extracted_path),
             status="extracted",
         )
         db.add(document)
@@ -252,7 +252,7 @@ def ingest_document(
             raise HTTPException(status_code=400, detail="The uploaded file is empty")
         document = Document(
             id=document_id, organization_id=user.organization_id, filename=safe_filename,
-            content_type=content_type, storage_path=original_path.relative_to(BASE_DIR).as_posix(),
+            content_type=content_type, storage_path=document_storage_relative(original_path),
             status="queued", processing_progress=0, processing_stage="queued", source_type="upload", tags=[],
         )
         db.add(document)
@@ -339,7 +339,7 @@ def create_document_chunks(
     if not document.extracted_text_path:
         raise HTTPException(status_code=409, detail="Document text has not been extracted")
 
-    extracted_path = (BASE_DIR / document.extracted_text_path).resolve()
+    extracted_path = resolve_document_path(document.extracted_text_path)
     storage_root = UPLOAD_DIR.resolve()
     if storage_root not in extracted_path.parents or not extracted_path.is_file():
         raise HTTPException(status_code=409, detail="Extracted text file is unavailable")
@@ -453,7 +453,7 @@ def _get_document_directory(document: Document) -> Path | None:
         return None
 
     storage_root = UPLOAD_DIR.resolve()
-    document_dir = (BASE_DIR / stored_source).resolve().parent
+    document_dir = resolve_document_path(stored_source).parent
     expected_dir = storage_root / str(document.id)
     if document_dir != expected_dir:
         raise HTTPException(
@@ -468,7 +468,7 @@ def _document_source_path(document: Document) -> Path:
     if not stored_source:
         raise HTTPException(status_code=404, detail="Original document is unavailable")
     _get_document_directory(document)
-    source_path = (BASE_DIR / stored_source).resolve()
+    source_path = resolve_document_path(stored_source)
     if not source_path.is_file():
         raise HTTPException(status_code=404, detail="Original document is unavailable")
     return source_path

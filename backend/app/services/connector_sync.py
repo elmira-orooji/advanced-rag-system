@@ -20,7 +20,7 @@ from urllib.request import Request, HTTPSHandler, HTTPRedirectHandler, ProxyHand
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.core.config import BASE_DIR, CONNECTOR_CREDENTIALS, UPLOAD_DIR
+from app.core.config import BASE_DIR, CONNECTOR_CREDENTIALS, UPLOAD_DIR, document_storage_relative
 from app.models.chunk import Chunk
 from app.models.connector import Connector, ConnectorItem
 from app.models.document import Document
@@ -416,7 +416,7 @@ def sync_connector(db: Session, connector: Connector) -> dict[str, int]:
             if document_id not in journal:
                 journal[document_id] = _capture_external_state(document, existed=item is not None)
             directory = UPLOAD_DIR / document_id; directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
-            source_path = extracted.relative_to(BASE_DIR).as_posix()
+            source_path = document_storage_relative(extracted)
             document.storage_path = source_path; document.extracted_text_path = source_path; document.filename = title; document.processing_error = None
             next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
             for chunk in list(document.chunks):
@@ -496,7 +496,7 @@ def ingest_webhook_event(db: Session, connector: Connector, action: str, externa
             db.add(document); db.flush(); document.document_sets.append(document_set)
         journal.append(_capture_external_state(document, existed=not created))
         directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
-        source_path = extracted.relative_to(BASE_DIR).as_posix()
+        source_path = document_storage_relative(extracted)
         document.storage_path = source_path; document.extracted_text_path = source_path; document.filename = (title or external_id)[:255]; document.processing_error = None
         next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
         for chunk in list(document.chunks):

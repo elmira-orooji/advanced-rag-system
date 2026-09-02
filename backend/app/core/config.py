@@ -47,7 +47,51 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "openrouter/free")
 OPENROUTER_INPUT_COST_PER_MILLION = float(os.getenv("OPENROUTER_INPUT_COST_PER_MILLION", "0"))
 OPENROUTER_OUTPUT_COST_PER_MILLION = float(os.getenv("OPENROUTER_OUTPUT_COST_PER_MILLION", "0"))
-UPLOAD_DIR = BASE_DIR / "storage" / "documents"
+_DEFAULT_DOCUMENT_STORAGE = (BASE_DIR / "storage" / "documents").resolve()
+_DOCUMENT_STORAGE_ENV = os.getenv("DOCUMENT_STORAGE_DIR")
+if _DOCUMENT_STORAGE_ENV:
+    UPLOAD_DIR = Path(_DOCUMENT_STORAGE_ENV).expanduser().resolve()
+else:
+    UPLOAD_DIR = _DEFAULT_DOCUMENT_STORAGE
+
+
+def document_storage_relative(path: Path) -> str:
+    """Return a storage-relative POSIX path that survives across replicas.
+
+    Paths are stored relative to UPLOAD_DIR instead of BASE_DIR so deployments
+    with an external/shared volume do not embed host-specific prefixes. Legacy
+    entries written before this change remain readable via resolve_document_path.
+    """
+    try:
+        return path.relative_to(UPLOAD_DIR).as_posix()
+    except ValueError:
+        # Fallback for callers that still hand in a BASE_DIR-relative path or
+        # an absolute path outside the configured storage root.
+        try:
+            return path.relative_to(BASE_DIR).as_posix()
+        except ValueError:
+            return path.as_posix()
+
+
+def resolve_document_path(stored: str) -> Path:
+    """Resolve a persisted storage reference to an absolute filesystem path.
+
+    Supports three formats for backward compatibility:
+      * paths relative to UPLOAD_DIR (current default)
+      * legacy paths relative to BASE_DIR
+      * absolute paths (e.g. when DOCUMENT_STORAGE_DIR points outside BASE_DIR)
+    """
+    candidate = Path(stored)
+    if candidate.is_absolute():
+        return candidate.resolve()
+    upload_candidate = (UPLOAD_DIR / candidate).resolve()
+    try:
+        upload_candidate.relative_to(UPLOAD_DIR)
+        if upload_candidate.exists() or not (BASE_DIR / candidate).exists():
+            return upload_candidate
+    except ValueError:
+        pass
+    return (BASE_DIR / candidate).resolve()
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "")
 if len(AUTH_SECRET_KEY) < 32:

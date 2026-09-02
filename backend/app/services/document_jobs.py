@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import or_, select, update
 from sqlalchemy.orm import selectinload
 
-from app.core.config import BASE_DIR, DOCUMENT_JOB_HEARTBEAT_SECONDS, DOCUMENT_JOB_LEASE_SECONDS, DOCUMENT_JOB_MAX_ATTEMPTS, DOCUMENT_JOB_RETRY_BASE_SECONDS, DOCUMENT_JOB_RETRY_MAX_SECONDS
+from app.core.config import BASE_DIR, DOCUMENT_JOB_HEARTBEAT_SECONDS, DOCUMENT_JOB_LEASE_SECONDS, DOCUMENT_JOB_MAX_ATTEMPTS, DOCUMENT_JOB_RETRY_BASE_SECONDS, DOCUMENT_JOB_RETRY_MAX_SECONDS, document_storage_relative, resolve_document_path
 from app.db.database import SessionLocal
 from app.models.document import Document
 from app.models.processing_job import ProcessingJob
@@ -206,7 +206,7 @@ def process_document_job(
             stored_source = document.storage_path or document.extracted_text_path
             if not stored_source:
                 raise RuntimeError("Document file is unavailable")
-            source_path = BASE_DIR / stored_source
+            source_path = resolve_document_path(stored_source)
             text = extract_text(source_path, document.content_type or "")
             text_checksum = checksum(text)
             chunking_is_unchanged = (
@@ -220,7 +220,7 @@ def process_document_job(
                 return
             extracted_path = source_path.parent / "extracted.txt"
             extracted_path.write_text(text, encoding="utf-8")
-            document.extracted_text_path = extracted_path.relative_to(BASE_DIR).as_posix()
+            document.extracted_text_path = document_storage_relative(extracted_path)
             # Persist an invalid index marker before committing new chunks.
             document.content_checksum = None
             _progress(db, document, job, worker_id, 35, "chunking")

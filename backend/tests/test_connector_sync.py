@@ -165,10 +165,13 @@ class ConnectorConsistencyTests(unittest.TestCase):
         snapshot = sync.SourceSnapshot([("https://example.com", "Page", "new content", "https://example.com")], {"https://example.com"}, complete=True)
         base = Path.cwd() / "storage" / f"connector-source-{uuid4()}"
         try:
-            with patch.object(sync, "BASE_DIR", base), patch.object(sync, "UPLOAD_DIR", base / "uploads"), patch.object(sync, "_website", return_value=snapshot), patch.object(sync, "incremental_chunks", return_value=([], [], [])), patch.object(sync, "QdrantClient"):
+            upload_dir = base / "uploads"
+            real_relative = sync.document_storage_relative
+            with patch.object(sync, "BASE_DIR", base), patch.object(sync, "UPLOAD_DIR", upload_dir), patch.object(sync, "document_storage_relative", side_effect=real_relative), patch.object(sync, "_website", return_value=snapshot), patch.object(sync, "incremental_chunks", return_value=([], [], [])), patch.object(sync, "QdrantClient"):
                 sync.sync_connector(db, connector)
             self.assertEqual(document.storage_path, document.extracted_text_path)
-            self.assertTrue((base / document.storage_path).is_file())
+            resolved = (upload_dir / document.storage_path).resolve()
+            self.assertTrue(resolved.is_file())
         finally:
             shutil.rmtree(base, ignore_errors=True)
 
