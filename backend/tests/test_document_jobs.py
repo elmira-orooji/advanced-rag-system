@@ -2,6 +2,7 @@ import unittest
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -10,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import sessionmaker
 
 from app.models.processing_job import ProcessingJob
-from app.services.document_jobs import claim_document_job, recover_document_jobs, refresh_document_job_lease
+from app.services.document_jobs import DocumentJobOwnershipLost, claim_document_job, recover_document_jobs, refresh_document_job_lease
 from app.services import document_jobs
 from app.db.database import Base
 from app.models.document import Document
@@ -96,6 +97,21 @@ class DocumentJobRecoveryTests(unittest.TestCase):
             document_jobs.process_document_job(job_id, "different-worker")
 
         progress.assert_not_called()
+
+    def test_progress_is_fenced_by_current_owner(self):
+        job_id = uuid4()
+        document = SimpleNamespace(processing_progress=0, processing_stage="queued", status="queued")
+        with self.sessions() as db:
+            job = ProcessingJob(id=job_id, organization_id=uuid4(), document_id=uuid4(), status="running", worker_id="new-owner", locked_at=datetime.now(timezone.utc))
+            db.add(job)
+            db.commit()
+            with self.assertRaises(DocumentJobOwnershipLost):
+                document_jobs._progress(db, document, job, "old-owner", 65, "indexing")
+
+        with self.sessions() as db:
+            job = db.get(ProcessingJob, job_id)
+            self.assertEqual((job.worker_id, job.progress, job.stage), ("new-owner", 0, "queued"))
+        self.assertEqual((document.processing_progress, document.processing_stage, document.status), (0, "queued", "queued"))
 
 
 class DocumentIndexRetryTests(unittest.TestCase):

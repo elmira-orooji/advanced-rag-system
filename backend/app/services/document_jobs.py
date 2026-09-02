@@ -19,6 +19,10 @@ from app.services.incremental_index import checksum, incremental_chunks
 logger = logging.getLogger(__name__)
 
 
+class DocumentJobOwnershipLost(RuntimeError):
+    pass
+
+
 def _expired_document_job_ids(cutoff: datetime):
     return (
         select(ProcessingJob.id)
@@ -108,13 +112,39 @@ def maintain_document_job_lease(job_id: uuid.UUID, worker_id: str):
         thread.join(timeout=DOCUMENT_JOB_HEARTBEAT_SECONDS + 1)
 
 
-def _progress(db, document: Document, job: ProcessingJob, value: int, stage: str) -> None:
-    job.progress = value
-    job.stage = stage
+def _progress(
+    db,
+    document: Document,
+    job: ProcessingJob,
+    worker_id: str,
+    value: int,
+    stage: str,
+    *,
+    completed: bool = False,
+) -> None:
+    now = datetime.now(timezone.utc)
+    result = db.execute(
+        update(ProcessingJob)
+        .where(
+            ProcessingJob.id == job.id,
+            ProcessingJob.status == "running",
+            ProcessingJob.worker_id == worker_id,
+        )
+        .values(
+            progress=value,
+            stage=stage,
+            status="completed" if completed else "running",
+            completed_at=now if completed else None,
+            worker_id=None if completed else worker_id,
+            locked_at=None if completed else now,
+        )
+    )
+    if result.rowcount != 1:
+        db.rollback()
+        raise DocumentJobOwnershipLost(f"Document job {job.id} is no longer owned by {worker_id}")
     document.processing_progress = value
     document.processing_stage = stage
     document.status = "processing" if value < 100 else "indexed"
-    job.locked_at = datetime.now(timezone.utc) if value < 100 else None
     db.commit()
 
 
@@ -135,7 +165,7 @@ def process_document_job(
         document = db.scalar(select(Document).options(selectinload(Document.chunks), selectinload(Document.document_sets)).where(Document.id == job.document_id))
         if document is None:
             return
-        _progress(db, document, job, 10, "extracting")
+        _progress(db, document, job, worker_id, 10, "extracting")
         try:
             settings = document.document_sets[0] if document.document_sets else None
             chunk_size = job.chunk_size or (settings.child_chunk_size if settings else 800)
@@ -153,16 +183,15 @@ def process_document_job(
                 and document.indexed_parent_chunk_size == parent_size
             )
             if document.content_checksum == text_checksum and document.chunks and chunking_is_unchanged:
-                document.processing_error = None; job.status = "completed"; job.completed_at = datetime.now(timezone.utc)
-                job.worker_id = None
-                _progress(db, document, job, 100, "unchanged")
+                document.processing_error = None
+                _progress(db, document, job, worker_id, 100, "unchanged", completed=True)
                 return
             extracted_path = source_path.parent / "extracted.txt"
             extracted_path.write_text(text, encoding="utf-8")
             document.extracted_text_path = extracted_path.relative_to(BASE_DIR).as_posix()
             # Persist an invalid index marker before committing new chunks.
             document.content_checksum = None
-            _progress(db, document, job, 35, "chunking")
+            _progress(db, document, job, worker_id, 35, "chunking")
             contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
             if not contents:
                 raise RuntimeError("Document contains no text to index")
@@ -171,7 +200,7 @@ def process_document_job(
                 if str(chunk.id) in removed_ids: db.delete(chunk)
             document.chunks = next_chunks
             db.flush()
-            _progress(db, document, job, 65, "indexing")
+            _progress(db, document, job, worker_id, 65, "indexing")
             client = QdrantClient()
             client.ensure_collection()
             # SQL chunks may survive a failed/partial Qdrant write. Reconcile the
@@ -185,18 +214,28 @@ def process_document_job(
             document.indexed_chunk_overlap = overlap
             document.indexed_parent_chunk_size = parent_size
             document.processing_error = None
-            job.status = "completed"
-            job.completed_at = datetime.now(timezone.utc)
-            job.worker_id = None
-            _progress(db, document, job, 100, "ready")
+            _progress(db, document, job, worker_id, 100, "ready", completed=True)
         except Exception as exc:
             db.rollback()
+            if isinstance(exc, DocumentJobOwnershipLost):
+                logger.warning("Stopped document processing after lease ownership changed", extra={"job_id": str(job_id), "worker_id": worker_id})
+                return
             job = db.get(ProcessingJob, job_id)
             document = db.get(Document, job.document_id) if job else None
             if job and document:
                 message = str(exc)[:500]
-                job.status = "failed"; job.error = message; job.completed_at = datetime.now(timezone.utc)
-                job.worker_id = None; job.locked_at = None
+                result = db.execute(
+                    update(ProcessingJob)
+                    .where(
+                        ProcessingJob.id == job_id,
+                        ProcessingJob.status == "running",
+                        ProcessingJob.worker_id == worker_id,
+                    )
+                    .values(status="failed", error=message, completed_at=datetime.now(timezone.utc), worker_id=None, locked_at=None)
+                )
+                if result.rowcount != 1:
+                    db.rollback()
+                    return
                 document.status = "failed"; document.processing_error = message
                 document.processing_stage = "failed"; document.processing_progress = job.progress
                 db.commit()
