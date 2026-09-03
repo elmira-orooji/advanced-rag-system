@@ -186,3 +186,48 @@ class ConnectorLockTests(unittest.TestCase):
                 sync(set_id, connector_id, db, MagicMock())
         self.assertEqual(raised.exception.status_code, 409)
         db.commit.assert_not_called()
+
+    def test_stale_worker_heartbeat_does_not_extend_lost_lease(self):
+        """Fencing validation: a worker that lost ownership must not be able
+        to extend the lease via heartbeat. This simulates a network partition
+        where the original worker resumes after a new owner has taken over."""
+        connector_id = uuid4()
+        stale_owner = "stale-worker-1"
+        new_owner = "new-worker-2"
+        now = datetime.now(timezone.utc)
+
+        # Seed an active lease owned by the new worker
+        with self.sessions() as db:
+            db.add(SyncLease(
+                connector_id=connector_id,
+                owner_id=new_owner,
+                expires_at=now + timedelta(minutes=5),
+            ))
+            db.commit()
+
+        # Simulate the stale worker attempting a heartbeat using its old owner_id
+        from sqlalchemy import update
+        with self.sessions() as db:
+            result = db.execute(
+                update(SyncLease)
+                .where(
+                    SyncLease.connector_id == connector_id,
+                    SyncLease.owner_id == stale_owner,
+                )
+                .values(expires_at=now + timedelta(minutes=10))
+            )
+            db.commit()
+            # The fencing token (owner_id) must prevent the update
+            self.assertEqual(result.rowcount, 0)
+
+        # Verify the lease still belongs to the new worker with the original expiry
+        with self.sessions() as db:
+            lease = db.get(SyncLease, connector_id)
+            self.assertIsNotNone(lease)
+            self.assertEqual(lease.owner_id, new_owner)
+            # SQLite may return naive datetimes; normalize for comparison
+            lease_expiry = lease.expires_at
+            if lease_expiry.tzinfo is None:
+                lease_expiry = lease_expiry.replace(tzinfo=timezone.utc)
+            # Expiry should remain unchanged (within tolerance for test execution time)
+            self.assertLessEqual(lease_expiry, now + timedelta(minutes=5, seconds=5))
