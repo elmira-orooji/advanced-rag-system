@@ -21,6 +21,10 @@ class Connector(Base):
     schedule_interval: Mapped[str] = mapped_column(String(20), default="daily", nullable=False)
     next_sync_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     last_sync_summary: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    attempts: Mapped[int] = mapped_column(default=0, nullable=False)
+    error_type: Mapped[str | None] = mapped_column(String(100))
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
+    dead_lettered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 

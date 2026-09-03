@@ -71,7 +71,9 @@ def sync(set_id: uuid.UUID, connector_id: uuid.UUID, db: Session = Depends(get_d
     with connector_sync_lock(db, connector_id) as acquired:
         if not acquired:
             raise HTTPException(status_code=409, detail="Connector is already syncing")
-        item.status = "syncing"; item.last_error = None; item.next_sync_at = _next(item.schedule_interval) if item.schedule_enabled else None; db.commit()
+        item.status = "syncing"; item.last_error = None; item.error_type = None
+        item.attempts = 0; item.dead_lettered_at = None; item.next_attempt_at = None
+        item.next_sync_at = _next(item.schedule_interval) if item.schedule_enabled else None; db.commit()
     # The actual sync now runs in the scheduler worker so the HTTP request returns
     # immediately and cannot be interrupted by client timeouts.
     return SyncResponse(connector_id=item.id, status="queued", message="Connector sync has been scheduled")

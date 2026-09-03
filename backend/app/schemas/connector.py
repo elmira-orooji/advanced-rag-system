@@ -54,10 +54,14 @@ class ConnectorResponse(BaseModel):
     source_url: str
     status: str
     last_error: str | None
+    error_type: str | None = None
+    attempts: int = 0
     last_synced_at: datetime | None
     schedule_enabled: bool
     schedule_interval: str
     next_sync_at: datetime | None
+    next_attempt_at: datetime | None = None
+    dead_lettered_at: datetime | None = None
     last_sync_summary: dict
     created_at: datetime
 

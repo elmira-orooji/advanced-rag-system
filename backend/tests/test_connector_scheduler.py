@@ -66,7 +66,76 @@ class ConnectorSchedulerTests(unittest.TestCase):
         logged.assert_called_once()
         self.assertIn("connector_id", logged.call_args.kwargs["extra"])
         with self.sessions() as db:
-            self.assertCountEqual([db.get(Connector, value).status for value in ids], ["failed", "ready"])
+            # RuntimeError is not retryable so it goes to dead_letter; the other succeeds
+            statuses = {value: db.get(Connector, value).status for value in ids}
+            self.assertIn("dead_letter", statuses.values())
+            self.assertIn("ready", statuses.values())
+
+    def test_transient_error_retries_with_backoff(self):
+        from urllib.error import URLError
+        ids = self.seed(1)
+        now = datetime.now(timezone.utc)
+        with patch("app.services.connector_scheduler.CONNECTOR_SYNC_MAX_ATTEMPTS", 3), \
+             patch("app.services.connector_scheduler.CONNECTOR_SYNC_RETRY_BASE_SECONDS", 10), \
+             patch("app.services.connector_scheduler.sync_connector", side_effect=URLError("connection refused")):
+            run_due_connector_syncs()
+        with self.sessions() as db:
+            item = db.get(Connector, ids[0])
+            self.assertEqual(item.status, "retrying")
+            self.assertEqual(item.attempts, 1)
+            self.assertEqual(item.error_type, "URLError")
+            self.assertIsNone(item.dead_lettered_at)
+            self.assertIsNotNone(item.next_attempt_at)
+            expected_delay = timedelta(seconds=10)  # base * 2^0
+            attempt_at = item.next_attempt_at
+            if attempt_at.tzinfo is None:
+                attempt_at = attempt_at.replace(tzinfo=timezone.utc)
+            self.assertAlmostEqual((attempt_at - now).total_seconds(), expected_delay.total_seconds(), delta=5)
+
+    def test_exhausted_retries_enter_dead_letter(self):
+        from urllib.error import URLError
+        ids = self.seed(1)
+        with patch("app.services.connector_scheduler.CONNECTOR_SYNC_MAX_ATTEMPTS", 2), \
+             patch("app.services.connector_scheduler.sync_connector", side_effect=URLError("connection refused")):
+            # First attempt -> retrying
+            run_due_connector_syncs()
+        with self.sessions() as db:
+            item = db.get(Connector, ids[0])
+            self.assertEqual(item.status, "retrying")
+            self.assertEqual(item.attempts, 1)
+            # Move next_attempt_at into the past so scheduler picks it up again
+            item.next_attempt_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+            db.commit()
+        with patch("app.services.connector_scheduler.CONNECTOR_SYNC_MAX_ATTEMPTS", 2), \
+             patch("app.services.connector_scheduler.sync_connector", side_effect=URLError("connection refused")):
+            run_due_connector_syncs()
+        with self.sessions() as db:
+            item = db.get(Connector, ids[0])
+            self.assertEqual(item.status, "dead_letter")
+            self.assertEqual(item.attempts, 2)
+            self.assertIsNotNone(item.dead_lettered_at)
+            self.assertIsNone(item.next_attempt_at)
+
+    def test_successful_sync_resets_retry_state(self):
+        from urllib.error import URLError
+        ids = self.seed(1)
+        with patch("app.services.connector_scheduler.CONNECTOR_SYNC_MAX_ATTEMPTS", 5), \
+             patch("app.services.connector_scheduler.sync_connector", side_effect=[URLError("fail"), None]):
+            run_due_connector_syncs()
+        with self.sessions() as db:
+            item = db.get(Connector, ids[0])
+            self.assertEqual(item.status, "retrying")
+            item.next_attempt_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+            db.commit()
+        with patch("app.services.connector_scheduler.sync_connector"):
+            run_due_connector_syncs()
+        with self.sessions() as db:
+            item = db.get(Connector, ids[0])
+            self.assertEqual(item.status, "ready")
+            self.assertEqual(item.attempts, 0)
+            self.assertIsNone(item.dead_lettered_at)
+            self.assertIsNone(item.next_attempt_at)
+            self.assertIsNone(item.error_type)
 
     def test_run_is_bounded_to_ten_claims(self):
         self.seed(11)
