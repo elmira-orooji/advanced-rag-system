@@ -20,7 +20,7 @@ from urllib.request import Request, HTTPSHandler, HTTPRedirectHandler, ProxyHand
 
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
 from app.core.config import BASE_DIR, CONNECTOR_CREDENTIALS, UPLOAD_DIR, document_storage_relative
@@ -506,7 +506,18 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
             connector = db.get(Connector, connector_id)
             if connector is None:
                 raise ConnectorSyncError("Connector no longer exists")
-            existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
+
+            # OPTIMIZATION: Only query ConnectorItems whose external_id is in this batch.
+            # Previously this loaded ALL ConnectorItems for the connector, causing O(Batches × TotalItems) reads.
+            batch_external_ids = [item[0] for item in items]
+            existing_query = select(ConnectorItem).where(
+                and_(
+                    ConnectorItem.connector_id == connector.id,
+                    ConnectorItem.external_id.in_(batch_external_ids)
+                )
+            )
+            existing = {item.external_id: item for item in db.scalars(existing_query).all()}
+
             journal: dict[str, ExternalDocumentState] = {}
             qdrant = QdrantClient(); qdrant.ensure_collection()
             document_set = db.get(DocumentSet, document_set_id)
