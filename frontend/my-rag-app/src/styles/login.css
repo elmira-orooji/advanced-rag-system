@@ -85,7 +85,9 @@
   color: var(--login-muted); background: transparent; transition: color var(--motion-fast), background-color var(--motion-fast);
 }
 .nexora-login__password-toggle:hover, .nexora-login__password-toggle[aria-pressed="true"] { color: var(--login-text); background: color-mix(in srgb, var(--login-primary) 12%, transparent); }
-.nexora-login button:focus-visible, .nexora-login input:focus-visible { outline: 2px solid color-mix(in srgb, var(--login-primary) 80%, white); outline-offset: 3px; }
+.nexora-login button:focus-visible { outline: 2px solid color-mix(in srgb, var(--login-primary) 80%, white); outline-offset: 3px; }
+.nexora-login__field .nexora-login__control > input:focus,
+.nexora-login__field .nexora-login__control > input:focus-visible { outline: none; box-shadow: none; }
 .nexora-login__password-toggle:focus-visible { outline-offset: -2px !important; }
 .nexora-login__field[data-invalid="true"] .nexora-login__control { border-color: var(--login-error); box-shadow: 0 1px 0 var(--login-error); }
 
