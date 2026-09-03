@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.models.connector import Connector
+from app.models.sync_lease import SyncLease
 from app.services import connector_scheduler as scheduler
 from app.workers import connector_scheduler_worker as scheduler_worker
 from app.services.connector_scheduler import run_due_connector_syncs
@@ -19,11 +20,12 @@ class ConnectorSchedulerTests(unittest.TestCase):
         self.engine = create_engine("sqlite://")
         self.addCleanup(self.engine.dispose)
         Connector.__table__.create(self.engine)
+        SyncLease.__table__.create(self.engine)
         self.sessions = sessionmaker(bind=self.engine, expire_on_commit=True)
         self.enterContext(patch("app.services.connector_scheduler.SessionLocal", self.sessions))
         self.locked = set()
         @contextmanager
-        def lock(engine, connector_id):
+        def lock(db, connector_id):
             if connector_id in self.locked:
                 yield False
                 return
@@ -130,38 +132,43 @@ class ConnectorSchedulerTests(unittest.TestCase):
 
 class ConnectorLockTests(unittest.TestCase):
     def setUp(self):
-        self.engine = MagicMock()
-        self.connection = self.engine.connect.return_value.__enter__.return_value
+        self.engine = create_engine("sqlite://")
+        self.addCleanup(self.engine.dispose)
+        SyncLease.__table__.create(self.engine)
+        self.sessions = sessionmaker(bind=self.engine, expire_on_commit=True)
 
-    def test_lock_is_released_after_success_or_failure(self):
-        for fail in (False, True):
-            with self.subTest(fail=fail):
-                self.connection.reset_mock()
-                self.connection.scalar.return_value = True
-                try:
-                    with connector_sync_lock(self.engine, uuid4()) as acquired:
-                        self.assertTrue(acquired)
-                        self.connection.execute.assert_not_called()
-                        if fail:
-                            raise RuntimeError("Worker failed")
-                except RuntimeError:
-                    self.assertTrue(fail)
-                self.assertIn("pg_advisory_unlock", str(self.connection.execute.call_args.args[0]))
-                self.assertEqual(self.connection.scalar.call_args.args[1], self.connection.execute.call_args.args[1])
+    def test_lock_is_acquired_and_released(self):
+        connector_id = uuid4()
+        with self.sessions() as db:
+            with connector_sync_lock(db, connector_id) as acquired:
+                self.assertTrue(acquired)
+                # Lease row should exist while lock is held
+                lease = db.get(SyncLease, connector_id)
+                self.assertIsNotNone(lease)
+            # After exiting, lease should be removed
+            db.expire_all()
+            lease = db.get(SyncLease, connector_id)
+            self.assertIsNone(lease)
 
-    def test_busy_lock_is_not_released_by_non_owner(self):
-        self.connection.scalar.return_value = False
-        with connector_sync_lock(self.engine, uuid4()) as acquired:
-            self.assertFalse(acquired)
-        self.connection.execute.assert_not_called()
+    def test_concurrent_lock_is_rejected(self):
+        connector_id = uuid4()
+        with self.sessions() as db1:
+            with connector_sync_lock(db1, connector_id) as acquired1:
+                self.assertTrue(acquired1)
+                with self.sessions() as db2:
+                    with connector_sync_lock(db2, connector_id) as acquired2:
+                        self.assertFalse(acquired2)
 
-    def test_unlock_error_discards_connection(self):
-        self.connection.scalar.return_value = True
-        self.connection.execute.side_effect = RuntimeError("Connection lost")
-        with self.assertRaises(RuntimeError):
-            with connector_sync_lock(self.engine, uuid4()):
-                pass
-        self.connection.invalidate.assert_called_once()
+    def test_expired_lease_can_be_taken_over(self):
+        from datetime import timedelta
+        connector_id = uuid4()
+        past = datetime.now(timezone.utc) - timedelta(hours=1)
+        with self.sessions() as db:
+            db.add(SyncLease(connector_id=connector_id, owner_id="dead-owner", expires_at=past))
+            db.commit()
+        with self.sessions() as db:
+            with connector_sync_lock(db, connector_id) as acquired:
+                self.assertTrue(acquired)
 
     def test_manual_sync_rejects_live_owner(self):
         from fastapi import HTTPException

@@ -32,7 +32,7 @@ def run_due_connector_syncs() -> int:
                 break
             connector_id = item.id
             attempted.add(connector_id)
-            with connector_sync_lock(db.get_bind(), connector_id) as acquired:
+            with connector_sync_lock(db, connector_id) as acquired:
                 if not acquired:
                     continue
                 item.status = "syncing"; item.last_error = None; item.next_sync_at = now + _delay(item.schedule_interval) if item.schedule_enabled else None; db.commit()

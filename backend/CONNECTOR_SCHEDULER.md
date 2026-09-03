@@ -1,22 +1,28 @@
 # Connector recovery
 
-Scheduled and manual syncs hold a PostgreSQL session advisory lock on a dedicated
-connection until their final status is committed. Ordinary sync commits do not
-release this lock. The scheduler revisits `syncing` rows, including interrupted
-manual syncs with scheduling disabled. It resumes a row only if no worker holds
-its advisory lock. Disabled schedules remain disabled after recovery.
+Scheduled and manual syncs acquire a lease row in the `sync_leases` table before
+starting work. The lease includes an expiration timestamp and a unique owner ID.
+A background heartbeat thread renews the lease every 30 seconds while the sync
+is running. The scheduler revisits `syncing` rows, including interrupted manual
+syncs with scheduling disabled. It resumes a row only if no valid (non-expired)
+lease exists for it. Disabled schedules remain disabled after recovery.
 
-PostgreSQL releases the lock when it detects that the owning session has ended.
-Recovery therefore happens on a subsequent scheduler tick (normally every 60
-seconds), after disconnection is detected. A hung process with a live database
-connection is not automatically terminated or taken over.
+If a worker crashes without releasing its lease, the lease expires after 5 minutes
+and another worker can take over on the next scheduler tick (normally every 60
+seconds). A hung process with a working heartbeat will retain ownership
+indefinitely.
+
+This implementation is compatible with PgBouncer in transaction pooling mode
+because it does not rely on PostgreSQL session state or advisory locks. No
+dedicated database connection is held for the duration of a sync.
 
 Deployment requirements:
 
-- Stop all old workers before starting this version: old workers do not hold
-  advisory locks and must not overlap with the recovery scheduler.
-- Use direct PostgreSQL connections or session pooling, not transaction pooling.
-- Allow one extra database connection per concurrently running connector sync.
+- Run `alembic upgrade head` to create the `sync_leases` table.
+- Stop all old workers before starting this version: old workers do not use
+  leases and must not overlap with the new scheduler.
+- Works with direct PostgreSQL connections, session pooling, and transaction
+  pooling (PgBouncer).
 
-The regression tests simulate worker interleaving and lock ownership; they do not
-exercise process termination against a live PostgreSQL server.
+The regression tests simulate worker interleaving and lease ownership using
+SQLite; they do not exercise process termination against a live PostgreSQL server.
