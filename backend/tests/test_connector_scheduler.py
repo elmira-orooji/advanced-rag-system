@@ -48,8 +48,8 @@ class ConnectorSchedulerTests(unittest.TestCase):
     def test_second_worker_after_first_commit_does_not_duplicate_remaining_jobs(self):
         ids = self.seed(3)
         seen = []
-        def sync(db, item):
-            seen.append(item.id)
+        def sync(connector_id):
+            seen.append(connector_id)
             if len(seen) == 1:
                 # The other worker starts after the first worker releases its locks.
                 run_due_connector_syncs()
