@@ -120,6 +120,8 @@ if DOCUMENT_JOB_MAX_ATTEMPTS < 1:
 if DOCUMENT_JOB_RETRY_BASE_SECONDS < 1 or DOCUMENT_JOB_RETRY_MAX_SECONDS < DOCUMENT_JOB_RETRY_BASE_SECONDS:
     raise RuntimeError("Document job retry delays must be positive and max must be at least base")
 CONNECTOR_SCHEDULER_POLL_SECONDS = float(os.getenv("CONNECTOR_SCHEDULER_POLL_SECONDS", "60"))
+WORKER_HEARTBEAT_SECONDS = float(os.getenv("WORKER_HEARTBEAT_SECONDS", "30"))
+WORKER_STALE_THRESHOLD_SECONDS = int(os.getenv("WORKER_STALE_THRESHOLD_SECONDS", "120"))
 FRONTEND_ORIGINS = [
     origin.strip()
     for origin in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
