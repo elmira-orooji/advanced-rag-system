@@ -8,8 +8,9 @@ import socket
 import shutil
 import uuid
 import xml.etree.ElementTree as ET
+from collections.abc import Iterator
 from datetime import datetime, timezone
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from html.parser import HTMLParser
 from http.client import HTTPSConnection
 from pathlib import Path
@@ -57,14 +58,21 @@ def _organization_credentials(organization_id: uuid.UUID, connector_type: str) -
 
 @dataclass
 class SourceSnapshot:
-    sources: list[tuple[str, str, str, str]]
-    observed_ids: set[str]
+    """Streaming source contract.
+
+    ``source_iterator`` yields ``(external_id, title, text, url)`` tuples one
+    at a time so that only ``STREAM_BATCH_SIZE`` documents are ever held in
+    RAM.  ``observed_ids`` is populated lazily as the iterator is consumed and
+    **must** be read only after the iterator is exhausted (i.e. after the apply
+    loop finishes).
+    """
+    source_iterator: Iterator[tuple[str, str, str, str]]
+    observed_ids: set[str] = field(default_factory=set)
     complete: bool = False
 
 
 # Maximum number of documents to hold in memory before flushing to DB.
-# This prevents unbounded RAM growth for large connectors while keeping
-# transaction boundaries manageable.
+# With true streaming fetchers this now bounds BOTH fetch and apply RAM.
 STREAM_BATCH_SIZE = 50
 
 
@@ -255,17 +263,35 @@ def _google_drive(source_url: str, credentials: dict[str, str]) -> SourceSnapsho
     if not folder_id: raise ConnectorSyncError("Use a Google Drive folder URL")
     token = _oauth_token("https://oauth2.googleapis.com/token", {"client_id": client_id, "client_secret": client_secret, "refresh_token": refresh_token, "grant_type": "refresh_token"})
     query = quote(f"'{folder_id}' in parents and trashed=false")
-    data = _authorized_json(f"https://www.googleapis.com/drive/v3/files?q={query}&pageSize=1000&fields=nextPageToken,incompleteSearch,files(id,name,mimeType,webViewLink,modifiedTime)", token)
-    results = []
-    for item in data.get("files", []):
-        mime = item.get("mimeType", ""); name = item.get("name", "Untitled")
-        if mime == "application/vnd.google-apps.document": url = f"https://www.googleapis.com/drive/v3/files/{item['id']}/export?mimeType=text/plain"
-        elif Path(name).suffix.lower() in ALLOWED_EXTENSIONS: url = f"https://www.googleapis.com/drive/v3/files/{item['id']}?alt=media"
-        else: continue
-        text = _bearer_download(url, token).decode("utf-8", errors="replace").strip()
-        if len(text) >= 20: results.append((item["id"], name[:255], text, item.get("webViewLink") or source_url))
-    return SourceSnapshot(results, {item["id"] for item in data.get("files", [])},
-                          "files" in data and not data.get("nextPageToken") and not data.get("incompleteSearch"))
+
+    snapshot = SourceSnapshot(source_iterator=iter([]), complete=True)
+
+    def _iter() -> Iterator[tuple[str, str, str, str]]:
+        page_token = None
+        complete = True
+        while True:
+            params: dict[str, str] = {"pageSize": "200", "fields": "nextPageToken,incompleteSearch,files(id,name,mimeType,webViewLink,modifiedTime)"}
+            if page_token:
+                params["pageToken"] = page_token
+            data = _authorized_json(f"https://www.googleapis.com/drive/v3/files?q={query}&{urlencode(params)}", token)
+            for item in data.get("files", []):
+                snapshot.observed_ids.add(item["id"])
+                mime = item.get("mimeType", ""); name = item.get("name", "Untitled")
+                if mime == "application/vnd.google-apps.document": url = f"https://www.googleapis.com/drive/v3/files/{item['id']}/export?mimeType=text/plain"
+                elif Path(name).suffix.lower() in ALLOWED_EXTENSIONS: url = f"https://www.googleapis.com/drive/v3/files/{item['id']}?alt=media"
+                else: continue
+                text = _bearer_download(url, token).decode("utf-8", errors="replace").strip()
+                if len(text) >= 20:
+                    yield (item["id"], name[:255], text, item.get("webViewLink") or source_url)
+            if data.get("incompleteSearch"):
+                complete = False
+            page_token = data.get("nextPageToken")
+            if not page_token:
+                break
+        snapshot.complete = complete
+
+    snapshot.source_iterator = _iter()
+    return snapshot
 
 
 def _sharepoint(source_url: str, credentials: dict[str, str]) -> SourceSnapshot:
@@ -274,14 +300,28 @@ def _sharepoint(source_url: str, credentials: dict[str, str]) -> SourceSnapshot:
     parsed = urlparse(source_url)
     if parsed.hostname != "graph.microsoft.com" or "/children" not in parsed.path: raise ConnectorSyncError("Use a Microsoft Graph drive folder children URL")
     token = _oauth_token(f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token", {"client_id": client_id, "client_secret": client_secret, "scope": "https://graph.microsoft.com/.default", "grant_type": "client_credentials"})
-    data = _authorized_json(source_url, token); results = []
-    for item in data.get("value", []):
-        name = item.get("name", ""); download = item.get("@microsoft.graph.downloadUrl")
-        if not download or Path(name).suffix.lower() not in ALLOWED_EXTENSIONS: continue
-        body, _, final = _fetch(download); text = body.decode("utf-8", errors="replace").strip()
-        if len(text) >= 20: results.append((item["id"], name[:255], text, item.get("webUrl") or final))
-    return SourceSnapshot(results, {item["id"] for item in data.get("value", [])},
-                          "value" in data and not data.get("@odata.nextLink"))
+
+    snapshot = SourceSnapshot(source_iterator=iter([]))
+
+    def _iter() -> Iterator[tuple[str, str, str, str]]:
+        next_url: str | None = source_url
+        complete = True
+        while next_url:
+            data = _authorized_json(next_url, token)
+            for item in data.get("value", []):
+                snapshot.observed_ids.add(item["id"])
+                name = item.get("name", ""); download = item.get("@microsoft.graph.downloadUrl")
+                if not download or Path(name).suffix.lower() not in ALLOWED_EXTENSIONS: continue
+                body, _, final = _fetch(download); text = body.decode("utf-8", errors="replace").strip()
+                if len(text) >= 20:
+                    yield (item["id"], name[:255], text, item.get("webUrl") or final)
+            next_url = data.get("@odata.nextLink")
+            if not next_url:
+                complete = "value" in data
+        snapshot.complete = complete
+
+    snapshot.source_iterator = _iter()
+    return snapshot
 
 
 def _aws_signed_get(url: str, credentials: dict[str, str]) -> bytes:
@@ -323,19 +363,42 @@ def _s3(source_url: str, credentials: dict[str, str]) -> SourceSnapshot:
     region = credentials.get("region", "")
     if not region: raise ConnectorSyncError("S3 region is missing for this organization")
     endpoint = f"https://{bucket}.s3.{region}.amazonaws.com"
-    listing = _aws_signed_get(f"{endpoint}/?{urlencode({'list-type': '2', 'prefix': prefix})}", credentials)
-    try: root = ET.fromstring(listing)
-    except ET.ParseError as exc: raise ConnectorSyncError("S3 returned invalid object metadata") from exc
-    results = []
-    nodes = root.findall("{*}Contents")
-    for node in nodes[:100]:
-        key = node.findtext("{*}Key") or ""
-        if Path(key).suffix.lower() not in ALLOWED_EXTENSIONS: continue
-        object_url = f"{endpoint}/{quote(key, safe='/')}"; body = _aws_signed_get(object_url, credentials)
-        text = body.decode("utf-8", errors="replace").strip()
-        if len(text) >= 20: results.append((key, Path(key).name[:255], text, object_url))
-    return SourceSnapshot(results, {node.findtext("{*}Key") for node in nodes if node.findtext("{*}Key")},
-                          root.findtext("{*}IsTruncated") == "false" and len(nodes) <= 100)
+
+    snapshot = SourceSnapshot(source_iterator=iter([]))
+
+    def _iter() -> Iterator[tuple[str, str, str, str]]:
+        continuation_token: str | None = None
+        complete = True
+        while True:
+            params: dict[str, str] = {"list-type": "2", "prefix": prefix, "max-keys": "100"}
+            if continuation_token:
+                params["continuation-token"] = continuation_token
+            listing = _aws_signed_get(f"{endpoint}/?{urlencode(params)}", credentials)
+            try: root = ET.fromstring(listing)
+            except ET.ParseError as exc: raise ConnectorSyncError("S3 returned invalid object metadata") from exc
+            nodes = root.findall("{*}Contents")
+            for node in nodes:
+                key = node.findtext("{*}Key") or ""
+                snapshot.observed_ids.add(key)
+                if Path(key).suffix.lower() not in ALLOWED_EXTENSIONS: continue
+                object_url = f"{endpoint}/{quote(key, safe='/')}"; body = _aws_signed_get(object_url, credentials)
+                text = body.decode("utf-8", errors="replace").strip()
+                if len(text) >= 20:
+                    yield (key, Path(key).name[:255], text, object_url)
+            is_truncated = root.findtext("{*}IsTruncated") == "true"
+            if is_truncated:
+                next_token = root.findtext("{*}NextContinuationToken")
+                if next_token:
+                    continuation_token = next_token
+                else:
+                    complete = False
+                    break
+            else:
+                break
+        snapshot.complete = complete
+
+    snapshot.source_iterator = _iter()
+    return snapshot
 
 
 def _website(source_url: str) -> SourceSnapshot:
@@ -347,7 +410,12 @@ def _website(source_url: str) -> SourceSnapshot:
         if match: title = re.sub(r"\s+", " ", html.unescape(match.group(1))).strip()[:255]
         parser = TextHTMLParser(); parser.feed(text); text = re.sub(r"\n{3,}", "\n\n", "".join(parser.parts)); text = re.sub(r"[ \t]+", " ", text).strip()
     if len(text) < 50: raise ConnectorSyncError("The web page contains too little readable text")
-    return SourceSnapshot([(final_url, title, text, final_url)], {final_url}, complete=True)
+
+    def _iter() -> Iterator[tuple[str, str, str, str]]:
+        yield (final_url, title, text, final_url)
+
+    snapshot = SourceSnapshot(source_iterator=_iter(), observed_ids={final_url}, complete=True)
+    return snapshot
 
 
 def _github(source_url: str) -> SourceSnapshot:
@@ -362,14 +430,24 @@ def _github(source_url: str) -> SourceSnapshot:
         tree = metadata.get("tree", [])
     except json.JSONDecodeError as exc: raise ConnectorSyncError("GitHub returned invalid repository metadata") from exc
     files = [item for item in tree if item.get("type") == "blob" and Path(item.get("path", "")).suffix.lower() in ALLOWED_EXTENSIONS and int(item.get("size", 0)) <= 300_000]
-    results = []
-    for item in files[:MAX_GITHUB_FILES]:
-        path = item["path"]; raw = f"https://raw.githubusercontent.com/{quote(owner)}/{quote(repo)}/HEAD/{quote(path)}"
-        body, _, final = _fetch(raw); text = body.decode("utf-8", errors="replace").strip()
-        if len(text) >= 20: results.append((path, f"{repo}: {path}"[:255], text, final))
-    if not results: raise ConnectorSyncError("No supported text files were found in this repository")
-    return SourceSnapshot(results, {item["path"] for item in tree if item.get("type") == "blob"},
-                          metadata.get("truncated") is False and len(files) <= MAX_GITHUB_FILES)
+    all_blob_ids = {item["path"] for item in tree if item.get("type") == "blob"}
+    is_complete = metadata.get("truncated") is False and len(files) <= MAX_GITHUB_FILES
+
+    snapshot = SourceSnapshot(source_iterator=iter([]), observed_ids=all_blob_ids, complete=is_complete)
+
+    def _iter() -> Iterator[tuple[str, str, str, str]]:
+        yielded = 0
+        for item in files:
+            if yielded >= MAX_GITHUB_FILES: break
+            path = item["path"]; raw = f"https://raw.githubusercontent.com/{quote(owner)}/{quote(repo)}/HEAD/{quote(path)}"
+            body, _, final = _fetch(raw); text = body.decode("utf-8", errors="replace").strip()
+            if len(text) >= 20:
+                yield (path, f"{repo}: {path}"[:255], text, final)
+                yielded += 1
+        if yielded == 0: raise ConnectorSyncError("No supported text files were found in this repository")
+
+    snapshot.source_iterator = _iter()
+    return snapshot
 
 
 def sync_connector(connector_id: UUID) -> dict[str, int]:
@@ -409,17 +487,21 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
     else:
         snapshot = fetcher(source_url)
 
-    # --- Apply phase (Streaming Batch) -----------------------------------------
-    # Process sources in fixed-size batches to bound RAM usage. Each batch gets
-    # its own DB session and Qdrant client, then memory is released before the
-    # next batch starts. Deletion logic runs only once after all batches complete.
-    sources = snapshot.sources
-    total_discovered = len(sources)
+    # --- Apply phase (True Streaming Batch) ------------------------------------
+    # Consume the source_iterator one item at a time, accumulating into
+    # fixed-size batches.  Only STREAM_BATCH_SIZE documents are ever held in
+    # RAM simultaneously — both fetch payloads and apply state are bounded.
+    # Each batch gets its own DB session and Qdrant client so memory is
+    # released before the next batch starts.  Deletion logic runs only once
+    # after the iterator is fully exhausted.
+    total_discovered = 0
     created = updated = unchanged = deleted = 0
     removed_directories: list[Path] = []
+    batch: list[tuple[str, str, str, str]] = []
 
-    for batch_start in range(0, max(total_discovered, 1), STREAM_BATCH_SIZE):
-        batch = sources[batch_start : batch_start + STREAM_BATCH_SIZE]
+    def _apply_batch(items: list[tuple[str, str, str, str]]) -> tuple[int, int, int]:
+        """Process one batch inside its own DB session. Returns (created, updated, unchanged)."""
+        b_created = b_updated = b_unchanged = 0
         with SessionLocal() as db:
             connector = db.get(Connector, connector_id)
             if connector is None:
@@ -431,13 +513,13 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
             if document_set is None:
                 raise ConnectorSyncError("Connector knowledge set no longer exists")
             try:
-                for external_id, title, text, source_url in batch:
+                for external_id, title, text, src_url in items:
                     digest = hashlib.sha256(text.encode()).hexdigest(); item = existing.get(external_id)
                     if item and item.content_hash == digest:
                         document = db.get(Document, item.document_id)
                         if document is not None and not document.storage_path and document.extracted_text_path:
                             document.storage_path = document.extracted_text_path
-                        unchanged += 1
+                        b_unchanged += 1
                         continue
                     document = db.get(Document, item.document_id) if item else Document(organization_id=document_set.organization_id, filename=title, content_type="text/plain", status="chunked", source_type=connector.connector_type, tags=[])
                     if not item: db.add(document); db.flush(); document.document_sets.append(document_set)
@@ -455,13 +537,29 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
                     document.indexed_chunk_overlap = document_set.chunk_overlap
                     document.indexed_parent_chunk_size = document_set.parent_chunk_size
                     db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
-                    if item: item.content_hash = digest; item.source_url = source_url; item.title = title; updated += 1
-                    else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=source_url, title=title)); created += 1
+                    if item: item.content_hash = digest; item.source_url = src_url; item.title = title; b_updated += 1
+                    else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=src_url, title=title)); b_created += 1
                 db.commit()
             except Exception as exc:
                 db.rollback()
                 _restore_external_states(qdrant, list(journal.values()), exc)
                 raise
+        return b_created, b_updated, b_unchanged
+
+    for source_tuple in snapshot.source_iterator:
+        snapshot.observed_ids.add(source_tuple[0])
+        batch.append(source_tuple)
+        total_discovered += 1
+        if len(batch) >= STREAM_BATCH_SIZE:
+            c, u, n = _apply_batch(batch)
+            created += c; updated += u; unchanged += n
+            batch.clear()
+
+    # Flush remaining items that didn't fill a complete batch.
+    if batch:
+        c, u, n = _apply_batch(batch)
+        created += c; updated += u; unchanged += n
+        batch.clear()
 
     # --- Deletion & Summary phase ----------------------------------------------
     # Runs once after all batches; safe because observed_ids covers the full run.

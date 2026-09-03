@@ -69,29 +69,49 @@ class ConnectorDeletionTests(unittest.TestCase):
         self.assertEqual(result["deleted"], 1)
         qdrant.delete_document.assert_called_once()
 
-    def test_s3_limit_marks_listing_incomplete(self):
+    def test_s3_large_listing_without_truncation_is_complete(self):
+        """With streaming, all items on a non-truncated page are consumed regardless of count."""
         listing = ("<ListBucketResult><IsTruncated>false</IsTruncated>" + "".join(f"<Contents><Key>{i}.md</Key></Contents>" for i in range(101)) + "</ListBucketResult>").encode()
         with patch.object(sync, "_aws_signed_get", side_effect=lambda url, credentials: listing if "list-type" in url else b"Enough text for this supported document."):
             result = sync._s3("https://bucket.s3.amazonaws.com/", self.s3_credentials)
-        self.assertFalse(result.complete)
+            list(result.source_iterator)
+        self.assertTrue(result.complete)
         self.assertIn("100.md", result.observed_ids)
 
     def test_s3_truncated_listing_is_incomplete(self):
         with patch.object(sync, "_aws_signed_get", return_value=b"<ListBucketResult><IsTruncated>true</IsTruncated></ListBucketResult>"):
-            self.assertFalse(sync._s3("https://bucket.s3.amazonaws.com/", self.s3_credentials).complete)
+            result = sync._s3("https://bucket.s3.amazonaws.com/", self.s3_credentials)
+            list(result.source_iterator)
+            self.assertFalse(result.complete)
 
-    def test_google_drive_pagination_and_incomplete_search_disable_deletion(self):
-        for marker in ({"nextPageToken": "next"}, {"incompleteSearch": True}):
-            credentials = {"client_id": "test", "client_secret": "test", "refresh_token": "test"}
-            with self.subTest(marker=marker), patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", return_value={"files": [], **marker}) as request:
-                self.assertFalse(sync._google_drive("https://drive.google.com/drive/folders/folder", credentials).complete)
-                self.assertIn("nextPageToken", request.call_args.args[0])
-                self.assertIn("incompleteSearch", request.call_args.args[0])
+    def test_google_drive_incomplete_search_disables_deletion(self):
+        credentials = {"client_id": "test", "client_secret": "test", "refresh_token": "test"}
+        responses = [{"files": [], "incompleteSearch": True}, {"files": []}]
+        with patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", side_effect=responses) as request:
+            result = sync._google_drive("https://drive.google.com/drive/folders/folder", credentials)
+            list(result.source_iterator)
+            self.assertFalse(result.complete)
+            self.assertIn("incompleteSearch", request.call_args_list[0].args[0])
 
-    def test_sharepoint_next_link_disables_deletion(self):
+    def test_google_drive_pagination_is_fully_consumed(self):
+        """With streaming, nextPageToken triggers further pages rather than marking incomplete."""
+        credentials = {"client_id": "test", "client_secret": "test", "refresh_token": "test"}
+        responses = [{"files": [], "nextPageToken": "next"}, {"files": []}]
+        with patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", side_effect=responses) as request:
+            result = sync._google_drive("https://drive.google.com/drive/folders/folder", credentials)
+            list(result.source_iterator)
+            self.assertTrue(result.complete)
+            self.assertEqual(request.call_count, 2)
+
+    def test_sharepoint_pagination_is_fully_consumed(self):
+        """With streaming, @odata.nextLink triggers further pages rather than marking incomplete."""
         credentials = {"tenant_id": "test", "client_id": "test", "client_secret": "test"}
-        with patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", return_value={"value": [], "@odata.nextLink": "next"}):
-            self.assertFalse(sync._sharepoint("https://graph.microsoft.com/drive/root/children", credentials).complete)
+        responses = [{"value": [], "@odata.nextLink": "next"}, {"value": []}]
+        with patch.object(sync, "_oauth_token", return_value="token"), patch.object(sync, "_authorized_json", side_effect=responses) as request:
+            result = sync._sharepoint("https://graph.microsoft.com/drive/root/children", credentials)
+            list(result.source_iterator)
+            self.assertTrue(result.complete)
+            self.assertEqual(request.call_count, 2)
 
     def test_seen_but_skipped_file_is_preserved_even_with_complete_listing(self):
         db = MagicMock()
@@ -183,7 +203,7 @@ class ConnectorCredentialIsolationTests(unittest.TestCase):
         db.__exit__ = MagicMock(return_value=False)
 
         with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "CONNECTOR_CREDENTIALS", configured), patch.object(
-            sync, "_google_drive", return_value=sync.SourceSnapshot([], set(), complete=False)
+            sync, "_google_drive", return_value=sync.SourceSnapshot(source_iterator=iter([]), observed_ids=set(), complete=False)
         ) as fetch, patch.object(sync, "QdrantClient"):
             sync.sync_connector(connector_id)
 
@@ -210,7 +230,7 @@ class ConnectorConsistencyTests(unittest.TestCase):
         session_factory = MagicMock(return_value=db)
         db.__enter__ = MagicMock(return_value=db)
         db.__exit__ = MagicMock(return_value=False)
-        snapshot = sync.SourceSnapshot([("https://example.com", "Page", "new content", "https://example.com")], {"https://example.com"}, complete=True)
+        snapshot = sync.SourceSnapshot(source_iterator=iter([("https://example.com", "Page", "new content", "https://example.com")]), observed_ids={"https://example.com"}, complete=True)
         base = Path.cwd() / "storage" / f"connector-source-{uuid4()}"
         try:
             upload_dir = base / "uploads"
@@ -271,8 +291,8 @@ class ConnectorConsistencyTests(unittest.TestCase):
         db.__enter__ = MagicMock(return_value=db)
         db.__exit__ = MagicMock(return_value=False)
         snapshot = sync.SourceSnapshot(
-            [("https://example.com", "New title", "new remote content", "https://example.com")],
-            {"https://example.com"},
+            source_iterator=iter([("https://example.com", "New title", "new remote content", "https://example.com")]),
+            observed_ids={"https://example.com"},
             complete=True,
         )
         base = Path.cwd() / "storage" / f"connector-consistency-{uuid4()}"
