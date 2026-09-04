@@ -1,3 +1,6 @@
+import csv
+import io
+import re
 from pathlib import Path
 
 from pypdf import PdfReader
@@ -7,12 +10,30 @@ class ExtractionError(ValueError):
     pass
 
 
+# Supported MIME types mapped to extraction functions
+_EXTRACTORS: dict[str, str] = {
+    "application/pdf": "_extract_pdf",
+    "text/plain": "_extract_text_file",
+    "text/markdown": "_extract_text_file",
+    "text/csv": "_extract_csv",
+    "application/json": "_extract_json",
+}
+
+
+def supported_content_types() -> list[str]:
+    """Return the list of MIME types this extractor can handle."""
+    return sorted(_EXTRACTORS.keys())
+
+
 def extract_text(file_path: Path, content_type: str) -> str:
-    if content_type == "application/pdf":
-        return _extract_pdf(file_path)
-    if content_type == "text/plain":
-        return _extract_text_file(file_path)
-    raise ExtractionError("Unsupported file type")
+    handler_name = _EXTRACTORS.get(content_type)
+    if handler_name is None:
+        raise ExtractionError(
+            f"Unsupported file type '{content_type}'. "
+            f"Supported types: {', '.join(supported_content_types())}"
+        )
+    handler = globals()[handler_name]
+    return handler(file_path)
 
 
 def _extract_pdf(file_path: Path) -> str:
@@ -36,4 +57,66 @@ def _extract_text_file(file_path: Path) -> str:
 
     if not text:
         raise ExtractionError("The text file is empty")
+    return text
+
+
+def _extract_csv(file_path: Path) -> str:
+    """Extract CSV content as readable text with headers preserved."""
+    try:
+        raw = file_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ExtractionError("CSV files must use UTF-8 encoding") from exc
+
+    if not raw.strip():
+        raise ExtractionError("The CSV file is empty")
+
+    try:
+        reader = csv.reader(io.StringIO(raw))
+        rows = list(reader)
+    except csv.Error as exc:
+        raise ExtractionError("Could not parse the CSV file") from exc
+
+    if not rows:
+        raise ExtractionError("The CSV file contains no data")
+
+    # Convert to readable text: header row as labels, then each row as key-value pairs
+    lines: list[str] = []
+    headers = rows[0]
+    for row_index, row in enumerate(rows[1:], start=1):
+        parts = []
+        for header, value in zip(headers, row):
+            value = value.strip()
+            if value:
+                parts.append(f"{header}: {value}")
+        if parts:
+            lines.append(f"Row {row_index}: " + "; ".join(parts))
+
+    text = "\n".join(lines).strip()
+    if not text:
+        raise ExtractionError("The CSV file contains no meaningful data")
+    return text
+
+
+def _extract_json(file_path: Path) -> str:
+    """Extract JSON content as formatted, human-readable text."""
+    import json
+
+    try:
+        raw = file_path.read_text(encoding="utf-8")
+    except UnicodeDecodeError as exc:
+        raise ExtractionError("JSON files must use UTF-8 encoding") from exc
+
+    if not raw.strip():
+        raise ExtractionError("The JSON file is empty")
+
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ExtractionError("Could not parse the JSON file") from exc
+
+    # Pretty-print for LLM consumption; truncate extremely large payloads
+    text = json.dumps(data, indent=2, ensure_ascii=False)
+    max_chars = 500_000
+    if len(text) > max_chars:
+        text = text[:max_chars] + "\n... (truncated)"
     return text
