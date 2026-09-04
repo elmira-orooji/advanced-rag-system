@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
@@ -44,7 +44,7 @@ def root():
 
 
 @app.get("/health")
-def health(db: Session = Depends(get_db)):
+def health(response: Response, db: Session = Depends(get_db)):
     checks: dict[str, str] = {}
     failures: list[str] = []
 
@@ -90,6 +90,7 @@ def health(db: Session = Depends(get_db)):
 
     overall_status = "healthy" if not failures else "degraded"
     status_code = status.HTTP_200_OK if not failures else status.HTTP_503_SERVICE_UNAVAILABLE
+    response.status_code = status_code
 
     return {
         "status": overall_status,
