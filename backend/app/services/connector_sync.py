@@ -3,9 +3,11 @@ import hmac
 import html
 import ipaddress
 import json
+import os
 import re
 import socket
 import shutil
+import tempfile
 import uuid
 import xml.etree.ElementTree as ET
 from collections.abc import Iterator
@@ -82,8 +84,17 @@ class ExternalDocumentState:
     filename: str
     chunks: list[dict[str, object]]
     directory: Path
-    files: dict[Path, bytes] | None
+    # Snapshot of the document directory stored on disk to avoid holding large
+    # binary payloads in RAM during compensation.  ``snapshot_dir`` points to a
+    # temporary folder that mirrors the original layout; it is cleaned up when
+    # ``cleanup`` is invoked.
+    snapshot_dir: Path | None
     existed: bool
+
+    def cleanup(self) -> None:
+        if self.snapshot_dir is not None and self.snapshot_dir.exists():
+            shutil.rmtree(self.snapshot_dir, ignore_errors=True)
+            self.snapshot_dir = None
 
 
 def _chunk_payload(document: Document) -> list[dict[str, object]]:
@@ -95,19 +106,26 @@ def _chunk_payload(document: Document) -> list[dict[str, object]]:
 
 def _capture_external_state(document: Document, existed: bool) -> ExternalDocumentState:
     directory = UPLOAD_DIR / str(document.id)
-    files = None
+    snapshot_dir: Path | None = None
     if directory.is_dir():
-        files = {
-            path.relative_to(directory): path.read_bytes()
-            for path in directory.rglob("*")
-            if path.is_file()
-        }
+        # Stream the existing files to a temporary directory instead of loading
+        # them entirely into RAM.  This keeps compensation memory-safe even when
+        # a batch contains very large documents.
+        snapshot_dir = Path(tempfile.mkdtemp(prefix="connector_snapshot_"))
+        for source_path in directory.rglob("*"):
+            if not source_path.is_file():
+                continue
+            relative = source_path.relative_to(directory)
+            destination = snapshot_dir / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            with source_path.open("rb") as src, destination.open("wb") as dst:
+                shutil.copyfileobj(src, dst)
     return ExternalDocumentState(
         document_id=str(document.id),
         filename=document.filename,
         chunks=_chunk_payload(document),
         directory=directory,
-        files=files,
+        snapshot_dir=snapshot_dir,
         existed=existed,
     )
 
@@ -122,24 +140,39 @@ def _restore_external_states(
     original_error: Exception,
 ) -> None:
     compensation_errors: list[str] = []
-    for state in reversed(states):
-        try:
-            if state.directory.exists():
-                shutil.rmtree(state.directory)
-            if state.files is not None:
-                for relative_path, content in state.files.items():
-                    destination = state.directory / relative_path
-                    destination.parent.mkdir(parents=True, exist_ok=True)
-                    destination.write_bytes(content)
-        except Exception as exc:
-            compensation_errors.append(f"files for document {state.document_id}: {exc}")
-        try:
-            if state.existed:
-                qdrant.replace_document_chunks(state.document_id, state.filename, state.chunks)
-            else:
-                qdrant.delete_document(state.document_id)
-        except Exception as exc:
-            compensation_errors.append(f"vectors for document {state.document_id}: {exc}")
+    try:
+        for state in reversed(states):
+            try:
+                if state.directory.exists():
+                    shutil.rmtree(state.directory)
+                if state.snapshot_dir is not None and state.snapshot_dir.exists():
+                    # Stream the snapshot back to the document directory so we
+                    # never hold an entire file tree in RAM during rollback.
+                    state.directory.mkdir(parents=True, exist_ok=True)
+                    for snapshot_path in state.snapshot_dir.rglob("*"):
+                        if not snapshot_path.is_file():
+                            continue
+                        relative = snapshot_path.relative_to(state.snapshot_dir)
+                        destination = state.directory / relative
+                        destination.parent.mkdir(parents=True, exist_ok=True)
+                        with snapshot_path.open("rb") as src, destination.open("wb") as dst:
+                            shutil.copyfileobj(src, dst)
+            except Exception as exc:
+                compensation_errors.append(f"files for document {state.document_id}: {exc}")
+            finally:
+                # Always release the temporary snapshot regardless of success.
+                state.cleanup()
+            try:
+                if state.existed:
+                    qdrant.replace_document_chunks(state.document_id, state.filename, state.chunks)
+                else:
+                    qdrant.delete_document(state.document_id)
+            except Exception as exc:
+                compensation_errors.append(f"vectors for document {state.document_id}: {exc}")
+    finally:
+        # Belt-and-braces cleanup if the loop aborts unexpectedly.
+        for state in states:
+            state.cleanup()
     if compensation_errors and hasattr(original_error, "add_note"):
         original_error.add_note("External compensation errors: " + "; ".join(compensation_errors))
 
