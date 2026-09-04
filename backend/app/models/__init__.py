@@ -1,4 +1,5 @@
 from app.models.assistant import Assistant
+from app.models.auth_session import AuthSession
 from app.models.answer_feedback import AnswerFeedback, AnswerRecord
 from app.models.chunk import Chunk
 from app.models.chat_share import ChatShare
@@ -16,4 +17,4 @@ from app.models.organization import Organization
 from app.models.processing_job import ProcessingJob
 from app.models.user import User
 
-__all__ = ["AnswerFeedback", "AnswerRecord", "Assistant", "ChatShare", "Chunk", "Connector", "ConnectorItem", "Conversation", "Document", "DocumentSet", "DocumentSetPermission", "EvaluationCase", "IndexingOutbox", "LLMUsage", "LoginThrottle", "Message", "Organization", "ProcessingJob", "User"]
+__all__ = ["AnswerFeedback", "AnswerRecord", "Assistant", "AuthSession", "ChatShare", "Chunk", "Connector", "ConnectorItem", "Conversation", "Document", "DocumentSet", "DocumentSetPermission", "EvaluationCase", "IndexingOutbox", "LLMUsage", "LoginThrottle", "Message", "Organization", "ProcessingJob", "User"]

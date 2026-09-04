@@ -1,9 +1,11 @@
 import logging
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.core.config import (
@@ -15,6 +17,7 @@ from app.core.config import (
 from app.core.security import create_access_token, decode_access_token, verify_password
 from app.db.database import get_db
 from app.models.user import User
+from app.models.auth_session import AuthSession
 from app.models.organization import Organization
 from app.schemas.auth import AuthUser, LoginRequest, LoginResponse
 from app.services.login_throttle import clear_account_failures, record_failure, retry_after, throttle_keys
@@ -22,6 +25,20 @@ from app.services.login_throttle import clear_account_failures, record_failure, 
 router = APIRouter(prefix="/auth", tags=["auth"])
 bearer = HTTPBearer(auto_error=False)
 logger = logging.getLogger(__name__)
+
+
+def _request_token(
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None,
+) -> str | None:
+    token = request.cookies.get(AUTH_COOKIE_NAME)
+    if token is None and credentials is not None and credentials.scheme.lower() == "bearer":
+        token = credentials.credentials
+    return token
+
+
+def _aware_utc(value: datetime) -> datetime:
+    return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
 
 
 def get_current_user(
@@ -34,18 +51,25 @@ def get_current_user(
         detail="Invalid or expired credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    token = request.cookies.get(AUTH_COOKIE_NAME)
-    if token is None and credentials is not None and credentials.scheme.lower() == "bearer":
-        token = credentials.credentials
+    token = _request_token(request, credentials)
     if token is None:
         raise unauthorized
     payload = decode_access_token(token)
-    if payload is None or not payload.get("sub"):
+    if payload is None or not payload.get("sub") or not payload.get("jti"):
         raise unauthorized
     try:
         user_id = UUID(str(payload["sub"]))
+        session_id = UUID(str(payload["jti"]))
     except ValueError as exc:
         raise unauthorized from exc
+    auth_session = db.get(AuthSession, session_id)
+    if (
+        auth_session is None
+        or auth_session.user_id != user_id
+        or auth_session.revoked_at is not None
+        or _aware_utc(auth_session.expires_at) <= datetime.now(timezone.utc)
+    ):
+        raise unauthorized
     user = db.get(User, user_id)
     if user is None or not user.is_active:
         raise unauthorized
@@ -75,9 +99,18 @@ def login(payload: LoginRequest, response: Response, request: Request, db: Sessi
     clear_account_failures(db, keys[0])
 
     expires_in = AUTH_REMEMBER_SECONDS if payload.remember_me else AUTH_SESSION_SECONDS
+    session_id = uuid4()
+    db.add(
+        AuthSession(
+            id=session_id,
+            user_id=user.id,
+            expires_at=datetime.now(timezone.utc) + timedelta(seconds=expires_in),
+        )
+    )
+    db.commit()
     response.set_cookie(
         key=AUTH_COOKIE_NAME,
-        value=create_access_token(str(user.id), user.role, expires_in),
+        value=create_access_token(str(user.id), user.role, expires_in, str(session_id)),
         max_age=expires_in if payload.remember_me else None,
         httponly=True,
         secure=AUTH_COOKIE_SECURE,
@@ -92,7 +125,26 @@ def login(payload: LoginRequest, response: Response, request: Request, db: Sessi
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-def logout(response: Response):
+def logout(
+    response: Response,
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+):
+    token = _request_token(request, credentials)
+    payload = decode_access_token(token) if token else None
+    if payload and payload.get("jti"):
+        try:
+            session_id = UUID(str(payload["jti"]))
+        except ValueError:
+            session_id = None
+        if session_id is not None:
+            db.execute(
+                update(AuthSession)
+                .where(AuthSession.id == session_id, AuthSession.revoked_at.is_(None))
+                .values(revoked_at=datetime.now(timezone.utc))
+            )
+            db.commit()
     response.delete_cookie(
         key=AUTH_COOKIE_NAME,
         httponly=True,

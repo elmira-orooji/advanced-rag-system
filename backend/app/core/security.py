@@ -43,12 +43,20 @@ def _b64url_decode(value: str) -> bytes:
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 
-def create_access_token(subject: str, role: str, expires_in: int) -> str:
+def create_access_token(subject: str, role: str, expires_in: int, session_id: str) -> str:
     if not isinstance(expires_in, int) or isinstance(expires_in, bool) or expires_in <= 0:
         raise ValueError("expires_in must be a positive integer")
     now = int(time.time())
     header = {"alg": "HS256", "typ": "JWT"}
-    payload = {"sub": subject, "role": role, "iat": now, "exp": now + expires_in}
+    if not session_id:
+        raise ValueError("session_id is required")
+    payload = {
+        "sub": subject,
+        "role": role,
+        "jti": session_id,
+        "iat": now,
+        "exp": now + expires_in,
+    }
     encoded_header = _b64url_encode(json.dumps(header, separators=(",", ":")).encode())
     encoded_payload = _b64url_encode(json.dumps(payload, separators=(",", ":")).encode())
     message = f"{encoded_header}.{encoded_payload}".encode("ascii")
@@ -66,7 +74,7 @@ def decode_access_token(token: str) -> dict[str, Any] | None:
         payload = json.loads(_b64url_decode(encoded_payload))
         if not isinstance(payload, dict):
             return None
-        if "exp" not in payload or int(payload["exp"]) <= int(time.time()):
+        if not payload.get("jti") or "exp" not in payload or int(payload["exp"]) <= int(time.time()):
             return None
         return payload
     except (ValueError, TypeError, json.JSONDecodeError):
