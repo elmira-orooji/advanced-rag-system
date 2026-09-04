@@ -25,7 +25,7 @@ from uuid import UUID
 from sqlalchemy import select, and_
 from sqlalchemy.orm import Session
 
-from app.core.config import BASE_DIR, CONNECTOR_CREDENTIALS, UPLOAD_DIR, document_storage_relative
+from app.core.config import BASE_DIR, UPLOAD_DIR, document_storage_relative
 from app.db.database import SessionLocal
 from app.models.chunk import Chunk
 from app.models.connector import Connector, ConnectorItem
@@ -35,6 +35,7 @@ from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
 from app.services.chunk_enrichment import enrich_chunk
 from app.services.incremental_index import checksum, incremental_chunks
+from app.services.connector_secrets import ConnectorSecretError, get_connector_credentials
 
 MAX_REMOTE_BYTES = 2 * 1024 * 1024
 MAX_GITHUB_FILES = 40
@@ -49,13 +50,10 @@ CLOUD_CONNECTORS = {"google_drive", "s3", "sharepoint"}
 
 
 def _organization_credentials(organization_id: uuid.UUID, connector_type: str) -> dict[str, str]:
-    organization = CONNECTOR_CREDENTIALS.get(str(organization_id), {})
-    credentials = organization.get(connector_type) if isinstance(organization, dict) else None
-    if not isinstance(credentials, dict):
-        raise ConnectorSyncError(
-            f"{connector_type} credentials are not configured for this organization"
-        )
-    return {str(key): str(value) for key, value in credentials.items()}
+    try:
+        return get_connector_credentials(organization_id, connector_type)
+    except ConnectorSecretError as exc:
+        raise ConnectorSyncError(str(exc)) from exc
 
 
 @dataclass

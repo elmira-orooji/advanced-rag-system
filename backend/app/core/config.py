@@ -1,6 +1,5 @@
 from dotenv import load_dotenv
 from pathlib import Path
-import json
 import os
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -135,9 +134,8 @@ FRONTEND_ORIGINS = [
     for origin in os.getenv("FRONTEND_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173").split(",")
     if origin.strip()
 ]
-try:
-    CONNECTOR_CREDENTIALS = json.loads(os.getenv("CONNECTOR_CREDENTIALS_JSON", "{}"))
-except json.JSONDecodeError as exc:
-    raise RuntimeError("CONNECTOR_CREDENTIALS_JSON must contain valid JSON") from exc
-if not isinstance(CONNECTOR_CREDENTIALS, dict):
-    raise RuntimeError("CONNECTOR_CREDENTIALS_JSON must be an object keyed by organization ID")
+CONNECTOR_SECRET_MANAGER_URL = os.getenv("CONNECTOR_SECRET_MANAGER_URL", "").rstrip("/")
+CONNECTOR_SECRET_MANAGER_TOKEN = os.getenv("CONNECTOR_SECRET_MANAGER_TOKEN", "")
+CONNECTOR_SECRET_MANAGER_TIMEOUT_SECONDS = float(
+    os.getenv("CONNECTOR_SECRET_MANAGER_TIMEOUT_SECONDS", "3")
+)

@@ -167,16 +167,20 @@ class ConnectorDeletionTests(unittest.TestCase):
 class ConnectorCredentialIsolationTests(unittest.TestCase):
     def test_credentials_are_selected_by_organization_and_provider(self):
         first, second = uuid4(), uuid4()
-        configured = {
-            str(first): {"google_drive": {"client_id": "first"}},
-            str(second): {"google_drive": {"client_id": "second"}},
-        }
-        with patch.object(sync, "CONNECTOR_CREDENTIALS", configured):
+        with patch.object(
+            sync,
+            "get_connector_credentials",
+            side_effect=[{"client_id": "first"}, {"client_id": "second"}],
+        ):
             self.assertEqual(sync._organization_credentials(first, "google_drive")["client_id"], "first")
             self.assertEqual(sync._organization_credentials(second, "google_drive")["client_id"], "second")
 
     def test_cloud_connector_has_no_global_credential_fallback(self):
-        with patch.object(sync, "CONNECTOR_CREDENTIALS", {}), self.assertRaises(sync.ConnectorSyncError):
+        with patch.object(
+            sync,
+            "get_connector_credentials",
+            side_effect=sync.ConnectorSecretError("missing"),
+        ), self.assertRaises(sync.ConnectorSyncError):
             sync._organization_credentials(uuid4(), "s3")
 
     def test_sync_passes_only_owning_organizations_credentials(self):
@@ -197,12 +201,11 @@ class ConnectorCredentialIsolationTests(unittest.TestCase):
         db.get.side_effect = get_side_effect
         db.scalars.return_value.all.return_value = []
         credentials = {"client_id": "owned", "client_secret": "secret", "refresh_token": "refresh"}
-        configured = {str(organization_id): {"google_drive": credentials}}
         session_factory = MagicMock(return_value=db)
         db.__enter__ = MagicMock(return_value=db)
         db.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "CONNECTOR_CREDENTIALS", configured), patch.object(
+        with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "get_connector_credentials", return_value=credentials), patch.object(
             sync, "_google_drive", return_value=sync.SourceSnapshot(source_iterator=iter([]), observed_ids=set(), complete=False)
         ) as fetch, patch.object(sync, "QdrantClient"):
             sync.sync_connector(connector_id)
