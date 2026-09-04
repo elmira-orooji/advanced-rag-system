@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Response, status
@@ -8,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.routes import analytics_router, assistants_router, auth_router, chat_shares_router, connectors_router, conversations_router, document_sets_router, documents_router, evaluations_router, feedback_router, rag_router, research_router, search_router, users_router
-from app.core.config import FRONTEND_ORIGINS, UPLOAD_DIR, WORKER_STALE_THRESHOLD_SECONDS
+from app.core.config import FRONTEND_ORIGINS, READINESS_PROBE_TIMEOUT_SECONDS, UPLOAD_DIR, WORKER_STALE_THRESHOLD_SECONDS
 from app.db.database import get_db
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.worker_heartbeat import get_available_worker_types
@@ -23,6 +24,39 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+_QDRANT_COLLECTION_READY = False
+
+
+@app.on_event("startup")
+async def startup_collection_setup():
+    """Attempt to configure Qdrant collection without blocking startup.
+
+    The API now starts in a degraded mode when Qdrant is temporarily
+    unavailable so that authentication, user management, and settings
+    endpoints remain accessible. Collection preparation should ideally
+    be handled by deployment migrations; this hook only warms the cache
+    when the vector store is reachable.
+    """
+    global _QDRANT_COLLECTION_READY  # noqa: PLW0603
+    try:
+        client = QdrantClient()
+        client.ensure_collection()
+        _QDRANT_COLLECTION_READY = True
+        logger.info("Qdrant collection ensured successfully at startup")
+    except QdrantError as exc:
+        logger.warning(
+            "Qdrant collection setup deferred; starting in degraded mode: %s",
+            exc,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.warning(
+            "Unexpected error during Qdrant collection setup; starting in degraded mode: %s",
+            exc,
+        )
+
+
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(analytics_router, prefix="/api/v1")
 app.include_router(assistants_router, prefix="/api/v1")
@@ -37,6 +71,8 @@ app.include_router(conversations_router, prefix="/api/v1")
 app.include_router(connectors_router, prefix="/api/v1")
 app.include_router(chat_shares_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
+
+
 @app.get("/")
 def root():
     return {
@@ -45,7 +81,13 @@ def root():
 
 
 @app.get("/health")
-def health(response: Response, db: Session = Depends(get_db)):
+def health():
+    """Lightweight, side-effect-free process liveness probe."""
+    return {"status": "alive"}
+
+
+@app.get("/ready")
+def readiness(response: Response, db: Session = Depends(get_db)):
     checks: dict[str, str] = {}
     failures: list[str] = []
 
@@ -61,7 +103,7 @@ def health(response: Response, db: Session = Depends(get_db)):
     # Qdrant vector store availability (critical for RAG)
     try:
         client = QdrantClient()
-        client.ensure_collection()
+        client.check_ready(timeout_seconds=READINESS_PROBE_TIMEOUT_SECONDS)
         checks["qdrant"] = "connected"
     except QdrantError as exc:
         logger.warning("Health check qdrant probe failed: %s", exc)
@@ -72,17 +114,16 @@ def health(response: Response, db: Session = Depends(get_db)):
         checks["qdrant"] = "unavailable"
         failures.append("qdrant")
 
-    # Document storage filesystem writability
+    # Document storage availability without creating or deleting probe files
     try:
         upload_root = Path(UPLOAD_DIR) if UPLOAD_DIR else None
         if upload_root is None:
             checks["storage"] = "misconfigured"
             failures.append("storage")
+        elif not upload_root.is_dir() or not os.access(upload_root, os.W_OK):
+            checks["storage"] = "unavailable"
+            failures.append("storage")
         else:
-            upload_root.mkdir(parents=True, exist_ok=True)
-            probe = upload_root / ".healthcheck"
-            probe.write_text("ok", encoding="utf-8")
-            probe.unlink(missing_ok=True)
             checks["storage"] = "writable"
     except OSError as exc:
         logger.warning("Health check storage probe failed: %s", exc)

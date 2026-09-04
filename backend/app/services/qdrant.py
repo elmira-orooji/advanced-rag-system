@@ -64,6 +64,11 @@ class QdrantClient:
                 {"field_name": "document_id", "field_schema": "keyword"},
             )
 
+    def check_ready(self, timeout_seconds: float) -> None:
+        """Verify collection availability with a read-only, bounded request."""
+        collection = quote(self.collection, safe="")
+        self._request("GET", f"/collections/{collection}", timeout_seconds=timeout_seconds)
+
     def replace_document_chunks(
         self,
         document_id: str,
@@ -170,6 +175,8 @@ class QdrantClient:
         method: str,
         path: str,
         body: dict[str, Any] | None = None,
+        *,
+        timeout_seconds: float = 60,
     ) -> dict[str, Any]:
         data = json.dumps(body).encode("utf-8") if body is not None else None
         request = Request(
@@ -183,7 +190,7 @@ class QdrantClient:
             },
         )
         try:
-            with self._opener.open(request, timeout=60) as response:
+            with self._opener.open(request, timeout=timeout_seconds) as response:
                 return json.loads(response.read().decode("utf-8"))
         except HTTPError as exc:
             error_message = f"Qdrant returned HTTP {exc.code}"
