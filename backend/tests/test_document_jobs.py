@@ -9,6 +9,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import sessionmaker
 
+from app.models.indexing_outbox import IndexingOutbox
 from app.models.processing_job import ProcessingJob
 from app.services.document_jobs import DocumentJobOwnershipLost, claim_document_job, recover_document_jobs, refresh_document_job_lease
 from app.services import document_jobs
@@ -156,7 +157,10 @@ class DocumentJobRecoveryTests(unittest.TestCase):
 
 
 class DocumentIndexRetryTests(unittest.TestCase):
-    def test_retry_resends_committed_chunks_after_partial_qdrant_failure(self):
+    def test_outbox_created_when_qdrant_apply_fails(self):
+        """With the outbox pattern, Qdrant failures during immediate apply do NOT
+        fail the job. The SQL transaction commits with a pending outbox entry,
+        and the reconciler is responsible for eventual consistency."""
         engine = create_engine("sqlite://")
         self.addCleanup(engine.dispose)
         Base.metadata.create_all(engine)
@@ -166,82 +170,24 @@ class DocumentIndexRetryTests(unittest.TestCase):
             db.add(Document(id=document_id, organization_id=uuid4(), filename="test.txt", storage_path="test.txt"))
             db.add(ProcessingJob(id=job_id, organization_id=uuid4(), document_id=document_id))
             db.commit()
-        vectors = {}
-        fail_next = True
-        def write_vectors(document_id, filename, chunks):
-            nonlocal fail_next
-            for chunk in chunks:
-                vectors[chunk["id"]] = chunk["content"]
-                if fail_next:
-                    fail_next = False
-                    raise QdrantError("Partial write failed")
-        def replace_vectors(document_id, filename, chunks):
-            vectors.clear()
-            write_vectors(document_id, filename, chunks)
         generated = [("first chunk", 0, "parent"), ("second chunk", 0, "parent")]
         with patch.object(document_jobs, "BASE_DIR", Path.cwd()), patch.object(document_jobs, "SessionLocal", sessions), patch.object(document_jobs, "extract_text", return_value="source text"), patch.object(document_jobs, "hierarchical_chunks", return_value=generated), patch("app.services.incremental_index.hierarchical_chunks", return_value=generated), patch("app.services.incremental_index.enrich_chunk", return_value=([], [])), patch("pathlib.Path.write_text"), patch.object(document_jobs, "QdrantClient") as factory:
             client = factory.return_value
-            client.upsert_chunks.side_effect = write_vectors
-            client.replace_document_chunks.side_effect = replace_vectors
+            # Simulate Qdrant failure during immediate post-commit apply
+            client.replace_document_chunks.side_effect = QdrantError("Connection lost")
             worker_id = "test-worker"
             self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
             document_jobs.process_document_job(job_id, worker_id)
             with sessions() as db:
-                failed_job = db.get(ProcessingJob, job_id)
-                self.assertEqual((failed_job.status, failed_job.error_type), ("retrying", "QdrantError"))
-                self.assertIsNotNone(failed_job.next_attempt_at)
+                # Job should complete successfully despite Qdrant failure
+                completed_job = db.get(ProcessingJob, job_id)
+                self.assertEqual(completed_job.status, "completed")
                 document = db.get(Document, document_id)
-                self.assertEqual(len(document.chunks), 0)
-                self.assertNotEqual(document.status, "indexed")
-                self.assertIsNone(document.content_checksum)
-                db.get(ProcessingJob, job_id).status = "retrying"
-                db.get(ProcessingJob, job_id).next_attempt_at = None
-                db.commit()
-            self.assertEqual(vectors, {})
-            # A second failed attempt must not mark the document indexed either.
-            fail_next = True
-            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
-            document_jobs.process_document_job(job_id, worker_id)
-            with sessions() as db:
-                self.assertEqual(db.get(ProcessingJob, job_id).status, "retrying")
-                self.assertEqual(db.get(Document, document_id).status, "queued")
-                self.assertIsNone(db.get(Document, document_id).content_checksum)
-                self.assertEqual(len(db.get(Document, document_id).chunks), 0)
-                db.get(ProcessingJob, job_id).status = "retrying"
-                db.get(ProcessingJob, job_id).next_attempt_at = None
-                db.commit()
-            vectors["stale-point-without-sql-row"] = "old content"
-            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
-            document_jobs.process_document_job(job_id, worker_id)
-            with sessions() as db:
-                expected = {str(chunk.id): chunk.content for chunk in db.get(Document, document_id).chunks}
-                self.assertEqual(vectors, expected)
-                self.assertEqual(db.get(ProcessingJob, job_id).status, "completed")
-                self.assertEqual(db.get(Document, document_id).status, "indexed")
-                self.assertEqual(db.get(Document, document_id).content_checksum, document_jobs.checksum("source text"))
-                db.get(ProcessingJob, job_id).status = "retrying"
-                db.commit()
-            factory.reset_mock()
-            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
-            document_jobs.process_document_job(job_id, worker_id)
-            factory.assert_not_called()
-            with sessions() as db:
-                self.assertEqual(db.get(ProcessingJob, job_id).stage, "unchanged")
-
-            with sessions() as db:
-                job = db.get(ProcessingJob, job_id)
-                job.status = "retrying"
-                job.chunk_size = 999
-                job.chunk_overlap = 111
-                job.parent_chunk_size = 2500
-                db.commit()
-            factory.reset_mock()
-            self.assertEqual(document_jobs.claim_document_job(worker_id), job_id)
-            document_jobs.process_document_job(job_id, worker_id)
-            factory.assert_called_once()
-            with sessions() as db:
-                document = db.get(Document, document_id)
-                self.assertEqual(document.indexed_child_chunk_size, 999)
-                self.assertEqual(document.indexed_chunk_overlap, 111)
-                self.assertEqual(document.indexed_parent_chunk_size, 2500)
-                self.assertEqual(db.get(ProcessingJob, job_id).stage, "ready")
+                self.assertEqual(document.status, "indexed")
+                self.assertIsNotNone(document.content_checksum)
+                self.assertEqual(len(document.chunks), 2)
+                # Outbox entry should remain pending for reconciler
+                outbox_entries = list(db.query(IndexingOutbox).filter_by(document_id=document_id, status="pending"))
+                self.assertEqual(len(outbox_entries), 1)
+                self.assertEqual(outbox_entries[0].action, "replace_document_chunks")
+                self.assertEqual(outbox_entries[0].payload["document_id"], str(document_id))

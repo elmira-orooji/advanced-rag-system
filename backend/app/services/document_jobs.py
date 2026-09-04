@@ -10,6 +10,7 @@ from sqlalchemy.orm import selectinload
 from app.core.config import BASE_DIR, DOCUMENT_JOB_HEARTBEAT_SECONDS, DOCUMENT_JOB_LEASE_SECONDS, DOCUMENT_JOB_MAX_ATTEMPTS, DOCUMENT_JOB_RETRY_BASE_SECONDS, DOCUMENT_JOB_RETRY_MAX_SECONDS, document_storage_relative, resolve_document_path
 from app.db.database import SessionLocal
 from app.models.document import Document
+from app.models.indexing_outbox import IndexingOutbox
 from app.models.processing_job import ProcessingJob
 from app.services.document_extractor import extract_text
 from app.services.qdrant import QdrantClient, QdrantError
@@ -194,10 +195,8 @@ def process_document_job(
         document = db.scalar(select(Document).options(selectinload(Document.chunks), selectinload(Document.document_sets)).where(Document.id == job.document_id))
         if document is None:
             return
-        qdrant = None
-        qdrant_touched = False
-        previous_vectors: list[dict[str, object]] = []
         _progress(db, document, job, worker_id, 10, "extracting")
+        outbox_payload: dict | None = None
         try:
             settings = document.document_sets[0] if document.document_sets else None
             chunk_size = job.chunk_size or (settings.child_chunk_size if settings else 800)
@@ -221,28 +220,17 @@ def process_document_job(
             extracted_path = source_path.parent / "extracted.txt"
             extracted_path.write_text(text, encoding="utf-8")
             document.extracted_text_path = document_storage_relative(extracted_path)
-            # Persist an invalid index marker before committing new chunks.
             document.content_checksum = None
             _progress(db, document, job, worker_id, 35, "chunking")
             contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
             if not contents:
                 raise RuntimeError("Document contains no text to index")
             _progress(db, document, job, worker_id, 65, "indexing")
-            previous_vectors = [
-                {"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content}
-                for chunk in document.chunks
-            ]
             next_chunks, _, removed_ids = incremental_chunks(document, text, chunk_size, overlap, parent_size)
             pending_chunks = [
                 {"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content}
                 for chunk in next_chunks
             ]
-            qdrant = QdrantClient()
-            qdrant.ensure_collection()
-            # External state must be updated before mutating SQL rows so a failure
-            # leaves the database untouched and the retry contract consistent.
-            qdrant_touched = True
-            qdrant.replace_document_chunks(str(document.id), document.filename, pending_chunks)
             for chunk in list(document.chunks):
                 if str(chunk.id) in removed_ids:
                     db.delete(chunk)
@@ -252,16 +240,22 @@ def process_document_job(
             document.indexed_chunk_overlap = overlap
             document.indexed_parent_chunk_size = parent_size
             document.processing_error = None
+            # Durable outbox: record intended Qdrant state in the SAME transaction
+            outbox_payload = {
+                "document_id": str(document.id),
+                "filename": document.filename,
+                "chunks": pending_chunks,
+            }
+            db.add(IndexingOutbox(
+                document_id=document.id,
+                job_id=job_id,
+                action="replace_document_chunks",
+                payload=outbox_payload,
+                status="pending",
+            ))
             _progress(db, document, job, worker_id, 100, "ready", completed=True)
         except Exception as exc:
             db.rollback()
-            if qdrant_touched and qdrant is not None:
-                try:
-                    qdrant.replace_document_chunks(str(document.id), document.filename, previous_vectors)
-                except Exception as compensation_error:
-                    logger.exception("Could not restore document vectors after indexing failure", extra={"job_id": str(job_id), "document_id": str(document.id)})
-                    if hasattr(exc, "add_note"):
-                        exc.add_note(f"Qdrant compensation failed: {compensation_error}")
             if isinstance(exc, DocumentJobOwnershipLost):
                 logger.warning("Stopped document processing after lease ownership changed", extra={"job_id": str(job_id), "worker_id": worker_id})
                 return
@@ -287,3 +281,32 @@ def process_document_job(
                 document.status = "queued" if retrying else "failed"; document.processing_error = message
                 document.processing_stage = "retry_wait" if retrying else "dead_letter"; document.processing_progress = job.progress
                 db.commit()
+            return
+
+        # Transaction committed with outbox entry. Best-effort immediate apply.
+        if outbox_payload is not None:
+            try:
+                qdrant = QdrantClient()
+                qdrant.ensure_collection()
+                qdrant.replace_document_chunks(
+                    outbox_payload["document_id"],
+                    outbox_payload["filename"],
+                    outbox_payload["chunks"],
+                )
+                with SessionLocal() as apply_db:
+                    apply_db.execute(
+                        update(IndexingOutbox)
+                        .where(
+                            IndexingOutbox.document_id == document.id,
+                            IndexingOutbox.job_id == job_id,
+                            IndexingOutbox.status == "pending",
+                        )
+                        .values(status="applied")
+                    )
+                    apply_db.commit()
+            except Exception:
+                logger.warning(
+                    "Immediate Qdrant apply failed; reconciler will retry",
+                    extra={"job_id": str(job_id), "document_id": str(document.id)},
+                    exc_info=True,
+                )
