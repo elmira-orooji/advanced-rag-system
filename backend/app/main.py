@@ -8,9 +8,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.routes import analytics_router, assistants_router, auth_router, chat_shares_router, connectors_router, conversations_router, document_sets_router, documents_router, evaluations_router, feedback_router, rag_router, research_router, search_router, users_router
-from app.core.config import FRONTEND_ORIGINS, UPLOAD_DIR
+from app.core.config import FRONTEND_ORIGINS, UPLOAD_DIR, WORKER_STALE_THRESHOLD_SECONDS
 from app.db.database import get_db
 from app.services.qdrant import QdrantClient, QdrantError
+from app.services.worker_heartbeat import get_available_worker_types
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +88,19 @@ def health(response: Response, db: Session = Depends(get_db)):
         logger.warning("Health check storage probe failed: %s", exc)
         checks["storage"] = "unavailable"
         failures.append("storage")
+
+    # Background workers required for ingestion and scheduled connector syncs
+    required_worker_types = ("document_worker", "connector_scheduler")
+    try:
+        available_worker_types = get_available_worker_types(WORKER_STALE_THRESHOLD_SECONDS)
+    except SQLAlchemyError as exc:
+        logger.warning("Health check worker registry probe failed: %s", exc)
+        available_worker_types = set()
+    for worker_type in required_worker_types:
+        available = worker_type in available_worker_types
+        checks[worker_type] = "available" if available else "unavailable"
+        if not available:
+            failures.append(worker_type)
 
     overall_status = "healthy" if not failures else "degraded"
     status_code = status.HTTP_200_OK if not failures else status.HTTP_503_SERVICE_UNAVAILABLE

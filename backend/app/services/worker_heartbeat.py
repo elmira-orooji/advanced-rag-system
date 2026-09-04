@@ -116,6 +116,22 @@ def deregister_worker(worker_id: str) -> None:
     logger.info("Worker deregistered", extra={"worker_id": worker_id})
 
 
+def get_available_worker_types(threshold_seconds: int) -> set[str]:
+    """Return worker types with at least one active, recent heartbeat."""
+    from datetime import timedelta
+
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=threshold_seconds)
+    with SessionLocal() as db:
+        return set(
+            db.scalars(
+                select(WorkerRegistry.type).where(
+                    WorkerRegistry.status == "active",
+                    WorkerRegistry.last_heartbeat >= cutoff,
+                )
+            ).all()
+        )
+
+
 def get_stale_workers(threshold_seconds: int) -> list[dict]:
     """Return workers whose last heartbeat is older than threshold_seconds."""
     from datetime import timedelta
