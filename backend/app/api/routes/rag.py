@@ -14,6 +14,7 @@ from app.models.document_set import DocumentSet
 from app.models.user import User
 from app.schemas.rag import Citation, RagRequest, RagResponse
 from app.schemas.search import SearchHit
+from app.core.rate_limit import rag_limiter, rate_limit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.retrieval import hybrid_search
@@ -36,7 +37,7 @@ def _normalize_citations(answer: str, source_count: int) -> tuple[str, set[int]]
     return re.sub(r"[ \t]{2,}", " ", normalized).strip(), used
 
 
-@router.post("/answer", response_model=RagResponse)
+@router.post("/answer", response_model=RagResponse, dependencies=[Depends(rate_limit(rag_limiter))])
 def answer_question(
     payload: RagRequest,
     db: Session = Depends(get_db),
@@ -145,4 +146,3 @@ def answer_question(
         citations=citations,
         sources=sources,
     )
-import re
