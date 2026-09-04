@@ -12,7 +12,7 @@ from app.db.database import get_db
 from app.models.document import Document
 from app.models.document_set import DocumentSet
 from app.models.user import User
-from app.schemas.search import PipelineTraceResponse, PlaygroundHit, PlaygroundResponse, RetrieverComparisonRequest, RetrieverComparisonResponse, RetrieverVariantResult, SearchHit, SearchRequest, SearchResponse, TraceCitation, TraceStage, UsageMetrics
+from app.schemas.search import PipelineTraceResponse, PlaygroundHit, PlaygroundResponse, RetrievalDiagnostics, RetrieverComparisonRequest, RetrieverComparisonResponse, RetrieverVariantResult, SearchHit, SearchRequest, SearchResponse, TraceCitation, TraceStage, UsageMetrics
 from app.services.openrouter import OpenRouterClient, OpenRouterError
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.retrieval import hybrid_search
@@ -26,7 +26,7 @@ def _playground_hit(point: dict) -> PlaygroundHit:
     data.setdefault("parent_index", 0)
     data.setdefault("matched_child_content", data["content"])
     data["score"] = point["score"]
-    data["diagnostics"] = RetrieverDiagnostics(
+    data["diagnostics"] = RetrievalDiagnostics(
         method=meta.get("method", "hybrid"),
         vector_rank=meta.get("vector_rank"),
         bm25_rank=meta.get("bm25_rank"),
