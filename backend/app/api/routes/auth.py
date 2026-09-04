@@ -14,12 +14,12 @@ from app.core.config import (
     AUTH_REMEMBER_SECONDS,
     AUTH_SESSION_SECONDS,
 )
-from app.core.security import create_access_token, decode_access_token, verify_password
+from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
 from app.db.database import get_db
 from app.models.user import User
 from app.models.auth_session import AuthSession
 from app.models.organization import Organization
-from app.schemas.auth import AuthUser, LoginRequest, LoginResponse
+from app.schemas.auth import AuthUser, LoginRequest, LoginResponse, PasswordChangeRequest
 from app.services.login_throttle import clear_account_failures, record_failure, retry_after, throttle_keys
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -39,6 +39,26 @@ def _request_token(
 
 def _aware_utc(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value.astimezone(timezone.utc)
+
+
+def revoke_user_sessions(db: Session, user_id: UUID, *, except_id: UUID | None = None) -> None:
+    """Revoke every active session for a user, optionally keeping one alive.
+
+    Used on logout-of-other-devices paths such as password change and account
+    deactivation, so a stolen cookie cannot outlive those events.
+    """
+    statement = (
+        update(AuthSession)
+        .where(
+            AuthSession.user_id == user_id,
+            AuthSession.revoked_at.is_(None),
+            AuthSession.expires_at > datetime.now(timezone.utc),
+        )
+        .values(revoked_at=datetime.now(timezone.utc))
+    )
+    if except_id is not None:
+        statement = statement.where(AuthSession.id != except_id)
+    db.execute(statement)
 
 
 def get_current_user(
@@ -153,6 +173,35 @@ def logout(
         path="/api/v1",
     )
     response.headers["Cache-Control"] = "no-store"
+
+
+@router.post("/change-password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    payload: PasswordChangeRequest,
+    request: Request,
+    credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    if not verify_password(payload.current_password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Current password is incorrect",
+        )
+    user.password_hash = hash_password(payload.new_password)
+
+    token = _request_token(request, credentials)
+    decoded = decode_access_token(token) if token else None
+    current_session_id = None
+    if decoded and decoded.get("jti"):
+        try:
+            current_session_id = UUID(str(decoded["jti"]))
+        except ValueError:
+            current_session_id = None
+    # Keep the requesting device signed in but invalidate every other session.
+    revoke_user_sessions(db, user.id, except_id=current_session_id)
+    db.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get("/me", response_model=AuthUser)

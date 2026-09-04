@@ -23,6 +23,10 @@ class UserAdminCreate(BaseModel):
     is_active: bool = True
 
 
+class UserAdminUpdate(BaseModel):
+    is_active: bool
+
+
 class SetPermissionItem(BaseModel):
     document_set_id: uuid.UUID
     document_set_name: str

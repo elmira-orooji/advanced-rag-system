@@ -5,13 +5,13 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.routes.auth import get_current_user
+from app.api.routes.auth import get_current_user, revoke_user_sessions
 from app.core.security import hash_password
 from app.db.database import get_db
 from app.models.document_set import DocumentSet
 from app.models.document_set_permission import DocumentSetPermission
 from app.models.user import User
-from app.schemas.user_management import SetPermissionItem, SetPermissionsUpdate, UserAdminCreate, UserAdminResponse
+from app.schemas.user_management import SetPermissionItem, SetPermissionsUpdate, UserAdminCreate, UserAdminResponse, UserAdminUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
@@ -46,6 +46,24 @@ def create_user(payload: UserAdminCreate, db: Session = Depends(get_db), admin: 
         raise HTTPException(status_code=409, detail="A member with this username already exists") from exc
     db.refresh(item)
     return item
+
+
+@router.patch("/{user_id}", response_model=UserAdminResponse)
+def update_user(user_id: uuid.UUID, payload: UserAdminUpdate, db: Session = Depends(get_db), admin: User = Depends(admin_only)):
+    target = db.scalar(select(User).where(
+        User.id == user_id, User.organization_id == admin.organization_id,
+    ))
+    if target is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if target.id == admin.id and not payload.is_active:
+        raise HTTPException(status_code=403, detail="You cannot deactivate your own account")
+    target.is_active = payload.is_active
+    if not payload.is_active:
+        # Deactivating an account must also invalidate its live sessions.
+        revoke_user_sessions(db, target.id)
+    db.commit()
+    db.refresh(target)
+    return target
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

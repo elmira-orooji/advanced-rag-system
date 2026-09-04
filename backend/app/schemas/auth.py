@@ -23,3 +23,8 @@ class AuthUser(BaseModel):
 class LoginResponse(BaseModel):
     expires_in: int
     user: AuthUser
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=200)
+    new_password: str = Field(min_length=8, max_length=200)

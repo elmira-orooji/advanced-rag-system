@@ -7,11 +7,11 @@ from uuid import uuid4
 from fastapi import HTTPException, Response
 from starlette.requests import Request
 
-from app.api.routes.auth import get_current_user, login, logout
+from app.api.routes.auth import change_password, get_current_user, login, logout
 from app.core.config import AUTH_COOKIE_NAME, AUTH_REMEMBER_SECONDS, AUTH_SESSION_SECONDS
 from app.core.security import create_access_token
 from app.models.auth_session import AuthSession
-from app.schemas.auth import LoginRequest
+from app.schemas.auth import LoginRequest, PasswordChangeRequest
 
 
 def request_with_cookie(value: str) -> Request:
@@ -165,6 +165,49 @@ class AuthCookieTests(unittest.TestCase):
             get_current_user(request_with_cookie(token), None, db)
 
         self.assertEqual(raised.exception.status_code, 401)
+
+    def test_change_password_rejects_wrong_current_password(self):
+        session_id = uuid4()
+        token = create_access_token(str(self.user.id), self.user.role, 60, str(session_id))
+        db = MagicMock()
+
+        with patch("app.api.routes.auth.verify_password", return_value=False):
+            with self.assertRaises(HTTPException) as raised:
+                change_password(
+                    PasswordChangeRequest(current_password="wrong", new_password="newpassword123"),
+                    request_with_cookie(token),
+                    None,
+                    db,
+                    self.user,
+                )
+
+        self.assertEqual(raised.exception.status_code, 401)
+        db.execute.assert_not_called()
+        db.commit.assert_not_called()
+
+    def test_change_password_revokes_other_sessions_and_keeps_current(self):
+        session_id = uuid4()
+        token = create_access_token(str(self.user.id), self.user.role, 60, str(session_id))
+        db = MagicMock()
+
+        with patch("app.api.routes.auth.verify_password", return_value=True), patch("app.api.routes.auth.hash_password", return_value="new-hash") as hash_pw:
+            result = change_password(
+                PasswordChangeRequest(current_password="oldpassword", new_password="newpassword123"),
+                request_with_cookie(token),
+                None,
+                db,
+                self.user,
+            )
+
+        self.assertEqual(result.status_code, 204)
+        hash_pw.assert_called_once_with("newpassword123")
+        self.assertEqual(self.user.password_hash, "new-hash")
+
+        statement = db.execute.call_args.args[0]
+        self.assertIn("auth_sessions", str(statement))
+        compiled = str(statement).lower()
+        self.assertIn("auth_sessions.id !=", compiled)
+        db.commit.assert_called_once()
 
 
 if __name__ == "__main__":
