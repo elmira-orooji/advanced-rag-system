@@ -12,7 +12,8 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
-from sqlalchemy import delete, select, update
+from sqlalchemy import delete, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.sync_lease import SyncLease
@@ -24,18 +25,6 @@ _HEARTBEAT_INTERVAL = timedelta(seconds=30)
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
-
-
-def _ensure_aware(dt: datetime) -> datetime:
-    """Return ``dt`` as a timezone-aware UTC datetime.
-
-    SQLite may return naive datetimes even when the column is defined with
-    ``DateTime(timezone=True)``. This helper normalises them so comparisons
-    with ``_utcnow()`` never raise ``TypeError``.
-    """
-    if dt.tzinfo is None:
-        return dt.replace(tzinfo=timezone.utc)
-    return dt
 
 
 @contextmanager
@@ -51,33 +40,30 @@ def connector_sync_lock(db: Session, connector_id: UUID):
     now = _utcnow()
     expires_at = now + _DEFAULT_LEASE_TTL
 
-    # Try to acquire or take over an expired lease in a single statement.
-    existing = db.execute(
-        select(SyncLease).where(SyncLease.connector_id == connector_id)
-    ).scalar_one_or_none()
+    # The expiry predicate must be part of the UPDATE itself. PostgreSQL
+    # re-checks it after waiting for a concurrent updater, so only one owner
+    # can take over an expired lease.
+    result = db.execute(
+        update(SyncLease)
+        .where(
+            SyncLease.connector_id == connector_id,
+            SyncLease.expires_at < now,
+        )
+        .values(owner_id=owner_id, expires_at=expires_at)
+    )
+    acquired = result.rowcount == 1
 
-    acquired = False
-    if existing is None:
+    if acquired:
+        db.commit()
+    else:
+        # No row was expired. If the lease does not exist, a primary-key
+        # constrained INSERT acquires it; concurrent inserts leave one winner.
         try:
             db.add(SyncLease(connector_id=connector_id, owner_id=owner_id, expires_at=expires_at))
             db.commit()
             acquired = True
-        except Exception:
+        except IntegrityError:
             db.rollback()
-    else:
-        # Normalize for comparison: SQLite may return naive datetimes.
-        lease_expires = existing.expires_at
-        if lease_expires.tzinfo is None:
-            lease_expires = lease_expires.replace(tzinfo=timezone.utc)
-        if lease_expires < now:
-            # Lease has expired; take ownership.
-            existing.owner_id = owner_id
-            existing.expires_at = expires_at
-            try:
-                db.commit()
-                acquired = True
-            except Exception:
-                db.rollback()
 
     if not acquired:
         yield False

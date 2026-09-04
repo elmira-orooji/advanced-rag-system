@@ -1,4 +1,5 @@
 import unittest
+import threading
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
@@ -238,6 +239,54 @@ class ConnectorLockTests(unittest.TestCase):
         with self.sessions() as db:
             with connector_sync_lock(db, connector_id) as acquired:
                 self.assertTrue(acquired)
+
+    def test_expired_lease_has_only_one_concurrent_winner(self):
+        connector_id = uuid4()
+        past = datetime.now(timezone.utc) - timedelta(hours=1)
+
+        database_name = f"lease-{uuid4()}"
+        engine = create_engine(
+            f"sqlite+pysqlite:///file:{database_name}?mode=memory&cache=shared&uri=true",
+            connect_args={"timeout": 10},
+        )
+        try:
+            SyncLease.__table__.create(engine)
+            sessions = sessionmaker(bind=engine, expire_on_commit=True)
+
+            with sessions() as db:
+                db.add(SyncLease(connector_id=connector_id, owner_id="dead-owner", expires_at=past))
+                db.commit()
+
+            start = threading.Barrier(3)
+            attempted = threading.Event()
+            release = threading.Event()
+            results = []
+            results_lock = threading.Lock()
+
+            def contender():
+                with sessions() as db:
+                    start.wait()
+                    with connector_sync_lock(db, connector_id) as acquired:
+                        with results_lock:
+                            results.append(acquired)
+                            if len(results) == 2:
+                                attempted.set()
+                        if acquired:
+                            release.wait(timeout=5)
+
+            threads = [threading.Thread(target=contender) for _ in range(2)]
+            for thread in threads:
+                thread.start()
+            start.wait()
+            self.assertTrue(attempted.wait(timeout=5))
+            release.set()
+            for thread in threads:
+                thread.join(timeout=5)
+
+            self.assertEqual(results.count(True), 1)
+            self.assertEqual(results.count(False), 1)
+        finally:
+            engine.dispose()
 
     def test_manual_sync_rejects_live_owner(self):
         from fastapi import HTTPException
