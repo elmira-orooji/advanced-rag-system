@@ -237,6 +237,11 @@ class ConnectorConsistencyTests(unittest.TestCase):
             with patch.object(sync, "SessionLocal", session_factory), patch.object(sync, "BASE_DIR", base), patch.object(sync, "UPLOAD_DIR", upload_dir), patch.object(sync, "document_storage_relative", side_effect=lambda path: path.relative_to(upload_dir).as_posix()), patch.object(sync, "_website", return_value=snapshot), patch.object(sync, "incremental_chunks", return_value=([], [], [])), patch.object(sync, "QdrantClient"):
                 sync.sync_connector(connector_id)
             self.assertEqual(document.storage_path, document.extracted_text_path)
+            apply_query = db.scalars.call_args_list[0].args[0]
+            self.assertEqual(
+                apply_query.compile().params["external_id_1"],
+                ["https://example.com"],
+            )
             resolved = (upload_dir / document.storage_path).resolve()
             self.assertTrue(resolved.is_file())
         finally:
