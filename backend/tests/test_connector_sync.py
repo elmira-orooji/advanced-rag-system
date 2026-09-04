@@ -27,7 +27,28 @@ class ConnectorDeletionTests(unittest.TestCase):
         connector = SimpleNamespace(id=connector_id, document_set_id=document_set_id, connector_type="github", source_url="https://github.com/owner/repo")
         items = [SimpleNamespace(external_id=f"{i}.md", document_id=uuid4(), content_hash=hashlib.sha256(body).hexdigest()) for i in range(count)]
         missing = SimpleNamespace(external_id="absent.md", document_id=uuid4())
-        db.scalars.return_value.all.return_value = items + [missing]
+        all_items = sorted(items + [missing], key=lambda it: it.external_id)
+
+        def scalars_side_effect(query):
+            # Support both the batched apply-phase queries (filtered by external_id list)
+            # and the paginated deletion-phase queries (ordered + limited).
+            mock_result = MagicMock()
+            compiled = query.compile()
+            params = compiled.params if hasattr(compiled, "params") else {}
+            ordered = list(all_items)
+            for key, value in params.items():
+                if key.startswith("external_id_") and isinstance(value, list):
+                    allowed = set(value)
+                    ordered = [it for it in ordered if it.external_id in allowed]
+                elif key.startswith("external_id_") and isinstance(value, str):
+                    ordered = [it for it in ordered if it.external_id > value]
+            limit_param = next((v for k, v in params.items() if k.startswith("param_") and isinstance(v, int)), None)
+            if limit_param is not None:
+                ordered = ordered[:limit_param]
+            mock_result.all.return_value = ordered
+            return mock_result
+
+        db.scalars.side_effect = scalars_side_effect
         document = SimpleNamespace(
             id=missing.document_id,
             filename="absent.md",

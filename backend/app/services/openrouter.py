@@ -2,12 +2,12 @@ import json
 from dataclasses import dataclass
 from time import perf_counter
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 from app.core.config import OPENROUTER_API_KEY, OPENROUTER_INPUT_COST_PER_MILLION, OPENROUTER_MODEL, OPENROUTER_OUTPUT_COST_PER_MILLION
+from app.services.http_resilience import HttpStatusError, ResilientHttpClient, ResilientHttpError
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+_HTTP = ResilientHttpClient()
 
 
 class OpenRouterError(RuntimeError):
@@ -27,12 +27,14 @@ class LLMResult:
 
 class OpenRouterClient:
     def list_models(self) -> list[dict[str, Any]]:
-        request = Request("https://openrouter.ai/api/v1/models", headers={
-            "Authorization": f"Bearer {self.api_key}", "Accept": "application/json",
-        })
         try:
-            with urlopen(request, timeout=20) as response:
-                data = json.loads(response.read().decode("utf-8"))
+            response = _HTTP.request(
+                "GET",
+                "https://openrouter.ai/api/v1/models",
+                headers={"Authorization": f"Bearer {self.api_key}", "Accept": "application/json"},
+                timeout_seconds=20,
+            )
+            data = json.loads(response.body.decode("utf-8"))
             if not isinstance(data, dict) or not isinstance(data.get("data"), list):
                 raise ValueError("Invalid catalog")
             models = []
@@ -46,7 +48,7 @@ class OpenRouterClient:
                 free = all(str(pricing.get(key, "unknown")) in {"0", "0.0"} for key in ("prompt", "completion"))
                 models.append({"id": item["id"], "name": item.get("name") or item["id"], "free": free})
             return sorted(models, key=lambda model: (not model["free"], model["name"].lower()))
-        except (URLError, TimeoutError, ValueError, TypeError, AttributeError) as exc:
+        except (ResilientHttpError, json.JSONDecodeError, ValueError, TypeError, AttributeError) as exc:
             raise OpenRouterError("Could not load model catalog. Please try again.") from exc
 
     def __init__(self, model: str | None = None) -> None:
@@ -188,28 +190,30 @@ class OpenRouterClient:
             raise OpenRouterError("The research planner returned an invalid plan") from exc
 
     def _request(self, body: dict[str, Any]) -> dict[str, Any]:
-        request = Request(
-            OPENROUTER_URL,
-            data=json.dumps(body).encode("utf-8"),
-            method="POST",
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-        )
         try:
-            with urlopen(request, timeout=90) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            message = f"OpenRouter returned HTTP {exc.code}"
+            response = _HTTP.request(
+                "POST",
+                OPENROUTER_URL,
+                body=json.dumps(body).encode("utf-8"),
+                timeout_seconds=90,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+            )
+            return json.loads(response.body.decode("utf-8"))
+        except HttpStatusError as exc:
+            message = f"OpenRouter returned HTTP {exc.status}"
             try:
-                error_body = json.loads(exc.read().decode("utf-8"))
+                error_body = json.loads(exc.body.decode("utf-8"))
                 detail = error_body.get("error", {}).get("message")
                 if detail:
                     message = f"{message}: {detail[:300]}"
             except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
                 pass
             raise OpenRouterError(message) from exc
-        except (URLError, TimeoutError, json.JSONDecodeError) as exc:
+        except ResilientHttpError as exc:
             raise OpenRouterError("Could not communicate with OpenRouter") from exc
+        except json.JSONDecodeError as exc:
+            raise OpenRouterError("OpenRouter returned an invalid response") from exc

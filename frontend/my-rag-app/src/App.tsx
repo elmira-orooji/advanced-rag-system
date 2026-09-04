@@ -7,6 +7,7 @@ import {
 import LoginPage from "./pages/LoginPage";
 import GuestRoute from "./components/GuestRoute";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { lazy, Suspense, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -59,21 +60,23 @@ export default function App() {
   }, [i18n.language]);
 
   return (
-    <BrowserRouter>
-      <SessionExpiryHandler />
-      <Routes>
-        <Route
-          path="/"
-          element={<GuestRoute><LoginPage /></GuestRoute>}
-        />
+    <ErrorBoundary>
+      <BrowserRouter>
+        <SessionExpiryHandler />
+        <Routes>
+          <Route
+            path="/"
+            element={<GuestRoute><LoginPage /></GuestRoute>}
+          />
 
-        <Route
-          path="/home/*"
-          element={<ProtectedRoute><Suspense fallback={<RouteFallback />}><AppLayout /></Suspense></ProtectedRoute>}
-        />
-        <Route path="/share/:visibility/:token" element={<Suspense fallback={<RouteFallback />}><SharedChatPage /></Suspense>} />
-        <Route path="*" element={<Suspense fallback={<RouteFallback />}><NotFoundPage /></Suspense>} />
-      </Routes>
-    </BrowserRouter>
+          <Route
+            path="/home/*"
+            element={<ProtectedRoute><ErrorBoundary><Suspense fallback={<RouteFallback />}><AppLayout /></Suspense></ErrorBoundary></ProtectedRoute>}
+          />
+          <Route path="/share/:visibility/:token" element={<ErrorBoundary><Suspense fallback={<RouteFallback />}><SharedChatPage /></Suspense></ErrorBoundary>} />
+          <Route path="*" element={<Suspense fallback={<RouteFallback />}><NotFoundPage /></Suspense>} />
+        </Routes>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }

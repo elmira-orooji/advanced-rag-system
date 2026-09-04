@@ -604,42 +604,68 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
         batch.clear()
 
     # --- Deletion & Summary phase ----------------------------------------------
-    # Runs once after all batches; safe because observed_ids covers the full run.
-    with SessionLocal() as db:
-        connector = db.get(Connector, connector_id)
-        if connector is None:
-            raise ConnectorSyncError("Connector no longer exists")
-        existing = {item.external_id: item for item in db.scalars(select(ConnectorItem).where(ConnectorItem.connector_id == connector.id)).all()}
-        journal: dict[str, ExternalDocumentState] = {}
-        qdrant = QdrantClient(); qdrant.ensure_collection()
-        try:
-            for external_id, item in existing.items():
-                # Absence in a capped or paginated response is not evidence of deletion.
-                if not snapshot.complete or external_id in snapshot.observed_ids:
-                    continue
-                document = db.get(Document, item.document_id)
-                if document is not None:
-                    other_sets = [value for value in document.document_sets if value.id != document_set_id]
-                    if other_sets:
-                        document.document_sets = other_sets
-                        db.delete(item)
-                    else:
-                        document_id = str(document.id)
-                        if document_id not in journal:
-                            journal[document_id] = _capture_external_state(document, existed=True)
-                        qdrant.delete_document(document_id)
-                        removed_directories.append(UPLOAD_DIR / document_id)
-                        db.delete(document)
-                else:
-                    db.delete(item)
-                deleted += 1
-            result = {"discovered": total_discovered, "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted, "deletion_skipped": int(not snapshot.complete)}
+    # Runs once after all batches.  To avoid loading every ConnectorItem into RAM
+    # at once (which defeated streaming for very large connectors), we page through
+    # the items in fixed-size chunks and only materialise the small window that is
+    # currently being evaluated.  Each page gets its own journal so a failure only
+    # needs to restore the documents touched in that window.
+    if not snapshot.complete:
+        result = {"discovered": total_discovered, "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted, "deletion_skipped": 1}
+        with SessionLocal() as db:
+            connector = db.get(Connector, connector_id)
+            if connector is None:
+                raise ConnectorSyncError("Connector no longer exists")
             connector.last_sync_summary = result
             db.commit()
-        except Exception as exc:
-            db.rollback()
-            _restore_external_states(qdrant, list(journal.values()), exc)
-            raise
+    else:
+        deletion_page_size = STREAM_BATCH_SIZE
+        last_external_id: str | None = None
+        while True:
+            with SessionLocal() as db:
+                connector = db.get(Connector, connector_id)
+                if connector is None:
+                    raise ConnectorSyncError("Connector no longer exists")
+                query = select(ConnectorItem).where(ConnectorItem.connector_id == connector.id).order_by(ConnectorItem.external_id).limit(deletion_page_size)
+                if last_external_id is not None:
+                    query = query.where(ConnectorItem.external_id > last_external_id)
+                page_items = list(db.scalars(query).all())
+                if not page_items:
+                    break
+                journal: dict[str, ExternalDocumentState] = {}
+                qdrant = QdrantClient(); qdrant.ensure_collection()
+                try:
+                    for item in page_items:
+                        if item.external_id in snapshot.observed_ids:
+                            continue
+                        document = db.get(Document, item.document_id)
+                        if document is not None:
+                            other_sets = [value for value in document.document_sets if value.id != document_set_id]
+                            if other_sets:
+                                document.document_sets = other_sets
+                                db.delete(item)
+                            else:
+                                document_id = str(document.id)
+                                if document_id not in journal:
+                                    journal[document_id] = _capture_external_state(document, existed=True)
+                                qdrant.delete_document(document_id)
+                                removed_directories.append(UPLOAD_DIR / document_id)
+                                db.delete(document)
+                        else:
+                            db.delete(item)
+                        deleted += 1
+                    db.commit()
+                except Exception as exc:
+                    db.rollback()
+                    _restore_external_states(qdrant, list(journal.values()), exc)
+                    raise
+                last_external_id = page_items[-1].external_id
+        with SessionLocal() as db:
+            connector = db.get(Connector, connector_id)
+            if connector is None:
+                raise ConnectorSyncError("Connector no longer exists")
+            result = {"discovered": total_discovered, "created": created, "updated": updated, "unchanged": unchanged, "deleted": deleted, "deletion_skipped": 0}
+            connector.last_sync_summary = result
+            db.commit()
     for document_dir in removed_directories:
         if document_dir.is_dir(): shutil.rmtree(document_dir, ignore_errors=True)
     return result

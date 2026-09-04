@@ -1,9 +1,6 @@
 import json
-import socket
 from typing import Any
-from urllib.error import HTTPError, URLError
 from urllib.parse import quote
-from urllib.request import ProxyHandler, Request, build_opener
 
 from app.core.config import (
     QDRANT_API_KEY,
@@ -11,9 +8,11 @@ from app.core.config import (
     QDRANT_EMBEDDING_MODEL,
     QDRANT_URL,
 )
+from app.services.http_resilience import HttpStatusError, ResilientHttpClient, ResilientHttpError
 
 VECTOR_NAME = "dense"
 VECTOR_SIZE = 384
+_HTTP = ResilientHttpClient()
 
 
 class QdrantError(RuntimeError):
@@ -30,10 +29,6 @@ class QdrantClient:
         self.api_key = QDRANT_API_KEY
         self.collection = QDRANT_COLLECTION
         self.model = QDRANT_EMBEDDING_MODEL
-        # Qdrant is an explicitly configured trusted endpoint. Bypass inherited
-        # desktop/dev proxy variables, which may point at an unavailable local
-        # proxy and otherwise surface as a misleading connection failure.
-        self._opener = build_opener(ProxyHandler({}))
 
     def ensure_collection(self) -> None:
         collection = quote(self.collection, safe="")
@@ -179,43 +174,30 @@ class QdrantClient:
         timeout_seconds: float = 60,
     ) -> dict[str, Any]:
         data = json.dumps(body).encode("utf-8") if body is not None else None
-        request = Request(
-            f"{self.base_url}{path}",
-            data=data,
-            method=method,
-            headers={
-                "api-key": self.api_key,
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-            },
-        )
         try:
-            with self._opener.open(request, timeout=timeout_seconds) as response:
-                return json.loads(response.read().decode("utf-8"))
-        except HTTPError as exc:
-            error_message = f"Qdrant returned HTTP {exc.code}"
+            response = _HTTP.request(
+                method,
+                f"{self.base_url}{path}",
+                body=data,
+                timeout_seconds=timeout_seconds,
+                headers={
+                    "api-key": self.api_key,
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
+            )
+            return json.loads(response.body.decode("utf-8"))
+        except HttpStatusError as exc:
+            error_message = f"Qdrant returned HTTP {exc.status}"
             try:
-                error_body = json.loads(exc.read().decode("utf-8"))
+                error_body = json.loads(exc.body.decode("utf-8"))
                 reason = error_body.get("status", {}).get("error")
                 if reason:
                     error_message = f"{error_message}: {reason[:300]}"
             except (UnicodeDecodeError, json.JSONDecodeError, AttributeError):
                 pass
-            raise QdrantError(error_message, status_code=exc.code) from exc
-        except URLError as exc:
-            reason = exc.reason
-            if isinstance(reason, socket.gaierror):
-                raise QdrantError(
-                    "Qdrant endpoint could not be resolved. Verify that the cloud cluster is active and QDRANT_URL matches its current endpoint."
-                ) from exc
-            if isinstance(reason, (TimeoutError, socket.timeout)):
-                raise QdrantError(
-                    "Qdrant connection timed out. Verify the cluster status and network access."
-                ) from exc
+            raise QdrantError(error_message, status_code=exc.status) from exc
+        except ResilientHttpError as exc:
             raise QdrantError("Could not communicate with Qdrant") from exc
-        except TimeoutError as exc:
-            raise QdrantError(
-                "Qdrant connection timed out. Verify the cluster status and network access."
-            ) from exc
         except json.JSONDecodeError as exc:
             raise QdrantError("Qdrant returned an invalid response") from exc
