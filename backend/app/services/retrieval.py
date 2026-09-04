@@ -26,6 +26,7 @@ class _LexicalCorpus:
     postings: dict[str, list[tuple[int, int]]]
 
 
+_LEXICAL_CACHE_MAX_SIZE = 64
 _lexical_cache: OrderedDict[tuple[str, ...], _LexicalCorpus] = OrderedDict()
 
 
@@ -95,7 +96,7 @@ def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
     corpus = _build_lexical_corpus(signature, rows)
     _lexical_cache[scope_key] = corpus
     _lexical_cache.move_to_end(scope_key)
-    while len(_lexical_cache) > BM25_CACHE_SCOPES:
+    while len(_lexical_cache) > _LEXICAL_CACHE_MAX_SIZE:
         _lexical_cache.popitem(last=False)
     return corpus
 
