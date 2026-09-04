@@ -7,7 +7,7 @@ import uuid
 
 from app.core.config import DOCUMENT_JOB_POLL_SECONDS, WORKER_HEARTBEAT_SECONDS
 from app.services.document_jobs import claim_document_job, maintain_document_job_lease, process_document_job, recover_document_jobs
-from app.services.worker_heartbeat import deregister_worker, register_worker, send_heartbeat
+from app.services.worker_heartbeat import deregister_worker, maintain_worker_heartbeat, register_worker
 
 logger = logging.getLogger(__name__)
 _stopping = False
@@ -30,41 +30,35 @@ def run() -> None:
         metadata={"hostname": socket.gethostname(), "pid": os.getpid()},
     )
 
-    recovered = recover_document_jobs()
-    logger.info("Document worker started", extra={"worker_id": worker_id, "recovered_jobs": recovered})
-    next_recovery = time.monotonic() + 60
-    next_heartbeat = time.monotonic() + WORKER_HEARTBEAT_SECONDS
-
     try:
-        while not _stopping:
-            now_mono = time.monotonic()
+        metadata = {"hostname": socket.gethostname(), "pid": os.getpid()}
+        with maintain_worker_heartbeat(
+            worker_id,
+            "document_worker",
+            metadata,
+            WORKER_HEARTBEAT_SECONDS,
+        ):
+            recovered = recover_document_jobs()
+            logger.info("Document worker started", extra={"worker_id": worker_id, "recovered_jobs": recovered})
+            next_recovery = time.monotonic() + 60
 
-            # Periodic heartbeat regardless of job activity
-            if now_mono >= next_heartbeat:
-                if not send_heartbeat(worker_id):
-                    logger.warning("Failed to send heartbeat; re-registering", extra={"worker_id": worker_id})
-                    register_worker(
-                        worker_id=worker_id,
-                        worker_type="document_worker",
-                        metadata={"hostname": socket.gethostname(), "pid": os.getpid()},
-                    )
-                next_heartbeat = now_mono + WORKER_HEARTBEAT_SECONDS
+            while not _stopping:
+                now_mono = time.monotonic()
+                if now_mono >= next_recovery:
+                    recovered = recover_document_jobs()
+                    if recovered:
+                        logger.warning("Recovered abandoned document jobs", extra={"recovered_jobs": recovered})
+                    next_recovery = now_mono + 60
 
-            if now_mono >= next_recovery:
-                recovered = recover_document_jobs()
-                if recovered:
-                    logger.warning("Recovered abandoned document jobs", extra={"recovered_jobs": recovered})
-                next_recovery = now_mono + 60
-
-            job_id = claim_document_job(worker_id)
-            if job_id is None:
-                time.sleep(DOCUMENT_JOB_POLL_SECONDS)
-                continue
-            try:
-                with maintain_document_job_lease(job_id, worker_id):
-                    process_document_job(job_id, worker_id)
-            except Exception:
-                logger.exception("Unhandled document job failure", extra={"job_id": str(job_id)})
+                job_id = claim_document_job(worker_id)
+                if job_id is None:
+                    time.sleep(DOCUMENT_JOB_POLL_SECONDS)
+                    continue
+                try:
+                    with maintain_document_job_lease(job_id, worker_id):
+                        process_document_job(job_id, worker_id)
+                except Exception:
+                    logger.exception("Unhandled document job failure", extra={"job_id": str(job_id)})
     finally:
         deregister_worker(worker_id)
         logger.info("Document worker stopped", extra={"worker_id": worker_id})

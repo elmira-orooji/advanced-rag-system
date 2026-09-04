@@ -7,7 +7,10 @@ Each worker upserts its record on startup and periodically updates
 
 import json
 import logging
+import threading
+from contextlib import contextmanager
 from datetime import datetime, timezone
+from typing import Iterator
 
 from sqlalchemy import select, update
 
@@ -15,6 +18,44 @@ from app.db.database import SessionLocal
 from app.models.worker_registry import WorkerRegistry
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def maintain_worker_heartbeat(
+    worker_id: str,
+    worker_type: str,
+    metadata: dict | None,
+    interval_seconds: float,
+) -> Iterator[None]:
+    """Send registry heartbeats independently of the worker's main loop."""
+    stop_event = threading.Event()
+
+    def heartbeat_loop() -> None:
+        while not stop_event.wait(interval_seconds):
+            try:
+                if not send_heartbeat(worker_id):
+                    logger.warning(
+                        "Failed to send heartbeat; re-registering",
+                        extra={"worker_id": worker_id},
+                    )
+                    register_worker(worker_id, worker_type, metadata)
+            except Exception:
+                logger.exception(
+                    "Worker heartbeat failed",
+                    extra={"worker_id": worker_id},
+                )
+
+    thread = threading.Thread(
+        target=heartbeat_loop,
+        name=f"worker-heartbeat-{worker_id}",
+        daemon=True,
+    )
+    thread.start()
+    try:
+        yield
+    finally:
+        stop_event.set()
+        thread.join(timeout=max(interval_seconds, 1))
 
 
 def register_worker(
