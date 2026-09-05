@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BookOpen, ChevronDown, FileSearch, FileText, Loader2, MessageSquareText, ShieldCheck, Sparkles } from "lucide-react";
+import { BookOpen, ChevronDown, FileSearch, FileText, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -46,6 +46,8 @@ export default function ConversationPage({ conversationId, onConversationChange,
   const [sets, setSets] = useState<DocumentSet[]>([]);
   const [selectedSetId, setSelectedSetId] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadRevision, setLoadRevision] = useState(0);
   const [sending, setSending] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState("");
   const [suggestedPrompt, setSuggestedPrompt] = useState({ value: "", revision: 0 });
@@ -54,6 +56,8 @@ export default function ConversationPage({ conversationId, onConversationChange,
 
   useEffect(() => {
     let active = true;
+    setLoading(true);
+    setLoadError(null);
     const task = conversationId
       ? conversationService.get(conversationId).then((value) => { if (active) setDetail(value); })
       : knowledgeService.listSets().then((value) => {
@@ -62,9 +66,16 @@ export default function ConversationPage({ conversationId, onConversationChange,
           setSelectedSetId((current) => current || value[0]?.id || "");
           setDetail(null);
         });
-    task.catch((error) => toast.error((error as Error).message)).finally(() => { if (active) setLoading(false); });
+    task
+      .catch((error) => {
+        if (!active) return;
+        const message = (error as Error).message || (isFa ? "دریافت گفتگو ناموفق بود." : "We couldn't load this conversation.");
+        setLoadError(message);
+        toast.error(message);
+      })
+      .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [conversationId]);
+  }, [conversationId, isFa, loadRevision]);
 
   const assistantId = detail?.assistant_id;
   useEffect(() => {
@@ -110,7 +121,16 @@ export default function ConversationPage({ conversationId, onConversationChange,
     }
   };
 
-  if (loading || !detailMatchesConversation) return <div className="grid h-full place-items-center conversation-muted" role="status" aria-live="polite" aria-label={isFa ? "در حال بارگذاری گفتگو" : "Loading conversation"}><Loader2 className="animate-spin" aria-hidden="true" /></div>;
+  if (loading) return <div className="grid h-full place-items-center conversation-muted" role="status" aria-live="polite" aria-label={isFa ? "در حال بارگذاری گفتگو" : "Loading conversation"}><Loader2 className="animate-spin" aria-hidden="true" /></div>;
+
+  if (loadError || !detailMatchesConversation) return <div dir={isFa ? "rtl" : "ltr"} className="grid h-full place-items-center px-5 text-center">
+    <div className="max-w-sm rounded-2xl border border-rose-300/20 bg-rose-400/[.06] p-6 shadow-[0_18px_50px_rgba(0,0,0,.16)]">
+      <span className="mx-auto grid size-11 place-items-center rounded-xl border border-rose-300/20 bg-rose-400/10 text-rose-200"><MessageSquareText size={19} /></span>
+      <h1 className="mt-4 text-base font-semibold text-white">{isFa ? "گفتگو بارگذاری نشد" : "Conversation could not be loaded"}</h1>
+      <p className="mt-2 text-sm leading-6 conversation-muted">{loadError || (isFa ? "لطفاً دوباره تلاش کنید." : "Please try again.")}</p>
+      <button type="button" onClick={() => setLoadRevision((value) => value + 1)} className="mt-5 inline-flex h-10 items-center gap-2 rounded-xl bg-[#7c27ff] px-4 text-sm font-semibold text-white shadow-[0_8px_24px_rgba(124,39,255,.25)] transition hover:bg-[#9238ff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#c43cff]"><RefreshCw size={15} />{isFa ? "تلاش مجدد" : "Try again"}</button>
+    </div>
+  </div>;
 
   if (!messages.length && !conversationId) {
     const suggestions = isFa
