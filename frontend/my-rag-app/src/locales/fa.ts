@@ -20,7 +20,7 @@ export const fa = {
     cancel: "انصراف", save: "ذخیره", create: "ایجاد مجموعه", edit: "ویرایش", delete: "حذف مجموعه",
     connect: "اتصال منبع", connected: "منابع متصل",
   },
-  sidebar: { home: "فضای کاری", upload: "پایگاه دانش", assistants: "دستیارها", users: "اعضای تیم", settings: "تنظیمات", newChat: "گفتگوی جدید", recent: "اخیر", navigation: "منوی اصلی", search: "جست‌وجو...", collapse: "جمع‌کردن منو", account: "حساب" },
+  sidebar: { home: "فضای کاری", upload: "پایگاه دانش", assistants: "دستیارها", users: "اعضای تیم", settings: "تنظیمات", newChat: "گفتگوی جدید", recent: "اخیر", navigation: "منوی اصلی", search: "فیلتر ناوبری", collapse: "جمع‌کردن منو", account: "حساب" },
   settings: { title: "تنظیمات", subtitle: "ظاهر و زبان رابط کاربری را انتخاب کنید.", appearance: "ظاهر برنامه", appearanceSub: "تم مناسب محیط کاری خود را انتخاب کنید.", light: "روشن", dark: "تیره", language: "زبان و جهت صفحه", languageSub: "جهت صفحه متناسب با زبان انتخاب‌شده تنظیم می‌شود.", ltr: "چپ به راست", rtl: "راست به چپ" },
   usersPage: { eyebrow: "مدیریت اعضا", title: "اعضای تیم", subtitle: "اعضای تیم را اضافه یا حذف کنید. حساب‌های مدیر قابل حذف نیستند.", add: "افزودن عضو", directory: "فهرست اعضا", search: "جست‌وجوی کاربر...", all: "همه نقش‌ها", admin: "مدیر", user: "کاربر", active: "فعال", inactive: "غیرفعال", remove: "حذف عضو" },
   assistantsPage: { eyebrow: "دستیارهای تخصصی", title: "دستیارها", subtitle: "دستیارهای هوشمند با دستورالعمل و منابع دانشی اختصاصی.", add: "دستیار جدید", empty: "هنوز دستیاری ساخته نشده است", choose: "یک دستیار را برای شروع گفتگو انتخاب کنید", knowledge: "مجموعه دانش", inactive: "غیرفعال", active: "فعال", edit: "ویرایش", remove: "حذف", noKnowledge: "بدون مجموعه دانش" },
