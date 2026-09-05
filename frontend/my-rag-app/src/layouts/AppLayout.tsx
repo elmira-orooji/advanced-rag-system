@@ -10,6 +10,7 @@ import { conversationService, type ConversationSummary } from "../services/conve
 import toast from "react-hot-toast";
 import { canManageUsers } from "../lib/permissions";
 import { useTranslation } from "react-i18next";
+import { getPreferredTheme, saveTheme, type Theme } from "../utils/theme";
 
 const AnalyticsPage = lazy(() => import("../pages/AnalyticsPage"));
 const AssistantsPage = lazy(() => import("../pages/AssistantsPage"));
@@ -55,11 +56,7 @@ export default function AppLayout() {
   const currentUser = authService.getUser();
   const { page: activePage, conversationId: activeConversationId, valid: validRoute } = routeState(location.pathname);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [theme, setTheme] = useState<"light" | "dark">(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "light" || savedTheme === "dark") return savedTheme;
-    return window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
-  });
+  const [theme, setTheme] = useState<Theme>(getPreferredTheme);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationToRename, setConversationToRename] = useState<ConversationSummary | null>(null);
 
@@ -71,7 +68,7 @@ export default function AppLayout() {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
-    localStorage.setItem("theme", theme);
+    saveTheme(theme);
   }, [theme]);
 
   const selectPage = (page: AppPage) => {

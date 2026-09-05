@@ -24,6 +24,7 @@ import { loginSchema } from "../schemas/loginSchema";
 import type { LoginSchemaType } from "../schemas/loginSchema";
 import { authService } from "../services/authService";
 import { getPostLoginDestination } from "../utils/authNavigation";
+import { getPreferredTheme, saveTheme, type Theme } from "../utils/theme";
 import "../styles/login.css";
 
 function loginErrorMessage(error: unknown, isRtl: boolean) {
@@ -50,11 +51,7 @@ export default function LoginPage() {
   const { language, changeLanguage } = useLanguage();
   const { t: translate } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">(
-    () =>
-      (localStorage.getItem("knowledgeflow.login-theme") as "dark" | "light" | null) ||
-      "dark",
-  );
+  const [theme, setTheme] = useState<Theme>(getPreferredTheme);
   const [capsLock, setCapsLock] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [isLoading, setIsLoading] = useState(false);
@@ -110,7 +107,7 @@ export default function LoginPage() {
   const toggleTheme = () => {
     setTheme((current) => {
       const next = current === "dark" ? "light" : "dark";
-      localStorage.setItem("knowledgeflow.login-theme", next);
+      saveTheme(next);
       return next;
     });
   };
