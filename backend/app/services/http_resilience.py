@@ -5,7 +5,7 @@ import threading
 import time
 from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
-from http.client import HTTPConnection, HTTPSConnection
+from http.client import HTTPConnection, HTTPException, HTTPSConnection
 from urllib.parse import urlsplit
 
 
@@ -77,7 +77,7 @@ class ResilientHttpClient:
                 if response.status not in self._RETRYABLE_STATUSES:
                     raise error
                 last_error = error
-            except (OSError, TimeoutError, HTTPConnectionError) as exc:
+            except (OSError, TimeoutError, HTTPException) as exc:
                 self._discard_connection(parsed)
                 last_error = exc
             except HttpStatusError:
