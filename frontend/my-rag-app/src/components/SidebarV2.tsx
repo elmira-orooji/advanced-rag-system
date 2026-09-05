@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Bot,
   FileUp,
@@ -54,6 +54,9 @@ export default function SidebarV2({
 }: SidebarV2Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [menuQuery, setMenuQuery] = useState("");
+  const asideRef = useRef<HTMLElement>(null);
+  const mobileCloseRef = useRef<HTMLButtonElement>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const { i18n, t } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const labels = sectionCopy(t, "sidebar", ["home", "upload", "assistants", "users", "settings", "newChat", "recent", "navigation", "search", "collapse", "account"]);
@@ -71,18 +74,54 @@ export default function SidebarV2({
   const closeLabel = isFa ? "بستن منو" : "Close navigation";
   const expandLabel = isFa ? "بازکردن منو" : "Expand sidebar";
 
+  useEffect(() => {
+    if (!mobileOpen) {
+      const element = restoreFocusRef.current;
+      restoreFocusRef.current = null;
+      if (element) window.setTimeout(() => element.focus(), 0);
+      return;
+    }
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    mobileCloseRef.current?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onCloseMobile();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(asideRef.current?.querySelectorAll<HTMLElement>("button, input, select, textarea, a[href]") ?? [])
+        .filter((element) => !element.hasAttribute("disabled") && element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [mobileOpen, onCloseMobile]);
+
   return (
     <>
       <button
         type="button"
         aria-label={closeLabel}
         onClick={onCloseMobile}
-        tabIndex={mobileOpen ? 0 : -1}
+        tabIndex={-1}
+        aria-hidden="true"
         className={`nexora-sidebar-backdrop ${mobileOpen ? "is-open" : ""}`}
       />
       <aside
+        ref={asideRef}
         dir={isFa ? "rtl" : "ltr"}
         aria-label={isFa ? "منوی اصلی" : "Main sidebar"}
+        aria-modal={mobileOpen ? "true" : undefined}
         className={`nexora-sidebar ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "is-open" : ""}`}
       >
         <header className="nexora-sidebar__brand" dir="ltr">
@@ -96,7 +135,7 @@ export default function SidebarV2({
           <button type="button" onClick={() => { setCollapsed((value) => !value); setMenuQuery(""); }} aria-label={collapsed ? expandLabel : labels.collapse} aria-expanded={!collapsed} title={collapsed ? expandLabel : labels.collapse} className="nexora-sidebar__collapse">
             {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
-          <button type="button" onClick={onCloseMobile} className="nexora-sidebar__icon-button nexora-sidebar__mobile-close" aria-label={closeLabel}>
+          <button ref={mobileCloseRef} type="button" onClick={onCloseMobile} className="nexora-sidebar__icon-button nexora-sidebar__mobile-close" aria-label={closeLabel}>
             <X size={18} />
           </button>
         </header>

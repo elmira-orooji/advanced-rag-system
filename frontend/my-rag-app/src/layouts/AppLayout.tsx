@@ -1,5 +1,5 @@
 import { confirmAction } from "../services/confirmation";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { Menu } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
@@ -56,9 +56,11 @@ export default function AppLayout() {
   const currentUser = authService.getUser();
   const { page: activePage, conversationId: activeConversationId, valid: validRoute } = routeState(location.pathname);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
   const [theme, setTheme] = useState<Theme>(getPreferredTheme);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationToRename, setConversationToRename] = useState<ConversationSummary | null>(null);
+  const contentRef = useRef<HTMLElement>(null);
 
   const loadConversations = () => {
     conversationService.list().then(setConversations).catch((error) => toast.error((error as Error).message));
@@ -70,6 +72,14 @@ export default function AppLayout() {
     document.documentElement.classList.toggle("dark", theme === "dark");
     saveTheme(theme);
   }, [theme]);
+
+  useEffect(() => {
+    const content = contentRef.current;
+    if (!content) return;
+    if (mobileMenuOpen) content.setAttribute("inert", "");
+    else content.removeAttribute("inert");
+    return () => content.removeAttribute("inert");
+  }, [mobileMenuOpen]);
 
   const selectPage = (page: AppPage) => {
     navigate(PAGE_PATHS[page]);
@@ -127,7 +137,7 @@ export default function AppLayout() {
         activePage={activePage}
         currentUser={currentUser}
         mobileOpen={mobileMenuOpen}
-        onCloseMobile={() => setMobileMenuOpen(false)}
+        onCloseMobile={closeMobileMenu}
         onLogout={() => void handleLogout()}
         setActivePage={selectPage}
         conversations={conversations}
@@ -146,7 +156,7 @@ export default function AppLayout() {
         />
       )}
 
-      <section className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+      <section ref={contentRef} className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
         <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
           <div className="app-orb absolute -right-24 -top-28 size-[30rem] rounded-full bg-[#7c27ff]/15 blur-[130px]" />
           <div className="app-orb app-orb-delayed absolute -bottom-36 left-[12%] size-[32rem] rounded-full bg-[#18c7f4]/10 blur-[150px]" />
