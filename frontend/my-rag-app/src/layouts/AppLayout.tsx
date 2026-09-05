@@ -17,6 +17,7 @@ const ConversationPage = lazy(() => import("../pages/ConversationPage"));
 const SettingsPage = lazy(() => import("../pages/SettingsPage"));
 const UploadFilesPage = lazy(() => import("../pages/UploadFilesPage"));
 const UsersPage = lazy(() => import("../pages/UsersPage"));
+const WorkspacePage = lazy(() => import("../pages/WorkspacePage"));
 
 function PageFallback() {
   return <div className="grid h-full place-items-center" role="status" aria-label="Loading dashboard page">
@@ -165,7 +166,7 @@ export default function AppLayout() {
 
         <main className="relative z-10 min-h-0 flex-1 overflow-hidden"><Suspense fallback={<PageFallback />}>
           {!validRoute && <Navigate to="/home" replace />}
-          {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <ConversationPage key="home-conversation" conversationId={null} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} />)}
+          {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <WorkspacePage currentUser={currentUser} conversations={conversations} onNewConversation={newConversation} onOpenConversation={selectConversation} onOpenKnowledge={() => selectPage("upload")} />)}
           {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} />}
           {activePage === "upload" && <UploadFilesPage />}
           {activePage === "assistants" && <AssistantsPage />}
