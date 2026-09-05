@@ -1,24 +1,24 @@
 .conversation-page {
-  --cv-bg: #0a1122;
-  --cv-panel: #10192c;
-  --cv-text: #e7eaf3;
-  --cv-muted: #99a5ba;
-  --cv-line: #ffffff14;
-  --cv-accent: #bda0f4;
-  --cv-tint: #a78bfa12;
-  --cv-success: #70c5ac;
+  --cv-bg: var(--surface-canvas);
+  --cv-panel: var(--surface-panel);
+  --cv-text: var(--text-primary);
+  --cv-muted: var(--text-muted);
+  --cv-line: var(--border-subtle);
+  --cv-accent: var(--brand);
+  --cv-tint: var(--brand-soft);
+  --cv-success: var(--status-success);
   background: var(--cv-bg);
   color: var(--cv-text);
 }
 html:not(.dark) .conversation-page {
-  --cv-bg: #f5f7fa;
-  --cv-panel: #ffffff;
-  --cv-text: #252c3e;
-  --cv-muted: #687287;
-  --cv-line: #dfe4ed;
-  --cv-accent: #7950bb;
-  --cv-tint: #7c3aed0b;
-  --cv-success: #298369;
+  --cv-bg: var(--surface-canvas);
+  --cv-panel: var(--surface-panel);
+  --cv-text: var(--text-primary);
+  --cv-muted: var(--text-muted);
+  --cv-line: var(--border-subtle);
+  --cv-accent: var(--brand);
+  --cv-tint: var(--brand-soft);
+  --cv-success: var(--status-success);
 }
 .conversation-page .conversation-muted { color: var(--cv-muted); }
 .conversation-page .conversation-accent { color: var(--cv-accent); }
@@ -61,10 +61,10 @@ html:not(.dark) .conversation-page {
 .app-shell .conversation-page .app-composer .app-icon-button:hover { color: var(--cv-accent) !important; background: var(--cv-tint); border-color: var(--cv-accent); }
 .app-shell .conversation-page .chat-rag-label { color: var(--cv-muted) !important; font-size: 9px; align-self: center; }
 .app-shell .conversation-page .chat-send-button {
-  border-radius: 9px; background: #8050cc; color: #fff !important; box-shadow: none; transform: none;
+  border-radius: 9px; background: var(--brand); color: var(--text-inverse) !important; box-shadow: none; transform: none;
   transition: background-color 140ms ease;
 }
-.app-shell .conversation-page .chat-send-button:hover:not(:disabled) { background: #7040ba; }
+.app-shell .conversation-page .chat-send-button:hover:not(:disabled) { background: var(--brand-hover); }
 .app-shell .conversation-page .chat-send-button:disabled { background: var(--cv-tint) !important; color: var(--cv-muted) !important; cursor: not-allowed; }
 .conversation-suggestion { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 12px; border: 1px solid var(--cv-line); border-radius: 9px; background: transparent; text-align: start; cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
 .conversation-suggestion:hover { background: var(--cv-tint); border-color: var(--cv-accent); }

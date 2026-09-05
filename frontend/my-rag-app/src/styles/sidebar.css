@@ -15,16 +15,16 @@
 
 /* Scoped sidebar tokens: quiet surfaces, a single violet accent, no global theme changes. */
 .nexora-sidebar {
-  --sb-bg: #0c1428;
-  --sb-text: #e7eaf3;
-  --sb-muted: #98a3ba;
-  --sb-line: #ffffff12;
+  --sb-bg: var(--surface-raised);
+  --sb-text: var(--text-primary);
+  --sb-muted: var(--text-muted);
+  --sb-line: var(--border-subtle);
   --sb-hover: #ffffff06;
   --sb-input: #ffffff04;
-  --sb-accent: #c1a5ff;
-  --sb-active: #a78bfa14;
-  --sb-accent-line: #a78bfa38;
-  --sb-danger: #fb91a1;
+  --sb-accent: var(--brand);
+  --sb-active: var(--brand-soft);
+  --sb-accent-line: var(--brand-line);
+  --sb-danger: var(--status-danger);
   position: fixed;
   inset: 0 auto 0 0;
   z-index: 50;
@@ -42,16 +42,16 @@
   transition: width 180ms ease, transform 180ms ease, visibility 180ms;
 }
 html:not(.dark) .nexora-sidebar {
-  --sb-bg: #f8f9fc;
-  --sb-text: #252c3e;
-  --sb-muted: #687287;
-  --sb-line: #20294414;
+  --sb-bg: var(--surface-raised);
+  --sb-text: var(--text-primary);
+  --sb-muted: var(--text-muted);
+  --sb-line: var(--border-strong);
   --sb-hover: #20294406;
-  --sb-input: #ffffff;
-  --sb-accent: #7041bd;
-  --sb-active: #7c3aed0c;
-  --sb-accent-line: #7c3aed24;
-  --sb-danger: #c53650;
+  --sb-input: var(--surface-panel);
+  --sb-accent: var(--brand);
+  --sb-active: var(--brand-soft);
+  --sb-accent-line: var(--brand-line);
+  --sb-danger: var(--status-danger);
 }
 .nexora-sidebar.is-open { visibility: visible; transform: translateX(0); }
 .nexora-sidebar button { cursor: pointer; }

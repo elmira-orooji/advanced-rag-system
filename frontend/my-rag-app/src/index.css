@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @plugin "tailwind-scrollbar";
 @custom-variant dark (&:where(.dark, .dark *));
+@import "./styles/theme.css";
 
 @font-face {
   font-family: "Inter";
@@ -21,7 +22,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #f4f7fb;
+  background: var(--surface-canvas);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   overflow: hidden;
@@ -37,19 +38,19 @@ button {
 }
 
 ::selection {
-  color: white;
-  background: #32127a;
+  color: var(--text-inverse);
+  background: var(--brand-strong);
 }
 
 button:focus-visible,
 a:focus-visible {
-  outline: 3px solid rgba(143, 120, 216, 0.34);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
 input[aria-invalid="true"] {
-  border-color: #f43f5e;
-  box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.1);
+  border-color: var(--status-danger);
+  box-shadow: 0 0 0 4px var(--status-danger-soft);
 }
 
 .login-glow-button {
@@ -114,18 +115,18 @@ input[aria-invalid="true"] {
 
 
 .app-shell {
-  --app-bg: #070d20;
-  --app-surface: #0e1a3b;
-  --app-surface-2: #0a1530;
-  --app-border: #213157;
-  --app-muted: #7f8eaf;
-  --app-purple: #c43cff;
-  --app-violet: #7c27ff;
-  --app-cyan: #18c7f4;
-  --app-blue: #1b4dff;
-  --app-gold: #ffb52e;
+  --app-bg: var(--surface-canvas);
+  --app-surface: var(--surface-raised);
+  --app-surface-2: var(--surface-panel);
+  --app-border: var(--border-strong);
+  --app-muted: var(--text-muted);
+  --app-purple: var(--accent-magenta);
+  --app-violet: var(--brand);
+  --app-cyan: var(--accent-cyan);
+  --app-blue: var(--accent-blue);
+  --app-gold: var(--status-warning);
   color-scheme: dark;
-  background: radial-gradient(circle at 76% 10%, rgba(124,39,255,.14), transparent 30%), radial-gradient(circle at 32% 90%, rgba(24,199,244,.07), transparent 28%), linear-gradient(145deg, #070d20 0%, #060b1b 58%, #081127 100%);
+  background: var(--app-background);
 }
 
 .app-sidebar {

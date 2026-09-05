@@ -1,11 +1,11 @@
 .assistants-page {
-  --as-bg: #0a1122;
-  --as-panel: #10192c;
-  --as-text: #e7eaf3;
-  --as-muted: #99a5ba;
-  --as-line: #ffffff14;
-  --as-accent: #bda0f4;
-  --as-tint: #a78bfa12;
+  --as-bg: var(--surface-canvas);
+  --as-panel: var(--surface-panel);
+  --as-text: var(--text-primary);
+  --as-muted: var(--text-muted);
+  --as-line: var(--border-subtle);
+  --as-accent: var(--brand);
+  --as-tint: var(--brand-soft);
   color: var(--as-text);
   background: var(--as-bg);
 }
@@ -38,8 +38,8 @@
 .assistant-form-status { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px solid var(--as-line); font-size: 12px; color: var(--as-text); }
 .assistant-form-status > span:first-child { display: flex; align-items: center; gap: 8px; }
 .assistant-form-toggle { position: relative; flex: 0 0 34px; height: 20px; border-radius: 20px; background: var(--as-muted); }
-.assistant-form-toggle > span { position: absolute; inset-block-start: 3px; inset-inline-start: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; }
-.assistant-form-status[aria-checked="true"] .assistant-form-toggle { background: #8050cc; }
+.assistant-form-toggle > span { position: absolute; inset-block-start: 3px; inset-inline-start: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--text-inverse); }
+.assistant-form-status[aria-checked="true"] .assistant-form-toggle { background: var(--brand); }
 .assistant-form-status[aria-checked="true"] .assistant-form-toggle > span { inset-inline-start: auto; inset-inline-end: 3px; }
 .assistant-form-footer { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--as-line); }
 .assistant-set-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--as-muted); font-size: 11px; }
@@ -48,8 +48,8 @@
 .assistant-form-footer button { min-height: 40px; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; }
 .assistant-form-cancel { color: var(--as-muted); background: transparent; }
 .assistant-form-cancel:hover { background: var(--as-tint); }
-.assistant-form-save { color: #fff; background: #8050cc; border: 1px solid #8050cc; }
-.assistant-form-save:hover:not(:disabled) { background: #7142bb; }
+.assistant-form-save { color: var(--text-inverse); background: var(--brand); border: 1px solid var(--brand); }
+.assistant-form-save:hover:not(:disabled) { background: var(--brand-hover); }
 .assistant-form-save:disabled { opacity: .5; }
 @media (max-width: 480px) {
   .assistant-form-body { grid-template-columns: 1fr; gap: 10px; }
@@ -61,13 +61,13 @@
   .assistant-form-body { overflow-y: auto; scrollbar-width: thin; }
 }
 html:not(.dark) .assistants-page {
-  --as-bg: #f5f7fa;
-  --as-panel: #ffffff;
-  --as-text: #252c3e;
-  --as-muted: #687287;
-  --as-line: #dfe4ed;
-  --as-accent: #7950bb;
-  --as-tint: #7c3aed0b;
+  --as-bg: var(--surface-canvas);
+  --as-panel: var(--surface-panel);
+  --as-text: var(--text-primary);
+  --as-muted: var(--text-muted);
+  --as-line: var(--border-subtle);
+  --as-accent: var(--brand);
+  --as-tint: var(--brand-soft);
 }
 .assistants-page .as-muted { color: var(--as-muted); }
 .assistants-page .as-text { color: var(--as-text); }
@@ -106,7 +106,7 @@ html:not(.dark) .assistants-page {
 .app-shell .assistants-page .chat-composer-textarea { font-size: 12px; border: 0; background: transparent; box-shadow: none; }
 .app-shell .assistants-page .chat-composer-textarea:focus { box-shadow: none; }
 .app-shell .assistants-page .chat-rag-label { display: none; }
-.app-shell .assistants-page .chat-send-button { background: #8050cc; border-radius: 8px; color: white !important; transform: none; box-shadow: none; }
+.app-shell .assistants-page .chat-send-button { background: var(--brand); border-radius: var(--radius-control); color: var(--text-inverse) !important; transform: none; box-shadow: none; }
 .app-shell .assistants-page .chat-send-button:disabled { background: var(--as-tint) !important; color: var(--as-muted) !important; }
 @media (max-width: 640px) {
   .assistants-header h1 { font-size: 23px; }

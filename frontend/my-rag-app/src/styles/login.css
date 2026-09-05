@@ -3,18 +3,18 @@
 @font-face { font-family: "Adine Kirnberg Script"; src: url("/fonts/adine-kirnberg-script/adinekir.otf") format("opentype"); font-display: swap; }
 
 .nexora-login {
-  --login-panel: #0c0d26; --login-field: #0d1025; --login-text: #e7eaf3;
-  --login-muted: #99a5ba; --login-border: #69528f1f; --login-control-border: #9383b33d;
-  --login-primary: #8050cc; --login-on-primary: #fff; --login-error: #ff9b9b;
-  --login-warning: #f2d49b; --login-success: #8ed7a7; --motion-fast: 140ms;
+  --login-panel: var(--surface-panel); --login-field: var(--surface-raised); --login-text: var(--text-primary);
+  --login-muted: var(--text-muted); --login-border: var(--brand-line); --login-control-border: var(--border-subtle);
+  --login-primary: var(--brand); --login-on-primary: var(--text-inverse); --login-error: var(--status-danger);
+  --login-warning: var(--status-warning); --login-success: var(--status-success); --motion-fast: 140ms;
   min-height: 100dvh; overflow: auto; color: var(--login-text); color-scheme: dark;
-  background: #050817; font-family: Inter, Vazirmatn, sans-serif; -webkit-font-smoothing: antialiased;
+  background: var(--surface-canvas); font-family: var(--font-ui); -webkit-font-smoothing: antialiased;
 }
 .nexora-login--light {
-  --login-panel: #f5f2fb; --login-field: #fcfaff; --login-text: #252c3e;
-  --login-muted: #687287; --login-border: #e0d8ee; --login-control-border: #d4c9e6;
-  --login-primary: #7950bb; --login-error: #a52326; --login-warning: #815413;
-  --login-success: #23663b; color-scheme: light;
+  --login-panel: var(--surface-panel); --login-field: var(--surface-raised); --login-text: var(--text-primary);
+  --login-muted: var(--text-muted); --login-border: var(--border-subtle); --login-control-border: var(--border-subtle);
+  --login-primary: var(--brand); --login-error: var(--status-danger); --login-warning: var(--status-warning);
+  --login-success: var(--status-success); color-scheme: light;
 }
 .nexora-login *, .nexora-login *::before, .nexora-login *::after { box-sizing: border-box; }
 .nexora-login button { font: inherit; cursor: pointer; }
@@ -32,13 +32,13 @@
 .nexora-login__main {
   position: relative; z-index: 1; display: flex; min-width: 0; min-height: 100dvh; align-items: center;
   justify-content: center; padding: 120px 56px 64px; overflow: hidden; border-left: 1px solid #6e57921a;
-  background: linear-gradient(90deg, #09081f 0%, #0c0d26 18%, #11132c 100%);
+  background: linear-gradient(90deg, #09081f 0%, var(--surface-panel) 18%, #11132c 100%);
 }
 .nexora-login--light .nexora-login__main {
   border-left-color: var(--login-border);
   background: radial-gradient(ellipse at 0% 8%, #cfb5ed30, transparent 55%), radial-gradient(ellipse at 100% 100%, #b9dcea26, transparent 50%), var(--login-panel);
 }
-.nexora-login__main[dir="rtl"] { font-family: Vazirmatn, Inter, sans-serif; }
+.nexora-login__main[dir="rtl"] { font-family: var(--font-fa); }
 .nexora-login__halos { display: none; }
 
 .nexora-login__toolbar { position: absolute; z-index: 2; top: 28px; right: 28px; display: flex; align-items: center; gap: 8px; direction: ltr; }

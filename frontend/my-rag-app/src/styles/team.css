@@ -1,5 +1,5 @@
-.team-page { --tm-bg: #0a1122; --tm-panel: #10192c; --tm-text: #e7eaf3; --tm-muted: #99a5ba; --tm-line: #ffffff14; --tm-accent: #bda0f4; --tm-tint: #a78bfa12; --tm-success: #70c5ac; color: var(--tm-text); background: var(--tm-bg); }
-html:not(.dark) .team-page { --tm-bg: #f5f7fa; --tm-panel: #ffffff; --tm-text: #252c3e; --tm-muted: #687287; --tm-line: #dfe4ed; --tm-accent: #7950bb; --tm-tint: #7c3aed0b; --tm-success: #298369; }
+.team-page { --tm-bg: var(--surface-canvas); --tm-panel: var(--surface-panel); --tm-text: var(--text-primary); --tm-muted: var(--text-muted); --tm-line: var(--border-subtle); --tm-accent: var(--brand); --tm-tint: var(--brand-soft); --tm-success: var(--status-success); color: var(--tm-text); background: var(--tm-bg); }
+html:not(.dark) .team-page { --tm-bg: var(--surface-canvas); --tm-panel: var(--surface-panel); --tm-text: var(--text-primary); --tm-muted: var(--text-muted); --tm-line: var(--border-subtle); --tm-accent: var(--brand); --tm-tint: var(--brand-soft); --tm-success: var(--status-success); }
 .team-page .tm-text { color: var(--tm-text); }
 .team-page .tm-muted { color: var(--tm-muted); }
 .team-header { flex-wrap: wrap; }
@@ -24,7 +24,7 @@ html:not(.dark) .team-page { --tm-bg: #f5f7fa; --tm-panel: #ffffff; --tm-text: #
 .app-shell .team-page .enterprise-side-panel { background: var(--tm-panel); border-color: var(--tm-line) !important; box-shadow: none; backdrop-filter: none; }
 .team-page .enterprise-side-panel header { height: 68px; }
 .team-page .enterprise-side-panel button[aria-pressed="true"] { background: var(--tm-tint); border-color: var(--tm-accent); color: var(--tm-accent); }
-.team-page .enterprise-side-panel > div:last-child > button, .team-page .team-member-form footer > button:last-child { border-radius: 8px; background: #8050cc; color: white; box-shadow: none; }
+.team-page .enterprise-side-panel > div:last-child > button, .team-page .team-member-form footer > button:last-child { border-radius: var(--radius-control); background: var(--brand); color: var(--text-inverse); box-shadow: none; }
 .team-page .team-member-form [role="alert"] { color: #bc435b; }
 html.dark .team-page .team-member-form [role="alert"] { color: #ee91a0; }
 .team-page button { cursor: pointer; }

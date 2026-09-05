@@ -1,33 +1,33 @@
 .analytics-dashboard {
-  --an-bg: #0a1122;
-  --an-panel: #10192c;
-  --an-surface: #ffffff04;
-  --an-text: #e7eaf3;
-  --an-muted: #99a5ba;
-  --an-line: #ffffff12;
+  --an-bg: var(--surface-canvas);
+  --an-panel: var(--surface-panel);
+  --an-surface: var(--surface-muted);
+  --an-text: var(--text-primary);
+  --an-muted: var(--text-muted);
+  --an-line: var(--border-subtle);
   --an-track: #ffffff0d;
-  --an-violet: #b194ef;
-  --an-cyan: #60b8c7;
-  --an-active: #a78bfa16;
-  --an-success: #69c6ac;
-  --an-danger: #ee91a0;
+  --an-violet: var(--brand);
+  --an-cyan: var(--accent-cyan);
+  --an-active: var(--brand-soft);
+  --an-success: var(--status-success);
+  --an-danger: var(--status-danger);
   background: var(--an-bg);
   color: var(--an-text);
   overflow-x: hidden;
 }
 html:not(.dark) .analytics-dashboard {
-  --an-bg: #f5f7fa;
-  --an-panel: #ffffff;
-  --an-surface: #f7f8fb;
-  --an-text: #252c3e;
-  --an-muted: #687287;
-  --an-line: #e4e8ef;
+  --an-bg: var(--surface-canvas);
+  --an-panel: var(--surface-panel);
+  --an-surface: var(--surface-raised);
+  --an-text: var(--text-primary);
+  --an-muted: var(--text-muted);
+  --an-line: var(--border-subtle);
   --an-track: #edf0f5;
-  --an-violet: #8053c7;
-  --an-cyan: #298899;
-  --an-active: #7c3aed0c;
-  --an-success: #218569;
-  --an-danger: #bb435b;
+  --an-violet: var(--brand);
+  --an-cyan: var(--accent-cyan);
+  --an-active: var(--brand-soft);
+  --an-success: var(--status-success);
+  --an-danger: var(--status-danger);
 }
 .analytics-dashboard .an-muted { color: var(--an-muted); }
 .analytics-dashboard .an-text { color: var(--an-text); }

@@ -1,22 +1,22 @@
 .preferences-page {
-  --pref-bg: #0a1122;
-  --pref-panel: #10192c;
-  --pref-text: #e7eaf3;
-  --pref-muted: #99a5ba;
-  --pref-line: #ffffff14;
-  --pref-accent: #bda0f4;
-  --pref-tint: #a78bfa12;
+  --pref-bg: var(--surface-canvas);
+  --pref-panel: var(--surface-panel);
+  --pref-text: var(--text-primary);
+  --pref-muted: var(--text-muted);
+  --pref-line: var(--border-subtle);
+  --pref-accent: var(--brand);
+  --pref-tint: var(--brand-soft);
   height: 100%; overflow-y: auto; padding: 28px 24px;
   color: var(--pref-text); background: var(--pref-bg);
 }
 html:not(.dark) .preferences-page {
-  --pref-bg: #f5f7fa;
-  --pref-panel: #ffffff;
-  --pref-text: #252c3e;
-  --pref-muted: #687287;
-  --pref-line: #dfe4ed;
-  --pref-accent: #7950bb;
-  --pref-tint: #7c3aed0b;
+  --pref-bg: var(--surface-canvas);
+  --pref-panel: var(--surface-panel);
+  --pref-text: var(--text-primary);
+  --pref-muted: var(--text-muted);
+  --pref-line: var(--border-subtle);
+  --pref-accent: var(--brand);
+  --pref-tint: var(--brand-soft);
 }
 .preferences-content { width: 100%; max-width: 760px; margin-inline: auto; }
 .preferences-header { margin-bottom: 24px; }
@@ -33,7 +33,7 @@ html:not(.dark) .preferences-page {
 .preferences-choice:has(input:focus-visible) { outline: 2px solid var(--pref-accent); outline-offset: 3px; }
 .preferences-choice > input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .preferences-preview { display: flex; height: 100px; overflow: hidden; border: 1px solid var(--preview-line); border-radius: 5px; background: var(--preview-bg); }
-.preferences-preview--light { --preview-bg: #f5f7fa; --preview-panel: #fff; --preview-line: #e1e5ed; --preview-mark: #c9c5d8; }
+.preferences-preview--light { --preview-bg: var(--surface-canvas); --preview-panel: var(--surface-panel); --preview-line: var(--border-subtle); --preview-mark: #c9c5d8; }
 .preferences-preview--dark { --preview-bg: #0a1122; --preview-panel: #141e32; --preview-line: #273249; --preview-mark: #4b526b; }
 .preferences-preview-sidebar { display: flex; flex-direction: column; gap: 8px; width: 25%; padding: 14px 8px; background: var(--preview-panel); border-inline-end: 1px solid var(--preview-line); }
 .preferences-preview i { display: block; height: 5px; border-radius: 2px; background: var(--preview-mark); }

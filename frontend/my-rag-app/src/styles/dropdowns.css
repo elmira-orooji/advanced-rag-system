@@ -1,5 +1,5 @@
 /* Native select behavior is retained; supported browsers also theme the picker. */
-:root { --menu-bg: #fff; --menu-text: #252c3e; --menu-muted: #687287; --menu-line: #dfe4ed; --menu-accent: #7950bb; --menu-hover: #f4effb; }
+:root { --menu-bg: var(--surface-panel); --menu-text: var(--text-primary); --menu-muted: var(--text-muted); --menu-line: var(--border-subtle); --menu-accent: var(--brand); --menu-hover: var(--brand-soft); }
 html.dark { --menu-bg: #111b2e; --menu-text: #e7eaf3; --menu-muted: #99a5ba; --menu-line: #2b354a; --menu-accent: #bda0f4; --menu-hover: #252039; }
 html .app-shell select {
   min-height: 34px; max-width: 100%; border: 1px solid var(--menu-line) !important;

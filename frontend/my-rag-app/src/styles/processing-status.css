@@ -1,22 +1,22 @@
 .processing-status {
-  --processing-panel: #10192c;
-  --processing-text: #e7eaf3;
-  --processing-muted: #99a5ba;
-  --processing-border: #a78bfa26;
-  --processing-accent: #bda0f4;
-  --processing-tint: #a78bfa0a;
+  --processing-panel: var(--surface-panel);
+  --processing-text: var(--text-primary);
+  --processing-muted: var(--text-muted);
+  --processing-border: var(--brand-line);
+  --processing-accent: var(--brand);
+  --processing-tint: var(--brand-soft);
   display: flex;
   align-items: flex-start;
   gap: 14px;
   min-width: 0;
 }
 html:not(.dark) .processing-status {
-  --processing-panel: #ffffff;
-  --processing-text: #252c3e;
-  --processing-muted: #687287;
-  --processing-border: #7950bb26;
-  --processing-accent: #7950bb;
-  --processing-tint: #7c3aed06;
+  --processing-panel: var(--surface-panel);
+  --processing-text: var(--text-primary);
+  --processing-muted: var(--text-muted);
+  --processing-border: var(--brand-line);
+  --processing-accent: var(--brand);
+  --processing-tint: var(--brand-soft);
 }
 .processing-status-mark {
   display: grid;
