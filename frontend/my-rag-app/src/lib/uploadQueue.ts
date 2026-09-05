@@ -25,8 +25,10 @@ export async function runUploadQueue<T extends UploadQueueItem>({
   let succeeded = 0;
 
   const worker = async () => {
-    while (cursor < items.length) {
-      const item = items[cursor++];
+    while (true) {
+      const index = cursor++;
+      if (index >= items.length) break;
+      const item = items[index];
       onUpdate(item.id, { status: "uploading", progress: 0 });
       try {
         await upload(item, (progress) => onUpdate(item.id, { status: "uploading", progress }));
