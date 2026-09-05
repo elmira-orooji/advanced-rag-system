@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -41,6 +42,7 @@ class MessageResponse(BaseModel):
     role: str
     content: str
     sources: list[SearchHit] | None
+    answer_basis: Literal["sources", "general", "hybrid"] | None = None
     answer_id: uuid.UUID | None
     created_at: datetime
 

@@ -26,6 +26,7 @@ function toChatMessage(message: PersistedMessage): ChatMessage {
     content: message.content.replace(/\[Source\s+(\d+)\]/gi, "[$1]"),
     createdAt: message.created_at,
     grounded: Boolean(message.sources?.length),
+    answerBasis: message.answer_basis ?? undefined,
     responseId: message.answer_id || undefined,
     sources: message.sources?.map((source, index) => ({
       id: source.chunk_id,

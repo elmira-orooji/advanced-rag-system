@@ -1,4 +1,5 @@
 import { apiRequest } from "./apiClient";
+import type { AnswerBasis } from "../types/chat";
 
 export interface ConversationSummary {
   id: string;
@@ -24,6 +25,7 @@ export interface PersistedMessage {
     page?: number | null;
     section?: string | null;
   }> | null;
+  answer_basis: AnswerBasis | null;
   answer_id: string | null;
   created_at: string;
 }

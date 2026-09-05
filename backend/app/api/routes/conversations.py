@@ -115,6 +115,7 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
             qdrant = QdrantClient(); qdrant.ensure_collection(); points = hybrid_search(db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids)
     except QdrantError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
+    answer_basis = ("hybrid" if sources else "general") if hybrid else "sources"
     if sources or hybrid:
         try: answer = OpenRouterClient(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
         except OpenRouterError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
@@ -135,6 +136,7 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
         role="assistant",
         content=answer,
         sources=[source.model_dump(mode="json") for source in sources] or None,
+        answer_basis=answer_basis,
         answer_id=answer_record.id,
     )
     conversation.messages.extend([user_message, assistant_message])

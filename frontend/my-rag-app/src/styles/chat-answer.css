@@ -64,7 +64,7 @@ html:not(.dark) :is(.chat-answer, .chat-question, .chat-evidence) {
   overflow-wrap: anywhere;
   text-align: start;
 }
-.chat-answer-grounding {
+.chat-answer-grounding, .answer-trust-badge {
   display: flex;
   align-items: center;
   gap: 7px;
@@ -72,9 +72,11 @@ html:not(.dark) :is(.chat-answer, .chat-question, .chat-evidence) {
   font-size: 12px;
   line-height: 1.8;
 }
-.chat-answer-grounding svg { flex-shrink: 0; width: 15px; height: 15px; }
-.chat-answer-grounding.is-grounded { color: var(--answer-success); }
-.chat-answer-grounding.is-ungrounded { color: var(--answer-warning); }
+.chat-answer-grounding svg, .answer-trust-badge svg { flex-shrink: 0; width: 15px; height: 15px; }
+.chat-answer-grounding.is-grounded, .answer-trust-badge.is-sources { color: var(--answer-success); }
+.chat-answer-grounding.is-ungrounded, .answer-trust-badge:is(.is-general, .is-hybrid, .is-insufficient) { color: var(--answer-warning); }
+.answer-trust-badge small { color: var(--answer-muted); }
+.answer-trust-badge.is-compact { margin-top: 10px; font-size: 10px; }
 .chat-answer-source {
   display: inline-flex;
   align-items: center;
@@ -164,7 +166,7 @@ html:not(.dark) :is(.chat-answer, .chat-question, .chat-evidence) {
 .chat-answer-heading > span:last-child:not(.chat-answer-mark) { margin-inline-start: auto; font-size: 10px; color: var(--answer-muted); }
 .chat-answer-heading .chat-answer-mark { flex-basis: 30px; height: 30px; border-radius: 9px; }
 .chat-thread .chat-answer-text { font-size: 14px; line-height: 1.95; }
-.chat-thread .chat-answer-grounding { margin-top: 20px; font-size: 11px; }
+.chat-thread .chat-answer-grounding, .chat-thread .answer-trust-badge { margin-top: 20px; font-size: 11px; }
 .chat-thread .chat-answer-source { padding: 7px 10px; font-size: 11px; border-radius: 9px; }
 .chat-thread .chat-answer-actions { margin-top: 16px; padding-top: 8px; gap: 3px; border-top-style: dashed; }
 .chat-thread .chat-answer-action { width: 32px; height: 32px; }
@@ -211,7 +213,7 @@ html:not(.dark) .conversation-scroll-preview > span { color: #687287; }
 .chat-answer > .chat-answer-mark { margin-top: 2px; flex-basis: 32px; height: 32px; border-radius: 10px; }
 .chat-thread[dir="rtl"] .chat-answer-body { border-radius: 16px 5px 16px 16px; }
 .chat-thread .chat-answer-heading > span:last-child { margin-inline-start: 0; padding-inline-start: 10px; border-inline-start: 1px solid var(--answer-border); }
-.chat-thread .chat-answer-grounding { display: inline-flex; margin-top: 16px; font-size: 10px; gap: 5px; }
+.chat-thread .chat-answer-grounding, .chat-thread .answer-trust-badge { display: inline-flex; margin-top: 16px; font-size: 10px; gap: 5px; }
 .answer-source-section { margin-top: 18px; }
 .answer-source-label { display: flex; gap: 7px; align-items: center; font-size: 10px; color: var(--answer-muted); margin-bottom: 8px; }
 .answer-source-label > span { font-size: 9px; padding: 0 5px; border-radius: 4px; background: var(--answer-tint); color: var(--answer-accent); }

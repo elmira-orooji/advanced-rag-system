@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, ChevronDown, Copy, FileText, Layers3, Quote, ShieldAlert, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
+import { Check, ChevronDown, Copy, FileText, Layers3, Quote, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import AnswerMarkdown from "./AnswerMarkdown";
@@ -7,6 +7,7 @@ import NexoraAvatar from "./NexoraAvatar";
 import AnswerSources from "./AnswerSources";
 import AnswerLoading from "./AnswerLoading";
 import ConversationScrollRail from "./ConversationScrollRail";
+import AnswerTrustBadge from "./AnswerTrustBadge";
 import "../styles/chat-answer.css";
 
 import { feedbackService, type FeedbackReason } from "../services/feedbackService";
@@ -41,7 +42,7 @@ export default function OnyxChatWindow({ messages, isThinking, assistantName }: 
             {message.research && <details className="mb-4 overflow-hidden rounded-2xl border border-white/[.07] bg-white/[.025]"><summary className="flex cursor-pointer list-none items-center gap-2.5 px-4 py-3 text-[11px] font-semibold text-white/58"><Telescope size={14} className="text-[#c43cff]" />{isFa ? "فعالیت بازیابی" : "Retrieval activity"}<span className="ms-auto text-[10px] font-normal text-white/25">{message.research.steps.length} {isFa ? "جست‌وجو" : "searches"} · {message.research.evidenceReviewed} {isFa ? "منبع" : "sources"}</span><ChevronDown size={13} className="text-white/25" /></summary><div className="space-y-2 border-t border-white/[.06] px-4 py-3">{message.research.steps.map((step, stepIndex) => <div key={stepIndex} className="flex items-center gap-2 text-[10px] leading-4 text-white/38"><Check size={11} className="text-emerald-300/55" /><span className="min-w-0 flex-1 truncate">{step.query}</span><span className="shrink-0 text-white/20">{step.evidence_count}</span></div>)}</div></details>}
 
             <div className="chat-answer-text answer-markdown" dir="auto"><AnswerMarkdown content={message.content} sources={message.sources || []} onOpen={setEvidence} /></div>
-            {!message.grounded && <div className="chat-answer-grounding is-ungrounded"><ShieldAlert size={12} />{isFa ? "منبع مرتبطی پیدا نشد" : "No relevant source found"}</div>}
+            <AnswerTrustBadge answerBasis={message.answerBasis} grounded={message.grounded} sourceCount={message.sources?.length ?? 0} isFa={isFa} />
 
             {message.sources?.length ? <AnswerSources sources={message.sources} isFa={isFa} onOpen={setEvidence} /> : null}
 

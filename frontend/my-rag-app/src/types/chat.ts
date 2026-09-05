@@ -2,6 +2,11 @@ export type MessageRole =
   | "user"
   | "assistant";
 
+export type AnswerBasis =
+  | "sources"
+  | "general"
+  | "hybrid";
+
 export interface Source {
   id: string;
   title: string;
@@ -25,7 +30,7 @@ export interface ChatMessage {
 
   sources?: Source[];
   grounded?: boolean;
-  answerBasis?: "sources" | "general" | "hybrid";
+  answerBasis?: AnswerBasis;
   responseId?: string;
   feedback?: 1 | -1;
   research?: { steps: Array<{ query: string; evidence_count: number }>; evidenceReviewed: number };

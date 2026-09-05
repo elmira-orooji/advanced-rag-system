@@ -15,6 +15,8 @@ class SharedSource(BaseModel):
 class SharedMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str = Field(min_length=1, max_length=12000)
+    grounded: bool | None = None
+    answer_basis: Literal["sources", "general", "hybrid"] | None = None
     sources: list[SharedSource] = Field(default_factory=list, max_length=12)
 
 
