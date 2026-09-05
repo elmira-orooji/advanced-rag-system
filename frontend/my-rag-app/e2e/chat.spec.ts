@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { seedSession, stubApi } from "./helpers";
+import { seedSession, stubApi } from "./helpers.js";
 
 test.describe("Conversation chat E2E", () => {
   test("selects a knowledge base, sends a message, and renders the grounded answer", async ({ page }) => {

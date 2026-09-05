@@ -13,6 +13,7 @@ import { defineConfig, devices } from "@playwright/test";
  */
 export default defineConfig({
   testDir: "./e2e",
+  testMatch: /.*\.spec\.ts/,
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -22,7 +23,6 @@ export default defineConfig({
     baseURL: "http://localhost:5173",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
     // Optional: use an already-installed browser (e.g. Edge/Chrome) when the
     // Playwright-bundled Chromium can't be downloaded (network/DNS restrictions).
     // Set PW_CHANNEL=msedge (or chrome) to enable. Unsets to the bundled chromium.

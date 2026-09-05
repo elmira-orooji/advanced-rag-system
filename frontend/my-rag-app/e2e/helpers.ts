@@ -1,5 +1,5 @@
 import type { Page, Route } from "@playwright/test";
-import type { AuthUser } from "../src/types/auth";
+import type { AuthUser } from "../src/types/auth.js";
 
 export const SESSION_KEY = "knowledgeflow.auth";
 export const API_PATTERN = "**/api/v1/**";

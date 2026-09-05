@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-import { regularUser, seedSession, stubApi } from "./helpers";
+import { regularUser, seedSession, stubApi } from "./helpers.js";
 
 test.describe("Authentication", () => {
   test("shows validation errors for an empty login form", async ({ page }) => {
