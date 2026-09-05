@@ -38,7 +38,7 @@ html:not(.dark) .analytics-dashboard {
 .analytics-dashboard .an-status-dot { background: currentColor; }
 .analytics-header { padding-block: 4px 6px; }
 .analytics-header h1 { color: var(--an-text); overflow-wrap: anywhere; line-height: 1.5; }
-.analytics-eyebrow { color: var(--an-muted); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.analytics-eyebrow { color: var(--an-muted); font-size: var(--font-size-helper); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
 .analytics-panel {
   min-width: 0;
   border: 1px solid var(--an-line);
@@ -64,11 +64,11 @@ html:not(.dark) .analytics-dashboard {
 .analytics-metric__label { display: flex; justify-content: space-between; align-items: center; gap: 12px; color: var(--an-muted); font-size: 12px; }
 .analytics-metric__label svg { color: var(--an-violet); flex-shrink: 0; }
 .analytics-metric__value { margin-top: 18px; color: var(--an-text); font-size: 28px; font-weight: 600; line-height: 1.2; letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
-.analytics-metric__detail { margin-top: 8px; color: var(--an-muted); font-size: 10px; line-height: 1.6; }
+.analytics-metric__detail { margin-top: 8px; color: var(--an-muted); font-size: var(--font-size-helper); line-height: 1.6; }
 .analytics-period { display: flex; gap: 3px; padding: 3px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-panel); }
-.analytics-period button { min-height: 32px; padding: 6px 11px; border-radius: 5px; color: var(--an-muted); font-size: 11px; white-space: nowrap; }
+.analytics-period button { min-height: 34px; padding: 6px 12px; border-radius: 5px; color: var(--an-muted); font-size: var(--font-size-control); white-space: nowrap; }
 .analytics-period button.is-active { color: var(--an-violet); background: var(--an-active); font-weight: 600; }
-.analytics-export { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-panel); color: var(--an-text); font-size: 11px; }
+.analytics-export { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-panel); color: var(--an-text); font-size: var(--font-size-control); }
 .analytics-dashboard button { cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
 .analytics-dashboard button:hover { background: var(--an-active); }
 .analytics-dashboard button:disabled { opacity: .5; cursor: not-allowed; }

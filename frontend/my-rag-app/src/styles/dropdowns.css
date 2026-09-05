@@ -27,7 +27,7 @@ html .app-shell select option { background: var(--menu-bg); color: var(--menu-te
     max-height: min(320px, 60dvh); max-width: calc(100vw - 24px); overflow-y: auto;
     scrollbar-width: thin; scrollbar-color: var(--menu-line) transparent;
   }
-  html .app-shell select::picker-icon { color: var(--menu-muted); font-size: 11px; align-self: center; flex-shrink: 0; margin-inline-start: auto; }
+  html .app-shell select::picker-icon { color: var(--menu-muted); font-size: var(--font-size-helper); align-self: center; flex-shrink: 0; margin-inline-start: auto; }
   html .app-shell select:open::picker-icon { rotate: 180deg; }
   html .app-shell select option { min-height: 34px; padding: 8px 10px; border: 0; border-radius: 6px; font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
   html .app-shell select option:hover, html .app-shell select option:focus { background: var(--menu-hover); color: var(--menu-text); outline: none; }

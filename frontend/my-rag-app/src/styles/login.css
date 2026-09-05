@@ -48,7 +48,7 @@
   transition: color var(--motion-fast), background-color var(--motion-fast);
 }
 .nexora-login__toolbar button:hover { color: var(--login-primary); background: color-mix(in srgb, var(--login-primary) 8%, transparent); }
-.nexora-login__language-toggle { padding-inline: 10px !important; font-size: 11px !important; }
+.nexora-login__language-toggle { padding-inline: 10px !important; font-size: var(--font-size-control) !important; }
 .nexora-login__form-wrap { position: relative; z-index: 1; width: 100%; max-width: 352px; }
 
 .nexora-login__brand { display: flex; align-items: center; justify-content: center; gap: 4px; margin: 0 auto 52px; transform: translateX(-12px); }
@@ -67,7 +67,7 @@
 .nexora-login__form { display: grid; gap: 22px; margin-top: 40px; }
 
 .nexora-login__field { min-width: 0; }
-.nexora-login__field > label { display: block; margin-bottom: 3px; color: var(--login-muted); font-size: 11px; font-weight: 500; line-height: 1.5; transition: color var(--motion-fast); }
+.nexora-login__field > label { display: block; margin-bottom: 3px; color: var(--login-muted); font-size: var(--font-size-helper); font-weight: 500; line-height: 1.5; transition: color var(--motion-fast); }
 .nexora-login__control { position: relative; height: 38px; border: 0; border-bottom: 1px solid var(--login-control-border); background: transparent; transition: border-color var(--motion-fast), box-shadow var(--motion-fast); }
 .nexora-login__control:hover { border-color: var(--login-muted); }
 .nexora-login__control:focus-within { border-color: var(--login-primary); box-shadow: 0 1px 0 var(--login-primary); }
@@ -91,7 +91,7 @@
 .nexora-login__password-toggle:focus-visible { outline-offset: -2px !important; }
 .nexora-login__field[data-invalid="true"] .nexora-login__control { border-color: var(--login-error); box-shadow: 0 1px 0 var(--login-error); }
 
-.nexora-login__field > p, .nexora-login__notice, .nexora-login__feedback { margin: 5px 0 0; padding: 0; font-size: 11px; line-height: 1.45; }
+.nexora-login__field > p, .nexora-login__notice, .nexora-login__feedback { margin: 5px 0 0; padding: 0; font-size: var(--font-size-helper); line-height: 1.5; }
 .nexora-login__field > p, .nexora-login__error { color: var(--login-error); }
 .nexora-login__success { color: var(--login-success); }
 .nexora-login__notice { display: flex; align-items: center; gap: 6px; }

@@ -51,7 +51,7 @@ html:not(.dark) .preferences-page {
 .preferences-language-symbol { display: grid; place-items: center; flex-shrink: 0; width: 32px; height: 32px; border-radius: 7px; background: var(--pref-tint); color: var(--pref-accent); font-size: 12px; }
 .preferences-language-copy { min-width: 0; }
 .preferences-language-copy strong { display: block; font-size: 12px; font-weight: 600; }
-.preferences-language-copy > span { display: block; margin-top: 4px; font-size: 10px; color: var(--pref-muted); }
+.preferences-language-copy > span { display: block; margin-top: 4px; font-size: var(--font-size-helper); color: var(--pref-muted); }
 @media (max-width: 540px) {
   .preferences-page { padding: 20px 16px; }
   .preferences-card { padding: 16px; }

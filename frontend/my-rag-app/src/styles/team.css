@@ -4,14 +4,14 @@ html:not(.dark) .team-page { --tm-bg: var(--surface-canvas); --tm-panel: var(--s
 .team-page .tm-muted { color: var(--tm-muted); }
 .team-header { flex-wrap: wrap; }
 .team-header h1 { font-size: 26px; line-height: 1.5; }
-.team-eyebrow { margin-bottom: 6px; color: var(--tm-muted); font-size: 10px; font-weight: 500; letter-spacing: .12em; text-transform: uppercase; }
+.team-eyebrow { margin-bottom: 6px; color: var(--tm-muted); font-size: var(--font-size-helper); font-weight: 500; letter-spacing: .08em; text-transform: uppercase; }
 .team-primary { border: 1px solid var(--tm-line); border-radius: 8px; color: var(--tm-accent); background: var(--tm-tint); }
 .team-primary:hover { border-color: var(--tm-accent); }
 .app-shell .team-page .app-glass-panel { background: var(--tm-panel); border-color: var(--tm-line); border-radius: 12px; box-shadow: none; backdrop-filter: none; }
 .team-member-row { display: flex; width: 100%; align-items: center; gap: 12px; padding: 16px; text-align: start; transition: background-color 140ms ease; }
 .team-member-row:hover, .team-member-row:focus-visible { background: var(--tm-tint); }
-.team-avatar { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid var(--tm-line); border-radius: 10px; background: var(--tm-tint); color: var(--tm-accent); font-size: 11px; font-weight: 600; text-transform: uppercase; }
-.team-role { padding: 4px 9px; border: 1px solid var(--tm-line); border-radius: 6px; color: var(--tm-muted); font-size: 10px; }
+.team-avatar { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border: 1px solid var(--tm-line); border-radius: 10px; background: var(--tm-tint); color: var(--tm-accent); font-size: var(--font-size-helper); font-weight: 600; text-transform: uppercase; }
+.team-role { padding: 4px 9px; border: 1px solid var(--tm-line); border-radius: 6px; color: var(--tm-muted); font-size: var(--font-size-helper); }
 .team-role.is-admin { background: var(--tm-tint); color: var(--tm-accent); }
 .team-status { width: 6px; height: 6px; flex-shrink: 0; border-radius: 50%; background: var(--tm-muted); }
 .team-status.is-active { background: var(--tm-success); }
@@ -32,7 +32,7 @@ html.dark .team-page .team-member-form [role="alert"] { color: #ee91a0; }
 @media (max-width: 640px) { .team-header h1 { font-size: 23px; } .team-member-row { padding: 12px; gap: 8px; } }
 @media (prefers-reduced-motion: reduce) { .team-page *, .team-page button { transition: none !important; animation: none !important; } }
 
-.team-page .team-delete { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 8px 10px; flex-shrink: 0; border: 1px solid var(--tm-line); border-radius: 8px; color: #b43b53; background: var(--tm-panel); font-size: 11px; transition: background-color 140ms ease, border-color 140ms ease; }
+.team-page .team-delete { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 8px 10px; flex-shrink: 0; border: 1px solid var(--tm-line); border-radius: 8px; color: #b43b53; background: var(--tm-panel); font-size: var(--font-size-control); transition: background-color 140ms ease, border-color 140ms ease; }
 html.dark .team-page .team-delete { color: #ee91a0; }
 .team-page .team-delete:hover:not(:disabled) { background: #bc435b12; border-color: currentColor; }
 .team-page .team-delete:disabled { opacity: .5; }

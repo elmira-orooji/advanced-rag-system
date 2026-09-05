@@ -15,8 +15,8 @@
   --surface-muted: #f7f8fb;
   --surface-overlay: #0a112280;
   --text-primary: #252c3e;
-  --text-muted: #687287;
-  --text-subtle: #8791a5;
+  --text-muted: #566177;
+  --text-subtle: #6f7a90;
   --text-inverse: #ffffff;
   --border-subtle: #dfe4ed;
   --border-strong: #20294414;
@@ -27,6 +27,9 @@
   --radius-control: 8px;
   --radius-panel: 12px;
   --radius-dialog: 14px;
+  --font-size-helper: 12px;
+  --font-size-control: 12px;
+  --font-size-body-sm: 13px;
   --shadow-soft: 0 4px 16px #101b3508;
   --shadow-panel: 0 16px 48px #18213314;
   --focus-ring: #8f78d857;
@@ -55,8 +58,8 @@
   --surface-muted: #ffffff04;
   --surface-overlay: #0a112280;
   --text-primary: #e7eaf3;
-  --text-muted: #99a5ba;
-  --text-subtle: #7f8eaf;
+  --text-muted: #b3bfd2;
+  --text-subtle: #9caac1;
   --border-subtle: #ffffff14;
   --border-strong: #213157;
   --status-success: #70c5ac;

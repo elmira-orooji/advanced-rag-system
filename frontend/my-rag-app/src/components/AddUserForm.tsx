@@ -57,5 +57,5 @@ export default function AddUserForm({ isFa, onClose, onCreated }: AddUserFormPro
 }
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return <label className="block text-[11px] font-semibold kb-muted"><span>{label}</span><div className="mt-2">{children}</div>{hint && <span className="mt-1.5 block text-[9px] font-normal leading-4 kb-muted">{hint}</span>}</label>;
+  return <label className="block text-xs font-semibold kb-muted"><span>{label}</span><div className="mt-2">{children}</div>{hint && <span className="mt-1.5 block text-xs font-normal leading-4 kb-muted">{hint}</span>}</label>;
 }

@@ -155,7 +155,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
     return <div dir={isFa ? "rtl" : "ltr"} className="conversation-page conversation-page--welcome flex h-full min-h-0 flex-col overflow-x-hidden overflow-y-auto px-4 sm:px-7 lg:px-10">
 
       <header className="conversation-header flex shrink-0 items-center justify-between">
-        <div className="flex items-center gap-2.5 text-[11px] font-semibold conversation-muted">
+        <div className="flex items-center gap-2.5 text-xs font-semibold conversation-muted">
           <span className="conversation-header-icon"><MessageSquareText size={13} /></span>
           <span>{isFa ? "گفتگوی جدید" : "New conversation"}</span>
         </div>
@@ -190,7 +190,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
                 <ChevronDown size={11} className="pointer-events-none absolute end-0 top-1/2 -translate-y-1/2 conversation-muted" />
               </span>
             </label>
-            {selectedSet && <span className="shrink-0 text-[9px] conversation-muted">{selectedSet.indexed_document_count} {isFa ? "سند آماده" : "indexed documents"}</span>}
+            {selectedSet && <span className="shrink-0 text-xs conversation-muted">{selectedSet.indexed_document_count} {isFa ? "سند آماده" : "indexed documents"}</span>}
           </div>
 
           {sets.length ? <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={sending || !selectedSetId} onSend={send} /> : <div className="mx-auto w-full max-w-2xl rounded-2xl border border-[#18c7f4]/15 bg-[#18c7f4]/[.045] p-5 text-center"><BookOpen className="mx-auto text-[#8de8ff]" size={24} /><h2 className="mt-3 text-sm font-semibold">{isFa ? "برای شروع، یک پایگاه دانش بسازید" : "Create a knowledge base to get started"}</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 conversation-muted">{isFa ? "اسناد سازمانی خود را اضافه کنید تا پاسخ‌های مستند دریافت کنید." : "Add your organization’s documents to receive source-grounded answers."}</p><div className="mt-4 flex flex-wrap items-center justify-center gap-2"><button type="button" onClick={onOpenKnowledge} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#7c27ff] px-4 text-xs font-semibold text-white transition hover:bg-[#9238ff]"><PlusIcon />{isFa ? "ساخت پایگاه دانش" : "Create knowledge base"}</button><button type="button" onClick={onOpenKnowledge} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 px-4 text-xs font-semibold text-white/75 transition hover:border-[#18c7f4]/35 hover:text-white"><FileUp size={14} />{isFa ? "بارگذاری اولین سند" : "Upload first document"}</button></div></div>}
@@ -202,7 +202,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
             </button>)}
           </div>
 
-          <div className="mt-4 flex items-center justify-center gap-1.5 text-[9px] conversation-muted"><ShieldCheck size={10} />{isFa ? "پاسخ‌ها همراه با ارجاع به منابع ذخیره می‌شوند" : "Answers are saved with traceable source citations"}</div>
+          <div className="mt-4 flex items-center justify-center gap-1.5 text-xs conversation-muted"><ShieldCheck size={10} />{isFa ? "پاسخ‌ها همراه با ارجاع به منابع ذخیره می‌شوند" : "Answers are saved with traceable source citations"}</div>
         </div>
       </main>
     </div>;
@@ -212,9 +212,9 @@ export default function ConversationPage({ conversationId, onConversationChange,
     <header className="relative z-10 flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-white/[.045]">
       <div className="flex min-w-0 items-center gap-3">
         <NexoraAvatar />
-        <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1><p className="mt-0.5 text-[9px] conversation-muted">{isFa ? "پاسخ‌گویی مبتنی بر منابع" : "Source-grounded conversation"}</p></div>
+        <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1><p className="mt-0.5 text-xs conversation-muted">{isFa ? "پاسخ‌گویی مبتنی بر منابع" : "Source-grounded conversation"}</p></div>
       </div>
-      <span className="conversation-save-status hidden items-center gap-2 text-[10px] sm:flex"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span>
+      <span className="conversation-save-status hidden items-center gap-2 text-xs sm:flex"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span>
     </header>
 
     <section className="relative z-10 min-h-0 flex-1 overflow-hidden px-0 sm:px-3">
@@ -230,7 +230,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
         </label>}
       </div>}
     </section>
-    <div className="conversation-dock relative z-20 shrink-0 px-0 pb-4 pt-3 sm:px-3 sm:pb-5"><ChatInput prominent disabled={sending || (!conversationId && !selectedSetId)} onSend={send} /><div className="mt-2 flex items-center justify-center gap-1.5 text-[9px] conversation-muted"><FileText size={10} />{isFa ? "پاسخ‌ها ممکن است خطا داشته باشند؛ منابع را بررسی کنید." : "AI can make mistakes. Verify important details in the cited sources."}</div></div>
+    <div className="conversation-dock relative z-20 shrink-0 px-0 pb-4 pt-3 sm:px-3 sm:pb-5"><ChatInput prominent disabled={sending || (!conversationId && !selectedSetId)} onSend={send} /><div className="mt-2 flex items-center justify-center gap-1.5 text-xs conversation-muted"><FileText size={10} />{isFa ? "پاسخ‌ها ممکن است خطا داشته باشند؛ منابع را بررسی کنید." : "AI can make mistakes. Verify important details in the cited sources."}</div></div>
   </div>;
 }
 

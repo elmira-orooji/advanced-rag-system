@@ -9,11 +9,11 @@
 .inspector-panel .inspector-tint { background: var(--kb-tint); }
 .inspector-header { min-height: 80px; }
 .inspector-header h2 { font-size: 17px; font-weight: 600; letter-spacing: -.02em; }
-.inspector-header p { font-size: 11px; }
+.inspector-header p { font-size: var(--font-size-helper); }
 .inspector-header > div > span { background: var(--kb-tint); border: 1px solid var(--kb-line); }
 .inspector-stats { background: var(--kb-bg); }
 .inspector-stats > div { border-radius: 10px; }
-.inspector-stats > div p:first-child { font-size: 10px; }
+.inspector-stats > div p:first-child { font-size: var(--font-size-helper); }
 .inspector-stats > div p:last-child { font-size: 15px; font-variant-numeric: tabular-nums; }
 .inspector-workspace { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 120px; flex: 1; overflow: hidden; }
 .inspector-nav { background: var(--kb-bg); }

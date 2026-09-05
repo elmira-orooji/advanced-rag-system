@@ -121,7 +121,7 @@ export default function RenameConversationDialog({ conversation, onClose, onRena
           onChange={(event) => { setTitle(event.target.value); setError(""); }}
           className="mt-2 h-12 w-full rounded-xl border border-white/10 bg-black/20 px-4 text-sm text-white outline-none transition focus:border-[#9b6cff] focus:ring-4 focus:ring-[#7c27ff]/15 disabled:opacity-50"
         />
-        <div className="mt-2 flex min-h-5 items-start justify-between gap-3 text-[11px]">
+        <div className="mt-2 flex min-h-5 items-start justify-between gap-3 text-xs">
           <span id={errorId} role={error ? "alert" : undefined} className="text-rose-300">{error}</span>
           <span aria-hidden="true" className="shrink-0 text-white/30">{title.length.toLocaleString(isFa ? "fa" : "en")} / {MAX_TITLE_LENGTH.toLocaleString(isFa ? "fa" : "en")}</span>
         </div>

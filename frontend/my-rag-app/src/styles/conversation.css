@@ -24,7 +24,7 @@ html:not(.dark) .conversation-page {
 .conversation-page .conversation-accent { color: var(--cv-accent); }
 .conversation-header { min-height: 68px; gap: 16px; border-bottom: 1px solid var(--cv-line); }
 .conversation-header-icon { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--cv-line); border-radius: 8px; color: var(--cv-accent); }
-.conversation-private { color: var(--cv-muted); font-size: 10px; }
+.conversation-private { color: var(--cv-muted); font-size: var(--font-size-helper); }
 .conversation-status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--cv-success); }
 .conversation-welcome { display: flex; flex: 1 0 auto; flex-direction: column; align-items: center; justify-content: center; padding-block: 48px 64px; }
 .conversation-intro { width: 100%; max-width: 600px; margin-bottom: 32px; text-align: center; }
@@ -34,11 +34,11 @@ html:not(.dark) .conversation-page {
 .conversation-description { max-width: 500px; margin: 10px auto 0; font-size: 12px; line-height: 1.9; color: var(--cv-muted); text-wrap: pretty; }
 .conversation-compose-area { width: 100%; max-width: 800px; }
 .conversation-context { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; padding-inline: 2px; }
-.conversation-selector { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; color: var(--cv-muted); font-size: 10px; }
+.conversation-selector { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; color: var(--cv-muted); font-size: var(--font-size-helper); }
 .app-shell .conversation-page select.conversation-select {
   display: block; width: 100%; max-width: 224px; min-height: 32px; padding: 5px 10px; padding-inline-end: 24px;
   appearance: none; overflow: hidden; text-overflow: ellipsis; border: 1px solid var(--cv-line); border-radius: 7px;
-  color: var(--cv-text); background: var(--cv-panel); outline: none; font-family: inherit; font-size: 11px; cursor: pointer;
+  color: var(--cv-text); background: var(--cv-panel); outline: none; font-family: inherit; font-size: var(--font-size-control); cursor: pointer;
 }
 .conversation-selector .relative > svg { inset-inline-end: 8px; }
 .conversation-select option { background: var(--cv-panel); color: var(--cv-text); }
@@ -59,7 +59,7 @@ html:not(.dark) .conversation-page {
   color: var(--cv-muted) !important; background: transparent; border: 1px solid var(--cv-line); border-radius: 9px; backdrop-filter: none;
 }
 .app-shell .conversation-page .app-composer .app-icon-button:hover { color: var(--cv-accent) !important; background: var(--cv-tint); border-color: var(--cv-accent); }
-.app-shell .conversation-page .chat-rag-label { color: var(--cv-muted) !important; font-size: 9px; align-self: center; }
+.app-shell .conversation-page .chat-rag-label { color: var(--cv-muted) !important; font-size: var(--font-size-helper); align-self: center; }
 .app-shell .conversation-page .chat-send-button {
   border-radius: 9px; background: var(--brand); color: var(--text-inverse) !important; box-shadow: none; transform: none;
   transition: background-color 140ms ease;
@@ -69,7 +69,7 @@ html:not(.dark) .conversation-page {
 .conversation-suggestion { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 12px; border: 1px solid var(--cv-line); border-radius: 9px; background: transparent; text-align: start; cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
 .conversation-suggestion:hover { background: var(--cv-tint); border-color: var(--cv-accent); }
 .conversation-suggestion-icon { display: grid; place-items: center; flex-shrink: 0; color: var(--cv-muted); }
-.conversation-suggestion-label { font-size: 10px; font-weight: 500; line-height: 1.6; color: var(--cv-text); }
+.conversation-suggestion-label { font-size: var(--font-size-helper); font-weight: 500; line-height: 1.6; color: var(--cv-text); }
 .conversation-dock { border-top: 1px solid var(--cv-line); background: var(--cv-bg); }
 .app-shell .conversation-page button:focus-visible { outline: 2px solid var(--cv-accent); outline-offset: 3px; }
 @media (max-width: 640px) {

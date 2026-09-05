@@ -42,7 +42,7 @@
 .assistant-form-status[aria-checked="true"] .assistant-form-toggle { background: var(--brand); }
 .assistant-form-status[aria-checked="true"] .assistant-form-toggle > span { inset-inline-start: auto; inset-inline-end: 3px; }
 .assistant-form-footer { display: flex; flex-shrink: 0; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--as-line); }
-.assistant-set-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--as-muted); font-size: 11px; }
+.assistant-set-pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; color: var(--as-muted); font-size: var(--font-size-helper); }
 .assistant-set-pagination button { padding: 4px 8px; border-radius: 5px; }
 .assistant-set-pagination button:disabled { opacity: .4; }
 .assistant-form-footer button { min-height: 40px; padding: 9px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; }
@@ -74,7 +74,7 @@ html:not(.dark) .assistants-page {
 .assistants-page .as-accent { color: var(--as-accent); }
 .assistants-header { flex-wrap: wrap; gap: 16px; }
 .assistants-header h1 { font-size: 26px; line-height: 1.5; }
-.assistants-eyebrow { margin-bottom: 6px; color: var(--as-muted); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: .12em; }
+.assistants-eyebrow { margin-bottom: 6px; color: var(--as-muted); font-size: var(--font-size-helper); font-weight: 500; text-transform: uppercase; letter-spacing: .08em; }
 .assistants-page .assistants-create { display: inline-flex; justify-content: center; align-items: center; gap: 8px; min-height: 38px; padding: 8px 14px; border: 1px solid var(--as-line); border-radius: 8px; background: var(--as-tint); color: var(--as-accent); font-size: 12px; font-weight: 600; }
 .assistants-page .assistants-create:hover { border-color: var(--as-accent); }
 .assistants-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 300px; padding: 32px 24px; border: 1px solid var(--as-line); border-radius: 12px; background: var(--as-panel); text-align: center; }
