@@ -13,6 +13,15 @@ export const regularUser: AuthUser = {
   organization_slug: "acme",
 };
 
+export const adminUser: AuthUser = {
+  id: "u-admin",
+  username: "admin",
+  role: "admin",
+  organization_id: "o-1",
+  organization_name: "Acme Corp",
+  organization_slug: "acme",
+};
+
 export const knowledgeSet = {
   id: "set-1",
   name: "Onboarding Manual",
@@ -26,6 +35,17 @@ export const knowledgeSet = {
   parent_chunk_size: 2048,
   created_at: "2025-01-01T00:00:00Z",
   updated_at: "2025-01-02T00:00:00Z",
+};
+
+export const sampleDocument = {
+  id: "doc-1",
+  filename: "handbook.pdf",
+  status: "indexed",
+  size_bytes: 102400,
+  uploaded_at: "2025-01-15T00:00:00Z",
+  indexed_at: "2025-01-15T00:01:00Z",
+  chunk_count: 12,
+  error: null,
 };
 
 /** Seed a valid auth session before the app boots (localStorage). */
@@ -52,8 +72,10 @@ function json(route: Route, body: unknown, status = 200) {
  * Intercept every `/api/v1/*` request and return canned responses so end-to-end
  * tests never depend on the FastAPI backend (or its database/LLM providers).
  */
-export async function stubApi(page: Page, options: { answer?: string } = {}): Promise<void> {
+export async function stubApi(page: Page, options: { answer?: string; conversations?: unknown[]; documents?: unknown[] } = {}): Promise<void> {
   const answer = options.answer ?? "You can request a refund within 30 days.";
+  const conversations = options.conversations ?? [];
+  const documents = options.documents ?? [];
   const assistantMessage = {
     id: "m-2",
     role: "assistant",
@@ -89,12 +111,49 @@ export async function stubApi(page: Page, options: { answer?: string } = {}): Pr
 
     // Conversation sidebar list
     if (method === "GET" && pathname === "/api/v1/conversations") {
-      return json(route, []);
+      return json(route, conversations);
     }
 
-    // Knowledge base sets (populates the "Select knowledge base" dropdown)
+    // Knowledge base sets
     if (method === "GET" && pathname === "/api/v1/document-sets") {
       return json(route, [knowledgeSet]);
+    }
+
+    // Documents list for a set
+    if (method === "GET" && /\/document-sets\/[^/]+\/documents$/.test(pathname)) {
+      return json(route, documents);
+    }
+
+    // Upload file
+    if (method === "POST" && /\/document-sets\/[^/]+\/documents$/.test(pathname)) {
+      return json(route, {
+        id: "doc-new",
+        filename: "uploaded-file.pdf",
+        status: "queued",
+        size_bytes: 51200,
+        uploaded_at: "2025-02-01T00:00:00Z",
+        indexed_at: null,
+        chunk_count: 0,
+        error: null,
+      });
+    }
+
+    // Rename conversation
+    if (method === "PATCH" && /\/conversations\/[^/]+$/.test(pathname)) {
+      return json(route, {
+        id: "conv-1",
+        title: "Renamed conversation",
+        document_id: null,
+        document_set_id: "set-1",
+        assistant_id: null,
+        created_at: "2025-02-01T00:00:00Z",
+        updated_at: "2025-02-01T00:01:00Z",
+      });
+    }
+
+    // Delete conversation
+    if (method === "DELETE" && /\/conversations\/[^/]+$/.test(pathname)) {
+      return route.fulfill({ status: 204 });
     }
 
     // Create a conversation when the first message is sent
@@ -115,7 +174,7 @@ export async function stubApi(page: Page, options: { answer?: string } = {}): Pr
       return json(route, assistantMessage);
     }
 
-    // Load conversation detail (used right after sending)
+    // Load conversation detail
     if (method === "GET" && /\/conversations\/[^/]+$/.test(pathname)) {
       return json(route, {
         id: "conv-1",
