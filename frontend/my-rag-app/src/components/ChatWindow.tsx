@@ -1,5 +1,5 @@
 import { confirmAction } from "../services/confirmation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { Copy, FileText, Quote, Share2, Sparkles, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -9,6 +9,63 @@ import { shareService } from "../services/shareService";
 import AnswerTrustBadge from "./AnswerTrustBadge";
 
 interface ChatWindowProps { messages: ChatMessage[]; isThinking: boolean; }
+
+const focusableSelector = [
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "textarea:not([disabled])",
+  "select:not([disabled])",
+  "a[href]",
+  "[tabindex]:not([tabindex='-1'])",
+].join(",");
+
+function useDialogFocus<T extends HTMLElement>(open: boolean, onClose: () => void) {
+  const ref = useRef<T | null>(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    window.setTimeout(() => {
+      const first = ref.current?.querySelector<HTMLElement>(focusableSelector);
+      (first || ref.current)?.focus();
+    }, 0);
+    return () => {
+      if (previous?.isConnected) previous.focus();
+    };
+  }, [open]);
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+    if (event.key !== "Tab" || !ref.current) return;
+    const focusable = [...ref.current.querySelectorAll<HTMLElement>(focusableSelector)].filter((item) => item.offsetParent !== null || item === document.activeElement);
+    if (!focusable.length) {
+      event.preventDefault();
+      ref.current.focus();
+      return;
+    }
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  return { ref, onKeyDown };
+}
+
+async function copyToClipboard(value: string, success: string, failure: string) {
+  try {
+    await navigator.clipboard.writeText(value);
+    toast.success(success);
+  } catch {
+    toast.error(failure);
+  }
+}
 
 export default function ChatWindow({ messages, isThinking }: ChatWindowProps) {
   const { i18n } = useTranslation();
@@ -26,7 +83,7 @@ export default function ChatWindow({ messages, isThinking }: ChatWindowProps) {
             <AnswerTrustBadge answerBasis={message.answerBasis} grounded={message.grounded} sourceCount={message.sources?.length ?? 0} isFa={isFa} />
             {message.research && <details className="mt-3 rounded-xl border border-[#18c7f4]/15 bg-[#7c27ff]/10 p-3"><summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold text-[#d9a6ff]"><Telescope size={12} />{isFa ? "مراحل پژوهش" : "Research trail"}<span className="ms-auto text-xs font-normal text-white/45">{message.research.steps.length} {isFa ? "جست‌وجو" : "searches"} · {message.research.evidenceReviewed} {isFa ? "شاهد" : "evidence"}</span></summary><div className="mt-3 space-y-2 border-t border-white/[.06] pt-3">{message.research.steps.map((step, index) => <div key={index} className="flex gap-2 text-xs leading-5 text-white/55"><span className="grid size-5 shrink-0 place-items-center rounded bg-[#7c27ff]/40 text-xs text-[#d9a6ff]">{index + 1}</span><span className="min-w-0 flex-1">{step.query}</span><span className="shrink-0 text-white/40">{step.evidence_count}</span></div>)}</div></details>}
             {message.sources?.length ? <div className="mt-3 border-t border-white/[.07] pt-3"><p className="mb-2 text-xs font-bold uppercase tracking-[.1em] text-[#c43cff]">{isFa ? "شواهد" : "Evidence"}</p><div className="flex flex-wrap gap-2">{message.sources.map((source) => <button key={`${source.id}-${source.citationId}`} onClick={() => setEvidence(source)} className="flex max-w-full items-center gap-1.5 rounded-lg border border-white/[.07] bg-black/15 px-2.5 py-1.5 text-xs text-white/60 transition hover:border-[#18c7f4]/30 hover:bg-[#7c27ff]/15 hover:text-white/80"><span className="grid size-5 shrink-0 place-items-center rounded bg-[#7c27ff]/40 text-xs text-[#e6c7ff]">{source.citationId}</span><FileText size={11} /><span className="truncate">{source.title}</span></button>)}</div></div> : null}
-            <div className="mt-3 flex items-center gap-1"><button aria-label="Copy response" onClick={() => { void navigator.clipboard.writeText(message.content); toast.success(isFa ? "پاسخ کپی شد" : "Response copied"); }} className="grid size-7 place-items-center rounded-lg text-white/25 hover:bg-white/[.06] hover:text-white/70"><Copy size={13} /></button>{message.responseId && <MessageFeedback responseId={message.responseId} isFa={isFa} />}<button onClick={() => setShareOpen(true)} aria-label="Share conversation" className="grid size-7 place-items-center rounded-lg text-white/25 hover:bg-white/[.06] hover:text-white/70"><Share2 size={13} /></button></div>
+            <div className="mt-3 flex items-center gap-1"><button aria-label="Copy response" onClick={() => void copyToClipboard(message.content, isFa ? "پاسخ کپی شد" : "Response copied", isFa ? "کپی پاسخ ناموفق بود" : "Could not copy response")} className="grid size-7 place-items-center rounded-lg text-white/25 hover:bg-white/[.06] hover:text-white/70"><Copy size={13} /></button>{message.responseId && <MessageFeedback responseId={message.responseId} isFa={isFa} />}<button onClick={() => setShareOpen(true)} aria-label="Share conversation" className="grid size-7 place-items-center rounded-lg text-white/25 hover:bg-white/[.06] hover:text-white/70"><Share2 size={13} /></button></div>
           </>}
         </div>
       </article>)}
@@ -39,10 +96,11 @@ export default function ChatWindow({ messages, isThinking }: ChatWindowProps) {
 
 function ShareDialog({ messages, isFa, onClose }: { messages: ChatMessage[]; isFa: boolean; onClose: () => void }) {
   const [visibility, setVisibility] = useState<"team" | "link">("team"); const [expiry, setExpiry] = useState<1 | 7 | 30>(7); const [saving, setSaving] = useState(false); const [created, setCreated] = useState<{ id: string; token: string } | null>(null);
+  const dialog = useDialogFocus<HTMLDivElement>(true, onClose);
   const url = created ? `${window.location.origin}/share/${visibility}/${created.token}` : "";
   const create = async () => { setSaving(true); try { const title = messages.find((item) => item.role === "user")?.content || "Shared conversation"; const result = await shareService.create(title.slice(0, 100), visibility, expiry, messages); setCreated({ id: result.id, token: result.share_token }); } catch (e) { toast.error((e as Error).message); } finally { setSaving(false); } };
   const revoke = async (id = created?.id) => { if (!id || !await confirmAction(isFa ? "دسترسی این لینک اشتراک‌گذاری لغو شود؟" : "Revoke access to this shared link?")) return; try { await shareService.revoke(id); if (created?.id === id) setCreated(null); toast.success(isFa ? "دسترسی لغو شد" : "Share access revoked"); } catch (e) { toast.error((e as Error).message); } };
-  return <div className="absolute inset-0 z-40 grid place-items-center rounded-[20px] bg-black/75 p-3 backdrop-blur-md"><div className="w-full max-w-sm rounded-[22px] border border-white/10 bg-[rgba(18,14,25,.98)] p-5 shadow-2xl"><div className="flex items-center justify-between"><div><h3 className="text-sm font-semibold">{isFa ? "اشتراک‌گذاری گفتگو" : "Share conversation"}</h3><p className="mt-1 text-xs text-white/45">{isFa ? "یک نسخه فقط‌خواندنی منتشر می‌شود." : "A read-only snapshot will be published."}</p></div><button onClick={onClose} className="grid size-8 place-items-center rounded-lg text-white/30 hover:bg-white/5"><X size={14} /></button></div>{created ? <div className="mt-5"><div className="flex gap-2"><input readOnly value={url} className="h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60" /><button onClick={() => { void navigator.clipboard.writeText(url); toast.success(isFa ? "لینک کپی شد" : "Link copied"); }} className="rounded-xl bg-[#7c27ff] px-4 text-xs font-semibold">{isFa ? "کپی" : "Copy"}</button></div><button onClick={() => void revoke()} className="mt-4 w-full rounded-xl border border-rose-300/10 py-2.5 text-xs text-rose-200/70">{isFa ? "لغو دسترسی" : "Revoke access"}</button></div> : <><div className="mt-5 grid grid-cols-2 gap-2">{(["team", "link"] as const).map((value) => <button key={value} onClick={() => setVisibility(value)} className={`rounded-xl border p-3 text-start ${visibility === value ? "border-[#18c7f4]/35 bg-[#7c27ff]/25" : "border-white/[.08]"}`}><p className="text-xs font-semibold text-white/75">{value === "team" ? (isFa ? "اعضای تیم" : "Team members") : (isFa ? "لینک عمومی" : "Public link")}</p><p className="mt-1 text-xs text-white/45">{value === "team" ? (isFa ? "نیازمند ورود" : "Sign-in required") : (isFa ? "هرکس لینک را دارد" : "Anyone with link")}</p></button>)}</div><div className="mt-4 flex gap-1 rounded-xl bg-black/20 p-1">{([1, 7, 30] as const).map((value) => <button key={value} onClick={() => setExpiry(value)} className={`flex-1 rounded-lg py-2 text-xs ${expiry === value ? "bg-[#7c27ff] text-white" : "text-white/45"}`}>{isFa ? `${value} روز` : `${value} days`}</button>)}</div><button disabled={saving} onClick={() => void create()} className="mt-5 h-10 w-full rounded-xl bg-[#7c27ff] text-xs font-semibold disabled:opacity-50">{saving ? "…" : isFa ? "ایجاد لینک امن" : "Create secure link"}</button></>}</div></div>;
+  return <div className="absolute inset-0 z-40 grid place-items-center rounded-[20px] bg-black/75 p-3 backdrop-blur-md" onMouseDown={onClose}><div ref={dialog.ref} role="dialog" aria-modal="true" aria-labelledby="share-dialog-title" tabIndex={-1} onKeyDown={dialog.onKeyDown} onMouseDown={(event) => event.stopPropagation()} className="w-full max-w-sm rounded-[22px] border border-white/10 bg-[rgba(18,14,25,.98)] p-5 shadow-2xl"><div className="flex items-center justify-between"><div><h3 id="share-dialog-title" className="text-sm font-semibold">{isFa ? "اشتراک‌گذاری گفتگو" : "Share conversation"}</h3><p className="mt-1 text-xs text-white/45">{isFa ? "یک نسخه فقط‌خواندنی منتشر می‌شود." : "A read-only snapshot will be published."}</p></div><button onClick={onClose} aria-label={isFa ? "بستن پنجره اشتراک‌گذاری" : "Close share dialog"} className="grid size-8 place-items-center rounded-lg text-white/30 hover:bg-white/5"><X size={14} /></button></div>{created ? <div className="mt-5"><div className="flex gap-2"><input readOnly value={url} aria-label={isFa ? "لینک اشتراک‌گذاری" : "Share link"} className="h-10 min-w-0 flex-1 rounded-xl border border-white/10 bg-black/20 px-3 text-xs text-white/60" /><button onClick={() => void copyToClipboard(url, isFa ? "لینک کپی شد" : "Link copied", isFa ? "کپی لینک ناموفق بود" : "Could not copy link")} className="rounded-xl bg-[#7c27ff] px-4 text-xs font-semibold">{isFa ? "کپی" : "Copy"}</button></div><button onClick={() => void revoke()} className="mt-4 w-full rounded-xl border border-rose-300/10 py-2.5 text-xs text-rose-200/70">{isFa ? "لغو دسترسی" : "Revoke access"}</button></div> : <><div className="mt-5 grid grid-cols-2 gap-2">{(["team", "link"] as const).map((value) => <button key={value} type="button" aria-pressed={visibility === value} onClick={() => setVisibility(value)} className={`rounded-xl border p-3 text-start ${visibility === value ? "border-[#18c7f4]/35 bg-[#7c27ff]/25" : "border-white/[.08]"}`}><p className="text-xs font-semibold text-white/75">{value === "team" ? (isFa ? "اعضای تیم" : "Team members") : (isFa ? "لینک عمومی" : "Public link")}</p><p className="mt-1 text-xs text-white/45">{value === "team" ? (isFa ? "نیازمند ورود" : "Sign-in required") : (isFa ? "هرکس لینک را دارد" : "Anyone with link")}</p></button>)}</div><div className="mt-4 flex gap-1 rounded-xl bg-black/20 p-1">{([1, 7, 30] as const).map((value) => <button key={value} type="button" aria-pressed={expiry === value} onClick={() => setExpiry(value)} className={`flex-1 rounded-lg py-2 text-xs ${expiry === value ? "bg-[#7c27ff] text-white" : "text-white/45"}`}>{isFa ? `${value} روز` : `${value} days`}</button>)}</div><button disabled={saving} onClick={() => void create()} className="mt-5 h-10 w-full rounded-xl bg-[#7c27ff] text-xs font-semibold disabled:opacity-50">{saving ? "…" : isFa ? "ایجاد لینک امن" : "Create secure link"}</button></>}</div></div>;
 }
 
 function MessageFeedback({ responseId, isFa }: { responseId: string; isFa: boolean }) {
@@ -60,10 +118,12 @@ function MessageFeedback({ responseId, isFa }: { responseId: string; isFa: boole
     ["citation_issue", isFa ? "ارجاع مشکل داشت" : "The citation had an issue"],
     ["other", isFa ? "مورد دیگر" : "Something else"],
   ];
+  const close = () => setOpen(false);
+  const dialog = useDialogFocus<HTMLDivElement>(open, close);
   return <div className="relative flex items-center gap-1">
     <button disabled={saving} onClick={() => void positive()} aria-label="Helpful" className={`grid size-7 place-items-center rounded-lg transition ${rating === 1 ? "bg-emerald-300/10 text-emerald-200" : "text-white/25 hover:bg-white/[.06] hover:text-white/70"}`}><ThumbsUp size={13} /></button>
     <button disabled={saving} onClick={() => setOpen(!open)} aria-label="Not helpful" className={`grid size-7 place-items-center rounded-lg transition ${rating === -1 ? "bg-rose-300/10 text-rose-200" : "text-white/25 hover:bg-white/[.06] hover:text-white/70"}`}><ThumbsDown size={13} /></button>
-    {open && <div className="nexora-dropdown absolute bottom-9 start-0 z-30 w-72 rounded-2xl border border-white/10 bg-[rgba(18,14,25,.98)] p-3 shadow-2xl backdrop-blur-2xl"><div className="flex items-center justify-between"><p className="text-xs font-semibold text-white/75">{isFa ? "مشکل پاسخ چه بود؟" : "What was wrong with the answer?"}</p><button onClick={() => setOpen(false)} className="grid size-6 place-items-center rounded-md text-white/30 hover:bg-white/5"><X size={12} /></button></div><div className="mt-2 space-y-1">{reasons.map(([value, label]) => <button key={value} aria-pressed={reason === value} onClick={() => setReason(value)} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-xs ${reason === value ? "bg-[#7c27ff]/35 text-white/80" : "text-white/55 hover:bg-white/[.04]"}`}><span className={`size-2 rounded-full border ${reason === value ? "border-[#c43cff] bg-[#c43cff]" : "border-white/20"}`} />{label}</button>)}</div>{reason === "other" && <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} rows={2} placeholder={isFa ? "توضیح اختیاری..." : "Optional details..."} className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/20 p-2.5 text-xs outline-none placeholder:text-white/30 focus:border-[#18c7f4]/40" />}<button disabled={!reason || saving} onClick={() => void negative()} className="mt-3 h-9 w-full rounded-xl bg-[#7c27ff] text-xs font-semibold disabled:opacity-40">{saving ? "…" : isFa ? "ثبت بازخورد" : "Submit feedback"}</button></div>}
+    {open && <div ref={dialog.ref} role="dialog" aria-modal="false" aria-labelledby={`feedback-title-${responseId}`} tabIndex={-1} onKeyDown={dialog.onKeyDown} className="nexora-dropdown absolute bottom-9 start-0 z-30 w-72 rounded-2xl border border-white/10 bg-[rgba(18,14,25,.98)] p-3 shadow-2xl backdrop-blur-2xl"><div className="flex items-center justify-between"><p id={`feedback-title-${responseId}`} className="text-xs font-semibold text-white/75">{isFa ? "مشکل پاسخ چه بود؟" : "What was wrong with the answer?"}</p><button onClick={close} aria-label={isFa ? "بستن پنجره بازخورد" : "Close feedback dialog"} className="grid size-6 place-items-center rounded-md text-white/30 hover:bg-white/5"><X size={12} /></button></div><div className="mt-2 space-y-1">{reasons.map(([value, label]) => <button key={value} aria-pressed={reason === value} onClick={() => setReason(value)} className={`flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-start text-xs ${reason === value ? "bg-[#7c27ff]/35 text-white/80" : "text-white/55 hover:bg-white/[.04]"}`}><span className={`size-2 rounded-full border ${reason === value ? "border-[#c43cff] bg-[#c43cff]" : "border-white/20"}`} />{label}</button>)}</div>{reason === "other" && <textarea value={comment} onChange={(e) => setComment(e.target.value)} maxLength={500} rows={2} placeholder={isFa ? "توضیح اختیاری..." : "Optional details..."} className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/20 p-2.5 text-xs outline-none placeholder:text-white/30 focus:border-[#18c7f4]/40" />}<button disabled={!reason || saving} onClick={() => void negative()} className="mt-3 h-9 w-full rounded-xl bg-[#7c27ff] text-xs font-semibold disabled:opacity-40">{saving ? "…" : isFa ? "ثبت بازخورد" : "Submit feedback"}</button></div>}
   </div>;
 }
 
