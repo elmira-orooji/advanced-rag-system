@@ -1,5 +1,5 @@
 import { confirmAction } from "../services/confirmation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Copy, FileText, Quote, Share2, Sparkles, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -68,9 +68,10 @@ function MessageFeedback({ responseId, isFa }: { responseId: string; isFa: boole
 }
 
 function CitedText({ content, sources, onOpen }: { content: string; sources: Source[]; onOpen: (source: Source) => void }) {
+  const sourceMap = useMemo(() => new Map(sources.map((s) => [s.citationId, s])), [sources]);
   const parts = content.split(/(\[\d+\])/g);
   return <>{parts.map((part, index) => {
-    const match = part.match(/^\[(\d+)\]$/); const source = match ? sources.find((item) => item.citationId === Number(match[1])) : undefined;
+    const match = part.match(/^\[(\d+)\]$/); const source = match ? sourceMap.get(Number(match[1])) : undefined;
     return source ? <button key={index} onClick={() => onOpen(source)} title={source.title} className="mx-0.5 inline-grid min-w-5 place-items-center rounded-md border border-[#18c7f4]/25 bg-[#7c27ff]/35 px-1 text-[10px] font-bold leading-5 text-[#e6c7ff] align-text-top transition hover:border-[#c43cff]/50 hover:bg-[#7c27ff]/60">{source.citationId}</button> : <span key={index}>{part}</span>;
   })}</>;
 }
