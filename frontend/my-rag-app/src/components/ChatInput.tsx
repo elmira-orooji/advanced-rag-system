@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 
 interface ChatInputProps {
   disabled: boolean;
-  onSend: (message: string) => void;
+  onSend: (message: string) => boolean | Promise<boolean>;
   initialValue?: string;
   prominent?: boolean;
 }
@@ -14,11 +14,10 @@ export default function ChatInput({ disabled, onSend, initialValue = "", promine
   const isFa = i18n.language.startsWith("fa");
   const [value, setValue] = useState(initialValue);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const message = value.trim();
     if (!message || disabled) return;
-    onSend(message);
-    setValue("");
+    if (await onSend(message)) setValue("");
   };
 
   return (
@@ -32,7 +31,7 @@ export default function ChatInput({ disabled, onSend, initialValue = "", promine
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
             event.preventDefault();
-            handleSend();
+            void handleSend();
           }
         }}
         placeholder={isFa ? "از پایگاه دانش خود بپرسید..." : "Ask your knowledge base..."}
@@ -40,7 +39,7 @@ export default function ChatInput({ disabled, onSend, initialValue = "", promine
       />
       <button
         type="button"
-        onClick={handleSend}
+        onClick={() => void handleSend()}
         disabled={disabled || !value.trim()}
         aria-label={isFa ? "ارسال پیام" : "Send message"}
         className="chat-send-button mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-[#7c27ff] text-white shadow-[0_8px_24px_rgba(124,39,255,.35)] transition hover:-translate-y-0.5 hover:bg-[#9238ff] disabled:translate-y-0 disabled:bg-white/[.06] disabled:text-white/20 disabled:shadow-none"
@@ -50,4 +49,3 @@ export default function ChatInput({ disabled, onSend, initialValue = "", promine
     </div>
   );
 }
-

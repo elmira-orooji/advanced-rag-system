@@ -113,8 +113,10 @@ export default function ConversationPage({ conversationId, onConversationChange,
       const updated = await conversationService.get(id);
       setDetail(updated);
       onConversationsUpdated();
+      return true;
     } catch (error) {
       toast.error((error as Error).message);
+      return false;
     } finally {
       setPendingPrompt("");
       setSending(false);

@@ -190,7 +190,10 @@ export default function UploadFilesPage() {
   ), [documents, query, statusFilter]);
 
   const handleChatMessage = async (content: string) => {
-    if (!selectedSetId) return toast.error(isFa ? "ابتدا یک مجموعه انتخاب کنید" : "Select a knowledge set first");
+    if (!selectedSetId) {
+      toast.error(isFa ? "ابتدا یک مجموعه انتخاب کنید" : "Select a knowledge set first");
+      return false;
+    }
     setChatMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content, createdAt: new Date().toISOString() }]);
     setIsThinking(true);
     try {
@@ -212,7 +215,8 @@ export default function UploadFilesPage() {
           section: citation.section,
         })),
       }]);
-    } catch (error) { toast.error((error as Error).message); }
+      return true;
+    } catch (error) { toast.error((error as Error).message); return false; }
     finally { setIsThinking(false); }
   };
 
