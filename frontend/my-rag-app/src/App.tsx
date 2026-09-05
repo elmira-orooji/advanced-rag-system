@@ -31,7 +31,6 @@ function SessionExpiryHandler() {
 
   useEffect(() => {
     const handleExpiry = () => {
-      if (location.pathname === "/") return;
       toast.error(
         i18n.language.startsWith("fa")
           ? "نشست شما منقضی شده است. دوباره وارد شوید."
