@@ -44,6 +44,9 @@ export const conversationService = {
   createForSet: (documentSetId: string, title?: string) => request<ConversationSummary>("/conversations", {
     method: "POST", headers: headers(), body: JSON.stringify({ document_set_id: documentSetId, title: title || undefined }),
   }),
+  createForAssistant: (assistantId: string, title?: string) => request<ConversationSummary>("/conversations", {
+    method: "POST", headers: headers(), body: JSON.stringify({ assistant_id: assistantId, title: title || undefined }),
+  }),
   send: (id: string, content: string) => request<PersistedMessage>(`/conversations/${id}/messages`, {
     method: "POST", headers: headers(), body: JSON.stringify({ content, limit: 5 }),
   }),

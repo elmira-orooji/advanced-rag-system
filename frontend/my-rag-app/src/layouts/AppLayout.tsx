@@ -86,6 +86,18 @@ export default function AppLayout() {
     setMobileMenuOpen(false);
   };
 
+  const startAssistantConversation = async (assistantId: string): Promise<boolean> => {
+    try {
+      const conversation = await conversationService.createForAssistant(assistantId);
+      loadConversations();
+      navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(conversation.id)}`);
+      return true;
+    } catch (error) {
+      toast.error((error as Error).message);
+      return false;
+    }
+  };
+
   const selectConversation = (id: string) => {
     navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`);
     setMobileMenuOpen(false);
@@ -166,7 +178,7 @@ export default function AppLayout() {
           {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <WorkspacePage currentUser={currentUser} conversations={conversations} onNewConversation={newConversation} onOpenConversation={selectConversation} onOpenKnowledge={() => selectPage("upload")} />)}
           {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} />}
           {activePage === "upload" && <UploadFilesPage />}
-          {activePage === "assistants" && <AssistantsPage />}
+          {activePage === "assistants" && <AssistantsPage onStartConversation={startAssistantConversation} />}
           {activePage === "users" && (canManageUsers(currentUser) ? <UsersPage /> : <Navigate to="/home" replace />)}
           {activePage === "settings" && <SettingsPage theme={theme} setTheme={setTheme} />}
         </Suspense></main>
