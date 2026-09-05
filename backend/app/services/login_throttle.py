@@ -53,8 +53,8 @@ def _prune_expired_if_due(db: Session, current: datetime) -> None:
         if monotonic_now - _last_cleanup < _CLEANUP_INTERVAL_SECONDS:
             return
         _last_cleanup = monotonic_now
-    stale_before = current - timedelta(seconds=AUTH_FAILURE_WINDOW_SECONDS)
-    db.execute(delete(LoginThrottle).where(LoginThrottle.updated_at < stale_before, (LoginThrottle.locked_until.is_(None)) | (LoginThrottle.locked_until < current)))
+        stale_before = current - timedelta(seconds=AUTH_FAILURE_WINDOW_SECONDS)
+        db.execute(delete(LoginThrottle).where(LoginThrottle.updated_at < stale_before, (LoginThrottle.locked_until.is_(None)) | (LoginThrottle.locked_until < current)))
 
 
 def record_failure(db: Session, keys: tuple[str, str], now: datetime | None = None) -> int:
