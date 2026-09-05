@@ -61,6 +61,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
     let active = true;
     setLoading(true);
     setLoadError(null);
+    createdConversationId.current = null;
     const task = conversationId
       ? conversationService.get(conversationId).then((value) => { if (active) setDetail(value); })
       : knowledgeService.listSets().then((value) => {
