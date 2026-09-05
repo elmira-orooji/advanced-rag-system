@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronDown, FileSearch, FileText, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { BookOpen, ChevronDown, FileSearch, FileText, FileUp, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -16,6 +16,7 @@ interface ConversationPageProps {
   conversationId: string | null;
   onConversationChange: (id: string) => void;
   onConversationsUpdated: () => void;
+  onOpenKnowledge: () => void;
 }
 
 function toChatMessage(message: PersistedMessage): ChatMessage {
@@ -40,7 +41,7 @@ function toChatMessage(message: PersistedMessage): ChatMessage {
   };
 }
 
-export default function ConversationPage({ conversationId, onConversationChange, onConversationsUpdated }: ConversationPageProps) {
+export default function ConversationPage({ conversationId, onConversationChange, onConversationsUpdated, onOpenKnowledge }: ConversationPageProps) {
   const [assistant, setAssistant] = useState<{ id: string; name: string } | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [sets, setSets] = useState<DocumentSet[]>([]);
@@ -190,7 +191,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
             {selectedSet && <span className="shrink-0 text-[9px] conversation-muted">{selectedSet.indexed_document_count} {isFa ? "سند آماده" : "indexed documents"}</span>}
           </div>
 
-          <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={sending || !selectedSetId} onSend={send} />
+          {sets.length ? <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={sending || !selectedSetId} onSend={send} /> : <div className="mx-auto w-full max-w-2xl rounded-2xl border border-[#18c7f4]/15 bg-[#18c7f4]/[.045] p-5 text-center"><BookOpen className="mx-auto text-[#8de8ff]" size={24} /><h2 className="mt-3 text-sm font-semibold">{isFa ? "برای شروع، یک پایگاه دانش بسازید" : "Create a knowledge base to get started"}</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 conversation-muted">{isFa ? "اسناد سازمانی خود را اضافه کنید تا پاسخ‌های مستند دریافت کنید." : "Add your organization’s documents to receive source-grounded answers."}</p><div className="mt-4 flex flex-wrap items-center justify-center gap-2"><button type="button" onClick={onOpenKnowledge} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#7c27ff] px-4 text-xs font-semibold text-white transition hover:bg-[#9238ff]"><PlusIcon />{isFa ? "ساخت پایگاه دانش" : "Create knowledge base"}</button><button type="button" onClick={onOpenKnowledge} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 px-4 text-xs font-semibold text-white/75 transition hover:border-[#18c7f4]/35 hover:text-white"><FileUp size={14} />{isFa ? "بارگذاری اولین سند" : "Upload first document"}</button></div></div>}
 
           <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {suggestions.map(([label, prompt], index) => <button key={label} type="button" onClick={() => setSuggestedPrompt((current) => ({ value: prompt, revision: current.revision + 1 }))} className="conversation-suggestion">
@@ -230,3 +231,5 @@ export default function ConversationPage({ conversationId, onConversationChange,
     <div className="conversation-dock relative z-20 shrink-0 px-0 pb-4 pt-3 sm:px-3 sm:pb-5"><ChatInput prominent disabled={sending || (!conversationId && !selectedSetId)} onSend={send} /><div className="mt-2 flex items-center justify-center gap-1.5 text-[9px] conversation-muted"><FileText size={10} />{isFa ? "پاسخ‌ها ممکن است خطا داشته باشند؛ منابع را بررسی کنید." : "AI can make mistakes. Verify important details in the cited sources."}</div></div>
   </div>;
 }
+
+function PlusIcon() { return <span aria-hidden="true" className="text-sm leading-none">+</span>; }

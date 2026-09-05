@@ -176,7 +176,7 @@ export default function AppLayout() {
         <main className="relative z-10 min-h-0 flex-1 overflow-hidden"><Suspense fallback={<PageFallback />}>
           {!validRoute && <Navigate to="/home" replace />}
           {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <WorkspacePage currentUser={currentUser} conversations={conversations} onNewConversation={newConversation} onOpenConversation={selectConversation} onOpenKnowledge={() => selectPage("upload")} />)}
-          {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} />}
+          {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} onOpenKnowledge={() => selectPage("upload")} />}
           {activePage === "upload" && <UploadFilesPage />}
           {activePage === "assistants" && <AssistantsPage onStartConversation={startAssistantConversation} />}
           {activePage === "users" && (canManageUsers(currentUser) ? <UsersPage /> : <Navigate to="/home" replace />)}

@@ -47,6 +47,7 @@ describe("ConversationPage", () => {
         conversationId={null}
         onConversationChange={onConversationChange}
         onConversationsUpdated={vi.fn()}
+        onOpenKnowledge={vi.fn()}
       />,
     );
 
@@ -59,5 +60,16 @@ describe("ConversationPage", () => {
 
     finishSend?.();
     await waitFor(() => expect(onConversationChange).toHaveBeenCalledWith("conversation-1"));
+  });
+
+  it("offers a direct knowledge-base CTA when none exists", async () => {
+    mocks.listSets.mockResolvedValueOnce([]);
+    const onOpenKnowledge = vi.fn();
+
+    render(<ConversationPage conversationId={null} onConversationChange={vi.fn()} onConversationsUpdated={vi.fn()} onOpenKnowledge={onOpenKnowledge} />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Create knowledge base" }));
+    expect(onOpenKnowledge).toHaveBeenCalledOnce();
+    expect(screen.getByRole("button", { name: "Upload first document" })).toBeInTheDocument();
   });
 });
