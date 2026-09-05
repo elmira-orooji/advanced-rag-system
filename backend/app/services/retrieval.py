@@ -1,4 +1,5 @@
 import math
+import threading
 import re
 import uuid
 from time import perf_counter
@@ -28,6 +29,7 @@ class _LexicalCorpus:
 
 _LEXICAL_CACHE_MAX_SIZE = 64
 _lexical_cache: OrderedDict[tuple[str, ...], _LexicalCorpus] = OrderedDict()
+_lexical_cache_lock = threading.Lock()
 
 
 def _normalize(text: str) -> str:
@@ -83,10 +85,11 @@ def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
         (str(document_id), updated_at.isoformat() if updated_at is not None else "")
         for document_id, updated_at in versions
     ))
-    cached = _lexical_cache.get(scope_key)
-    if cached is not None and cached.signature == signature:
-        _lexical_cache.move_to_end(scope_key)
-        return cached
+    with _lexical_cache_lock:
+        cached = _lexical_cache.get(scope_key)
+        if cached is not None and cached.signature == signature:
+            _lexical_cache.move_to_end(scope_key)
+            return cached
 
     rows = list(db.execute(
         select(Chunk, Document.filename)
@@ -94,10 +97,11 @@ def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
         .where(Chunk.document_id.in_(scoped_ids), Chunk.is_active.is_(True))
     ).all())
     corpus = _build_lexical_corpus(signature, rows)
-    _lexical_cache[scope_key] = corpus
-    _lexical_cache.move_to_end(scope_key)
-    while len(_lexical_cache) > _LEXICAL_CACHE_MAX_SIZE:
-        _lexical_cache.popitem(last=False)
+    with _lexical_cache_lock:
+        _lexical_cache[scope_key] = corpus
+        _lexical_cache.move_to_end(scope_key)
+        while len(_lexical_cache) > _LEXICAL_CACHE_MAX_SIZE:
+            _lexical_cache.popitem(last=False)
     return corpus
 
 
