@@ -13,10 +13,12 @@ from app.core.config import FRONTEND_ORIGINS, READINESS_PROBE_TIMEOUT_SECONDS, U
 from app.db.database import get_db
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.worker_heartbeat import get_available_worker_types
+from app.core.rate_limit import RateLimitMiddleware
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Advanced RAG API")
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=FRONTEND_ORIGINS,

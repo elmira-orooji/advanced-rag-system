@@ -10,7 +10,8 @@ from collections import OrderedDict
 from functools import wraps
 from typing import Callable
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, Request, Response, status
+from starlette.middleware.base import BaseHTTPMiddleware
 
 
 class RateLimiter:
@@ -93,3 +94,14 @@ def rate_limit(limiter: RateLimiter) -> Callable:
         # Attach headers to response via state for middleware to pick up
         request.state.rate_limit_headers = headers
     return dependency
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Middleware that attaches rate limit headers from request state to the response."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        headers = getattr(request.state, "rate_limit_headers", None)
+        if headers:
+            for key, value in headers.items():
+                response.headers[key] = value
+        return response
