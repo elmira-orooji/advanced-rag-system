@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, ChevronDown, FileSearch, FileText, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
@@ -51,6 +51,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
   const [sending, setSending] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState("");
   const [suggestedPrompt, setSuggestedPrompt] = useState({ value: "", revision: 0 });
+  const createdConversationId = useRef<string | null>(null);
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
 
@@ -102,17 +103,18 @@ export default function ConversationPage({ conversationId, onConversationChange,
     setPendingPrompt(content);
     setSending(true);
     try {
-      let id = conversationId;
+      let id = conversationId ?? createdConversationId.current;
       if (!id) {
         if (!selectedSetId) throw new Error("Create or select a knowledge base first.");
         const created = await conversationService.createForSet(selectedSetId);
         id = created.id;
-        onConversationChange(id);
+        createdConversationId.current = id;
       }
       await conversationService.send(id, content);
       const updated = await conversationService.get(id);
       setDetail(updated);
       onConversationsUpdated();
+      if (!conversationId) onConversationChange(id);
       return true;
     } catch (error) {
       toast.error((error as Error).message);
