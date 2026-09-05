@@ -28,7 +28,7 @@ export const authService = {
         username: data.username.trim(),
         password: data.password,
         remember_me: data.rememberMe,
-        organization: data.organization.trim().toLowerCase(),
+        organization: data.organization.trim(),
       }),
     });
     const payload = (await response.json().catch(() => null)) as LoginResponse | null;
