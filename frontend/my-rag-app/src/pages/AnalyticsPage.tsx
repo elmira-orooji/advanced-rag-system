@@ -17,23 +17,24 @@ export default function AnalyticsPage() {
   const user = authService.getUser();
   const reducedMotion = useReducedMotion();
   const detailsRef = useRef<HTMLDialogElement>(null);
-  const [days, setDays] = useState<7 | 30 | 90>(30);
+  const [query, setQuery] = useState<{ days: 7 | 30 | 90; revision: number }>({ days: 30, revision: 0 });
+  const [loadedDays, setLoadedDays] = useState<7 | 30 | 90>(30);
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
-    analyticsService.overview(days)
-      .then((result) => { if (active) setData(result); })
+    analyticsService.overview(query.days)
+      .then((result) => { if (active) { setData(result); setLoadedDays(query.days); } })
       .catch((error) => { if (active) toast.error(error.message); })
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
-  }, [days]);
+  }, [query]);
 
   const selectPeriod = (value: 7 | 30 | 90) => {
-    if (value === days) return;
+    if (value === loadedDays || loading) return;
     setLoading(true);
-    setDays(value);
+    setQuery((current) => ({ days: value, revision: current.revision + 1 }));
   };
 
   const c = sectionCopy(t, "analytics", ["welcome", "subtitle", "export", "queries", "users", "grounded", "satisfaction", "noFeedback", "unanswered", "coverage", "citations", "performance", "performanceSub", "query", "groundedLabel", "health", "indexed", "failed", "healthy", "quality", "positive", "feedbackCoverage", "assistants", "knowledge", "issues", "empty"]);
@@ -42,7 +43,7 @@ export default function AnalyticsPage() {
     if (!data) return;
     const rows = [["date", "queries", "grounded", "negative_feedback"], ...data.daily.map((item) => [item.date, item.queries, item.grounded, item.negative_feedback])];
     const url = URL.createObjectURL(new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" }));
-    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `nexora-analytics-${days}d.csv`; anchor.click(); URL.revokeObjectURL(url);
+    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `nexora-analytics-${loadedDays}d.csv`; anchor.click(); URL.revokeObjectURL(url);
   };
 
   if (loading && !data) return <div className="analytics-dashboard grid h-full place-items-center an-surface"><span role="status" aria-label={fa ? "در حال بارگذاری" : "Loading"} className="analytics-spinner" /></div>;
@@ -51,7 +52,7 @@ export default function AnalyticsPage() {
     <div className="analytics-content">
       <header className="analytics-header flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div><h1 className="mt-2 text-xl font-semibold tracking-[-.025em] sm:text-[25px]">{c.welcome}, <span className="an-text">{user?.username ?? (fa ? "کاربر" : "User")}</span></h1><p className="mt-1.5 text-[11px] an-muted sm:text-xs">{c.subtitle}</p></div>
-        <div className="flex flex-wrap items-center gap-2"><div className="analytics-period" role="group" aria-label={fa ? "بازه زمانی" : "Date range"}>{([7, 30, 90] as const).map((value) => <button key={value} onClick={() => selectPeriod(value)} aria-pressed={days === value} className={days === value ? "is-active" : ""}>{fa ? `${value} روز` : `${value} days`}</button>)}</div><button onClick={exportData} disabled={!data || loading} className="analytics-export"><ArrowDownToLine size={13} />{c.export}</button></div>
+        <div className="flex flex-wrap items-center gap-2"><div className="analytics-period" role="group" aria-label={fa ? "بازه زمانی" : "Date range"}>{([7, 30, 90] as const).map((value) => <button key={value} onClick={() => selectPeriod(value)} disabled={loading} aria-pressed={loadedDays === value} className={loadedDays === value ? "is-active" : ""}>{fa ? `${value} روز` : `${value} days`}</button>)}</div><button onClick={exportData} disabled={!data || loading} className="analytics-export"><ArrowDownToLine size={13} />{c.export}</button></div>
       </header>
 
       {data && <>
