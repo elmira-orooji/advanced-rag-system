@@ -135,7 +135,7 @@ def login(payload: LoginRequest, response: Response, request: Request, db: Sessi
         httponly=True,
         secure=AUTH_COOKIE_SECURE,
         samesite="lax",
-        path="/api/v1",
+        path="/",
     )
     response.headers["Cache-Control"] = "no-store"
     return LoginResponse(
@@ -170,7 +170,7 @@ def logout(
         httponly=True,
         secure=AUTH_COOKIE_SECURE,
         samesite="lax",
-        path="/api/v1",
+        path="/",
     )
     response.headers["Cache-Control"] = "no-store"
 
