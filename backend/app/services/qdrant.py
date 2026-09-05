@@ -153,8 +153,9 @@ class QdrantClient:
             if not document_ids:
                 return []
             body["filter"] = {
-                "must": [
-                    {"key": "document_id", "match": {"any": document_ids}}
+                "should": [
+                    {"key": "document_id", "match": {"value": doc_id}}
+                    for doc_id in document_ids
                 ]
             }
 
