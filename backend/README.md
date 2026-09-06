@@ -36,3 +36,14 @@ tried first with `fa,en` language hints. Set the Azure Document Intelligence
 endpoint and key as well to enable the fallback. OCR is disabled by default, so
 documents are never sent to a cloud provider without an explicit configuration.
 The API also accepts JPEG, PNG, and TIFF images when OCR is configured.
+
+The ordinary test suite mocks cloud providers. To run the opt-in live smoke
+test, set a provider credential and its explicit switch, then run:
+
+```powershell
+$env:RUN_GOOGLE_VISION_OCR_INTEGRATION=1
+.\.venv\Scripts\python.exe -m pytest -m integration
+```
+
+The test sends one synthetic image containing `NEXORA OCR 2026`; it does not
+upload a user document. Use `RUN_AZURE_OCR_INTEGRATION=1` for Azure instead.
