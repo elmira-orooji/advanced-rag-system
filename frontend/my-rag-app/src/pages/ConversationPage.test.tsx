@@ -8,13 +8,14 @@ const mocks = vi.hoisted(() => ({
   send: vi.fn(),
   get: vi.fn(),
   listSets: vi.fn(),
+  listAssistants: vi.fn(),
 }));
 
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({ i18n: { language: "en" } }),
 }));
 vi.mock("react-hot-toast", () => ({ default: { error: vi.fn() } }));
-vi.mock("../services/assistantService", () => ({ assistantService: { list: vi.fn() } }));
+vi.mock("../services/assistantService", () => ({ assistantService: { list: mocks.listAssistants } }));
 vi.mock("../services/authService", () => ({ authService: { getUser: () => ({ role: "admin" }) } }));
 vi.mock("../services/conversationService", () => ({
   conversationService: {
@@ -36,6 +37,7 @@ describe("ConversationPage", () => {
     mocks.listSets.mockResolvedValue([{ id: "set-1", name: "Knowledge", indexed_document_count: 1 }]);
     mocks.createForSet.mockResolvedValue({ id: "conversation-1" });
     mocks.get.mockResolvedValue({ id: "conversation-1", title: "First chat", messages: [] });
+    mocks.listAssistants.mockResolvedValue([]);
   });
 
   it("navigates to a new conversation only after the first response is ready", async () => {
@@ -83,5 +85,16 @@ describe("ConversationPage", () => {
     expect(await screen.findByText("This knowledge base is not ready for answers yet")).toBeInTheDocument();
     expect(screen.queryByRole("textbox", { name: "Message" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload first document" })).toBeInTheDocument();
+  });
+
+  it("shows an assistant conversation's saved context and connected knowledge", async () => {
+    mocks.get.mockResolvedValueOnce({ id: "assistant-chat", title: "Policy chat", assistant_id: "assistant-1", messages: [] });
+    mocks.listAssistants.mockResolvedValueOnce([{ id: "assistant-1", name: "Policy assistant", document_set_names: ["Policies"] }]);
+
+    render(<ConversationPage conversationId="assistant-chat" onConversationChange={vi.fn()} onConversationsUpdated={vi.fn()} onOpenKnowledge={vi.fn()} />);
+
+    expect(await screen.findByText("Assistant: Policy assistant")).toBeInTheDocument();
+    expect(screen.getByText("1 connected knowledge base")).toBeInTheDocument();
+    expect(screen.getByText(/Answers and sources are saved in Recent chats/)).toBeInTheDocument();
   });
 });

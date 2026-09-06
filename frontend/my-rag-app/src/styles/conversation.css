@@ -100,3 +100,5 @@ html:not(.dark) .conversation-page {
 .app-shell .conversation-page .app-composer { max-width: 780px; border-radius: 18px; padding: 14px; box-shadow: 0 8px 30px #10192c08; }
 .conversation-page .conversation-save-status { color: var(--cv-muted); }
 .conversation-page .conversation-save-status > span { background: var(--cv-success); }
+.conversation-assistant-context { display: inline-flex; max-width: 240px; align-items: center; gap: 6px; overflow: hidden; padding: 5px 8px; border: 1px solid var(--cv-line); border-radius: 999px; color: var(--cv-muted); background: var(--cv-panel); font-size: var(--font-size-helper); white-space: nowrap; text-overflow: ellipsis; }
+.conversation-assistant-context svg { flex-shrink: 0; color: var(--cv-accent); }

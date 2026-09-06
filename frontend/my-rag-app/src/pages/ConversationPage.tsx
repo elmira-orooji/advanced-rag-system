@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Check, ChevronDown, FileSearch, FileText, FileUp, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { BookOpen, Bot, Check, ChevronDown, FileSearch, FileText, FileUp, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
 import "../styles/conversation.css";
 import NexoraAvatar from "../components/NexoraAvatar";
-import { assistantService } from "../services/assistantService";
+import { assistantService, type CustomAssistant } from "../services/assistantService";
 import ChatInput from "../components/ChatInput";
 import OnyxChatWindow from "../components/OnyxChatWindow";
 import { conversationService, type ConversationDetail, type PersistedMessage } from "../services/conversationService";
@@ -44,7 +44,7 @@ function toChatMessage(message: PersistedMessage): ChatMessage {
 }
 
 export default function ConversationPage({ conversationId, onConversationChange, onConversationsUpdated, onOpenKnowledge }: ConversationPageProps) {
-  const [assistant, setAssistant] = useState<{ id: string; name: string } | null>(null);
+  const [assistant, setAssistant] = useState<Pick<CustomAssistant, "id" | "name" | "document_set_names"> | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [sets, setSets] = useState<DocumentSet[]>([]);
   const [selectedSetId, setSelectedSetId] = useState("");
@@ -87,11 +87,15 @@ export default function ConversationPage({ conversationId, onConversationChange,
     if (!assistantId) return;
     let active = true;
     assistantService.list().then((items) => {
-      if (active) setAssistant(items.find((item) => item.id === assistantId) ?? null);
+      if (active) {
+        const match = items.find((item) => item.id === assistantId);
+        setAssistant(match ? { id: match.id, name: match.name, document_set_names: match.document_set_names } : null);
+      }
     }).catch(() => { if (active) setAssistant(null); });
     return () => { active = false; };
   }, [assistantId]);
   const assistantName = assistant?.id === assistantId ? assistant?.name : undefined;
+  const assistantSources = assistant?.id === assistantId ? (assistant?.document_set_names ?? []) : [];
 
   const messages = useMemo(() => {
     const persisted = detail?.messages.map(toChatMessage) ?? [];
@@ -215,16 +219,16 @@ export default function ConversationPage({ conversationId, onConversationChange,
     <header className="relative z-10 flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-white/[.045]">
       <div className="flex min-w-0 items-center gap-3">
         <NexoraAvatar />
-        <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1><p className="mt-0.5 text-xs conversation-muted">{isFa ? "پاسخ‌گویی مبتنی بر منابع" : "Source-grounded conversation"}</p></div>
+        <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1><p className="mt-0.5 flex items-center gap-1.5 text-xs conversation-muted">{assistantName ? <><Bot size={12} className="conversation-accent" />{isFa ? `دستیار: ${assistantName}` : `Assistant: ${assistantName}`}</> : (isFa ? "پاسخ‌گویی مبتنی بر منابع" : "Source-grounded conversation")}</p></div>
       </div>
-      <span className="conversation-save-status hidden items-center gap-2 text-xs sm:flex"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span>
+      <div className="hidden items-center gap-3 sm:flex">{assistantName && <span className="conversation-assistant-context" title={assistantSources.length ? assistantSources.join(" · ") : undefined}><BookOpen size={12} />{assistantSources.length ? (isFa ? `${assistantSources.length} پایگاه دانش متصل` : `${assistantSources.length} connected knowledge ${assistantSources.length === 1 ? "base" : "bases"}`) : (isFa ? "بدون منبع اختصاصی" : "No dedicated knowledge base")}</span>}<span className="conversation-save-status flex items-center gap-2 text-xs"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span></div>
     </header>
 
     <section className="relative z-10 min-h-0 flex-1 overflow-hidden px-0 sm:px-3">
       {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} assistantName={assistantName} /> : <div className="flex h-full flex-col items-center justify-center text-center">
         <span className="grid size-14 place-items-center rounded-2xl border border-[#18c7f4]/25 bg-[#7c27ff]/25 text-[#d9a6ff]"><MessageSquareText size={23} /></span>
-        <h2 className="mt-5 text-xl font-semibold">Start a source-grounded conversation</h2>
-        <p className="mt-2 max-w-md text-sm leading-6 conversation-muted">Choose the knowledge base this conversation should use. Your messages and answers will remain available in Recent chats.</p>
+        <h2 className="mt-5 text-xl font-semibold">{assistantName ? (isFa ? `گفتگو با ${assistantName} را آغاز کنید` : `Start a conversation with ${assistantName}`) : (isFa ? "گفتگوی مستند را آغاز کنید" : "Start a source-grounded conversation")}</h2>
+        <p className="mt-2 max-w-md text-sm leading-6 conversation-muted">{assistantName ? (assistantSources.length ? (isFa ? `این دستیار از ${assistantSources.join("، ")} استفاده می‌کند. پاسخ‌ها و منابع در گفت‌وگوهای اخیر ذخیره می‌شوند.` : `This assistant uses ${assistantSources.join(", ")}. Answers and sources are saved in Recent chats.`) : (isFa ? "این دستیار منبع اختصاصی ندارد. پاسخ‌ها و منابع در گفت‌وگوهای اخیر ذخیره می‌شوند." : "This assistant has no dedicated knowledge base. Answers and sources are saved in Recent chats.")) : (isFa ? "پایگاه دانشی را انتخاب کنید. پیام‌ها، پاسخ‌ها و منابع شما در گفت‌وگوهای اخیر باقی می‌مانند." : "Choose the knowledge base this conversation should use. Your messages, answers, and sources remain available in Recent chats.")}</p>
         {!conversationId && <label className="mt-6 w-full max-w-sm text-left text-xs conversation-muted">
           <span className="mb-2 flex items-center gap-2"><BookOpen size={13} />Knowledge base</span>
           <select value={selectedSetId} onChange={(event) => setSelectedSetId(event.target.value)} className="h-12 w-full rounded-xl border border-white/10 bg-[#12101a] px-3 text-sm text-white outline-none focus:border-[#18c7f4]/45">

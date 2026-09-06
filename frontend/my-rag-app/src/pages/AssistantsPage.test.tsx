@@ -33,5 +33,6 @@ describe("AssistantsPage", () => {
 
     await waitFor(() => expect(onStartConversation).toHaveBeenCalledWith("assistant-1"));
     expect(screen.queryByRole("textbox", { name: /message/i })).not.toBeInTheDocument();
+    expect(screen.getByText("New chats are saved in Recent chats")).toBeInTheDocument();
   });
 });
