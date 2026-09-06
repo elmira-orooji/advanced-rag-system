@@ -22,7 +22,7 @@ const WorkspacePage = lazy(() => import("../pages/WorkspacePage"));
 
 function PageFallback() {
   return <div className="grid h-full place-items-center" role="status" aria-label="Loading dashboard page">
-    <span className="size-6 animate-spin rounded-full border-2 border-white/10 border-t-[#c43cff]" />
+    <span className="nexora-loader" />
   </div>;
 }
 

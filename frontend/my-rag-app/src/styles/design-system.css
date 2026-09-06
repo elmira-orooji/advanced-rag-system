@@ -1,0 +1,93 @@
+/* Shared product primitives. Use these before introducing page-specific styling. */
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --control-height: 40px;
+  --transition-fast: 160ms ease;
+  --state-info: var(--accent-blue);
+  --state-info-soft: color-mix(in srgb, var(--accent-blue) 12%, transparent);
+  --state-success-soft: color-mix(in srgb, var(--status-success) 13%, transparent);
+  --state-warning-soft: color-mix(in srgb, var(--status-warning) 14%, transparent);
+  --state-danger-soft: color-mix(in srgb, var(--status-danger) 13%, transparent);
+}
+
+.nexora-page {
+  min-height: 100%;
+  color: var(--text-primary);
+  background: var(--app-background, var(--surface-canvas));
+}
+
+.nexora-surface {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-panel);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-panel);
+}
+
+.nexora-action {
+  display: inline-flex;
+  min-height: var(--control-height);
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 8px var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+  font: inherit;
+  font-size: var(--font-size-control);
+  font-weight: 600;
+  line-height: 1.3;
+  text-decoration: none;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.nexora-action:hover:not(:disabled) { transform: translateY(-1px); }
+.nexora-action:disabled { cursor: not-allowed; opacity: .56; }
+.nexora-action--primary { color: var(--text-inverse); background: var(--brand); box-shadow: 0 8px 20px color-mix(in srgb, var(--brand) 24%, transparent); }
+.nexora-action--primary:hover:not(:disabled) { background: var(--brand-hover); }
+.nexora-action--secondary { color: var(--text-primary); border-color: var(--border-subtle); background: var(--surface-raised); }
+.nexora-action--secondary:hover:not(:disabled) { border-color: var(--brand-line); background: var(--brand-soft); }
+.nexora-action--danger { color: var(--status-danger); border-color: color-mix(in srgb, var(--status-danger) 30%, var(--border-subtle)); background: var(--state-danger-soft); }
+
+.nexora-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: var(--font-size-helper);
+  font-weight: 600;
+  line-height: 1.4;
+}
+.nexora-status--info { color: var(--state-info); background: var(--state-info-soft); }
+.nexora-status--success { color: var(--status-success); background: var(--state-success-soft); }
+.nexora-status--warning { color: var(--status-warning); background: var(--state-warning-soft); }
+.nexora-status--danger { color: var(--status-danger); background: var(--state-danger-soft); }
+
+.nexora-empty-state {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  max-width: 32rem;
+  margin: auto;
+  padding: var(--space-6);
+  text-align: center;
+}
+.nexora-empty-state__title { margin: 0; color: var(--text-primary); font-size: 20px; font-weight: 650; line-height: 1.35; }
+.nexora-empty-state__description { margin: 0; color: var(--text-muted); font-size: var(--font-size-body-sm); line-height: 1.75; }
+
+.nexora-loader {
+  width: 24px;
+  height: 24px;
+  border: 2px solid color-mix(in srgb, var(--text-muted) 20%, transparent);
+  border-top-color: var(--brand);
+  border-radius: 999px;
+  animation: nexora-spin .72s linear infinite;
+}
+@keyframes nexora-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .nexora-action { transition: none; } .nexora-action:hover:not(:disabled) { transform: none; } .nexora-loader { animation-duration: 1.4s; } }

@@ -2,6 +2,7 @@
 @plugin "tailwind-scrollbar";
 @custom-variant dark (&:where(.dark, .dark *));
 @import "./styles/theme.css";
+@import "./styles/design-system.css";
 
 @font-face {
   font-family: "Inter";

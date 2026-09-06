@@ -19,8 +19,8 @@ const SharedChatPage = lazy(() => import("./pages/SharedChatPage"));
 const NotFoundPage = lazy(() => import("./pages/NotFoundPage"));
 
 function RouteFallback() {
-  return <div className="grid min-h-[100dvh] place-items-center bg-[#080d1c] text-white" role="status" aria-label="Loading page">
-    <span className="size-6 animate-spin rounded-full border-2 border-white/15 border-t-[#c43cff]" />
+  return <div className="nexora-page grid min-h-[100dvh] place-items-center" role="status" aria-label="Loading page">
+    <span className="nexora-loader" />
   </div>;
 }
 
