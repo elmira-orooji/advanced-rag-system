@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
@@ -9,7 +10,16 @@ from app.core.document_set_access import require_set_access
 from app.db.database import get_db
 from app.models.evaluation_case import EvaluationCase
 from app.models.user import User
-from app.schemas.evaluation import EvaluationCaseCreate, EvaluationCaseResponse, EvaluationCaseUpdate
+from app.schemas.evaluation import (
+    EvalCaseResultResponse,
+    EvalMetricResultResponse,
+    EvalRunRequest,
+    EvalRunResponse,
+    EvaluationCaseCreate,
+    EvaluationCaseResponse,
+    EvaluationCaseUpdate,
+)
+from app.services.eval_service import run_evaluation
 
 router = APIRouter(prefix="/document-sets/{set_id}/evaluation-cases", tags=["evaluation"])
 
@@ -44,3 +54,26 @@ def delete_case(set_id: uuid.UUID, case_id: uuid.UUID, db: Session = Depends(get
     item = db.scalar(select(EvaluationCase).where(EvaluationCase.id == case_id, EvaluationCase.document_set_id == set_id))
     if item is None: raise HTTPException(status_code=404, detail="Evaluation case not found")
     db.delete(item); db.commit()
+
+
+@router.post("/run", response_model=EvalRunResponse)
+def run_eval(set_id: uuid.UUID, payload: EvalRunRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    require_set_access(db, user, set_id, "manage")
+    results = run_evaluation(db, document_set_id=set_id, case_ids=payload.case_ids, model=payload.model)
+    # Build summary: average score per metric name
+    metric_sums: dict[str, list[float]] = defaultdict(list)
+    for r in results:
+        for m in r.metrics:
+            metric_sums[m.name].append(m.score)
+    summary = {name: round(sum(scores) / len(scores), 4) for name, scores in metric_sums.items()}
+    if results:
+        summary["overall"] = round(sum(r.overall_score for r in results) / len(results), 4)
+    response_results = [
+        EvalCaseResultResponse(
+            case_id=r.case_id, question=r.question, generated_answer=r.generated_answer,
+            metrics=[EvalMetricResultResponse(name=m.name, score=m.score, reason=m.reason) for m in r.metrics],
+            overall_score=r.overall_score, error=r.error, elapsed_ms=r.elapsed_ms,
+        )
+        for r in results
+    ]
+    return EvalRunResponse(results=response_results, summary=summary)

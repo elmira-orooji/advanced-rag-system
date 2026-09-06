@@ -33,3 +33,29 @@ class EvaluationCaseResponse(EvaluationCaseCreate):
     created_by_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+
+
+class EvalMetricResultResponse(BaseModel):
+    name: str
+    score: float
+    reason: str = ""
+
+
+class EvalCaseResultResponse(BaseModel):
+    case_id: uuid.UUID
+    question: str
+    generated_answer: str
+    metrics: list[EvalMetricResultResponse]
+    overall_score: float
+    error: str | None = None
+    elapsed_ms: float = 0.0
+
+
+class EvalRunRequest(BaseModel):
+    case_ids: list[uuid.UUID] | None = Field(default=None, max_length=50)
+    model: str | None = Field(default=None, max_length=200)
+
+
+class EvalRunResponse(BaseModel):
+    results: list[EvalCaseResultResponse]
+    summary: dict[str, float]
