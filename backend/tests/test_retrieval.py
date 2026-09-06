@@ -5,13 +5,15 @@ from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 from app.services import retrieval
-from app.services.retrieval import _expand_parents, hybrid_search
+from app.services.retrieval import _expand_parents, _ChunkSnapshot, hybrid_search
 
 
 class RetrievalContextTests(unittest.TestCase):
     def setUp(self):
         self.document_id = uuid4()
         retrieval._lexical_cache.clear()
+        retrieval._version_cache.clear()
+        retrieval._lexical_cache_total_weight = 0
 
     @staticmethod
     def result(rows):
@@ -19,41 +21,59 @@ class RetrievalContextTests(unittest.TestCase):
         result.all.return_value = rows
         return result
 
-    def chunk(self, index, content, active=True, document_id=None):
+    def chunk(self, index, content, document_id=None):
         return SimpleNamespace(id=uuid4(), document_id=document_id or self.document_id,
                                chunk_index=index, parent_index=0, content=content,
-                               parent_content="old text and disabled secret", is_active=active)
+                               parent_content="old text", is_active=True)
 
-    def point(self, chunk):
-        return {"id": str(chunk.id), "score": 0.9, "payload": {
-            "chunk_id": str(chunk.id), "document_id": str(chunk.document_id),
-            "chunk_index": chunk.chunk_index, "filename": "test.txt", "content": "stale vector text"}}
+    def snapshot(self, index, content, document_id=None):
+        cid = uuid4()
+        did = document_id or self.document_id
+        return _ChunkSnapshot(
+            id=cid, document_id=did, chunk_index=index, parent_index=0,
+            content=content, tokens=retrieval._tokens(content), filename="test.txt",
+        )
+
+    def point(self, snap):
+        return {"id": str(snap.id), "score": 0.9, "payload": {
+            "chunk_id": str(snap.id), "document_id": str(snap.document_id),
+            "chunk_index": snap.chunk_index, "filename": "test.txt", "content": "stale vector text"}}
 
     def test_parent_context_uses_current_active_siblings_in_order(self):
-        edited = self.chunk(0, "edited text")
-        active = self.chunk(2, "current neighbor")
-        disabled = self.chunk(1, "disabled secret", active=False)
-        other_document = self.chunk(0, "other document", document_id=uuid4())
-        rows = [(chunk, "test.txt") for chunk in (active, disabled, other_document, edited)]
-        results = _expand_parents(rows, [self.point(active), self.point(edited)], 5)
+        edited = self.snapshot(0, "edited text")
+        active = self.snapshot(2, "current neighbor")
+        other_document = self.snapshot(0, "other document", document_id=uuid4())
+        chunks = [active, other_document, edited]
+        results = _expand_parents(chunks, [self.point(active), self.point(edited)], 5)
         self.assertEqual(len(results), 1)
         self.assertEqual(results[0]["payload"]["content"], "edited text\n\ncurrent neighbor")
         self.assertEqual(results[0]["payload"]["matched_child_content"], "current neighbor")
 
-    def test_disabled_vector_hit_is_not_expanded(self):
-        disabled = self.chunk(0, "disabled secret", active=False)
-        self.assertEqual(_expand_parents([(disabled, "test.txt")], [self.point(disabled)], 5), [])
+    def test_missing_chunk_in_snapshot_is_skipped(self):
+        existing = self.snapshot(0, "existing text")
+        missing_point = {"id": str(uuid4()), "score": 0.9, "payload": {
+            "chunk_id": str(uuid4()), "document_id": str(self.document_id),
+            "chunk_index": 0, "filename": "test.txt", "content": "ghost"}}
+        results = _expand_parents([existing], [missing_point], 5)
+        self.assertEqual(results, [])
 
     def test_hybrid_search_reranks_current_database_text_only(self):
         edited = self.chunk(0, "edited text")
-        disabled = self.chunk(1, "disabled secret", active=False)
+        edited_snap = _ChunkSnapshot(
+            id=edited.id, document_id=edited.document_id, chunk_index=0, parent_index=0,
+            content="edited text", tokens=retrieval._tokens("edited text"), filename="test.txt",
+        )
         db = MagicMock()
         db.execute.side_effect = [
             self.result([(self.document_id, datetime.now(timezone.utc))]),
             self.result([(edited, "test.txt")]),
         ]
-        with patch("app.services.retrieval.QdrantClient") as client, patch("app.services.retrieval._rerank", side_effect=lambda query, candidates, limit: candidates) as rerank:
-            client.return_value.search.return_value = [self.point(disabled), self.point(edited)]
+        stale_point = {"id": str(uuid4()), "score": 0.9, "payload": {
+            "chunk_id": str(uuid4()), "document_id": str(self.document_id),
+            "chunk_index": 1, "filename": "test.txt", "content": "stale disabled"}}
+        with patch("app.services.retrieval.QdrantClient") as client, \
+             patch("app.services.retrieval._rerank", side_effect=lambda q, c, l: c) as rerank:
+            client.return_value.search.return_value = [stale_point, self.point(edited_snap)]
             results = hybrid_search(db, "edited", 5, document_id=str(self.document_id))
         candidates = rerank.call_args.args[1]
         self.assertEqual(len(candidates), 1)
@@ -75,14 +95,14 @@ class RetrievalContextTests(unittest.TestCase):
         client.assert_not_called()
         self.assertEqual(results[0]["payload"]["content"], "lexical match")
 
-    def test_unchanged_scope_reuses_tokenized_bm25_corpus(self):
+    def test_unchanged_scope_reuses_cached_corpus_without_extra_db_queries(self):
         chunk = self.chunk(0, "cached lexical text")
         version = datetime.now(timezone.utc)
         db = MagicMock()
+        # First call: version check + chunk fetch. Second call: version cache hit (no DB).
         db.execute.side_effect = [
             self.result([(self.document_id, version)]),
             self.result([(chunk, "test.txt")]),
-            self.result([(self.document_id, version)]),
         ]
         with patch("app.services.retrieval.QdrantClient") as client, patch(
             "app.services.retrieval._tokens", wraps=retrieval._tokens
@@ -95,4 +115,5 @@ class RetrievalContextTests(unittest.TestCase):
             call for call in tokens.call_args_list if call.args[0] == "cached lexical text"
         ]
         self.assertEqual(len(corpus_tokenizations), 1)
-        self.assertEqual(db.execute.call_count, 3)
+        # Only 2 DB calls now (version + chunks) instead of 3, thanks to version cache
+        self.assertEqual(db.execute.call_count, 2)

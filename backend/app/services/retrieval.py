@@ -4,7 +4,7 @@ import re
 import uuid
 from time import perf_counter
 from collections import Counter, OrderedDict
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -18,18 +18,32 @@ RRF_K = 60
 BM25_CACHE_SCOPES = 16
 
 
+@dataclass(slots=True)
+class _ChunkSnapshot:
+    """Lightweight, session-independent chunk data for safe caching."""
+    id: uuid.UUID
+    document_id: uuid.UUID
+    chunk_index: int
+    parent_index: int | None
+    content: str
+    tokens: list[str]
+    filename: str
+
+
 @dataclass
 class _LexicalCorpus:
     signature: tuple[tuple[str, str], ...]
-    rows: list[tuple[Chunk, str]]
+    chunks: list[_ChunkSnapshot]
     document_lengths: list[int]
     average_length: float
     postings: dict[str, list[tuple[int, int]]]
+    total_weight: int = 0  # For weighted LRU eviction
 
 
-_LEXICAL_CACHE_MAX_SIZE = 64
+_LEXICAL_CACHE_MAX_WEIGHT = 256  # Weight-based limit instead of count-based
 _lexical_cache: OrderedDict[tuple[str, ...], _LexicalCorpus] = OrderedDict()
-_lexical_cache_lock = threading.Lock()
+_lexical_cache_lock = threading.RLock()  # RLock allows reentrant access
+_lexical_cache_total_weight: int = 0
 
 
 def _normalize(text: str) -> str:
@@ -41,24 +55,31 @@ def _tokens(text: str) -> list[str]:
     return [token for token in TOKEN_PATTERN.findall(_normalize(text)) if len(token) > 1]
 
 
-def _build_lexical_corpus(signature: tuple[tuple[str, str], ...], rows: list[tuple[Chunk, str]]) -> _LexicalCorpus:
+def _build_lexical_corpus(
+    signature: tuple[tuple[str, str], ...],
+    chunks: list[_ChunkSnapshot],
+) -> _LexicalCorpus:
+    """Build BM25 index from pre-tokenized chunk snapshots."""
     document_lengths: list[int] = []
     postings: dict[str, list[tuple[int, int]]] = {}
-    for index, (chunk, _) in enumerate(rows):
-        frequencies = Counter(_tokens(chunk.content))
-        document_lengths.append(sum(frequencies.values()))
+    for index, chunk in enumerate(chunks):
+        frequencies = Counter(chunk.tokens)
+        doc_len = sum(frequencies.values())
+        document_lengths.append(doc_len)
         for token, frequency in frequencies.items():
             postings.setdefault(token, []).append((index, frequency))
     average_length = sum(document_lengths) / len(document_lengths) if document_lengths else 1.0
-    return _LexicalCorpus(signature, rows, document_lengths, average_length or 1.0, postings)
+    # Weight = number of chunks (proxy for memory footprint)
+    weight = max(1, len(chunks) // 10)
+    return _LexicalCorpus(signature, chunks, document_lengths, average_length or 1.0, postings, total_weight=weight)
 
 
-def _bm25(query: str, rows: list[tuple[Chunk, str]], limit: int, corpus: _LexicalCorpus | None = None) -> list[dict]:
+def _bm25(query: str, chunks: list[_ChunkSnapshot], limit: int, corpus: _LexicalCorpus | None = None) -> list[dict]:
     query_tokens = _tokens(query)
-    if not query_tokens or not rows:
+    if not query_tokens or not chunks:
         return []
-    corpus = corpus or _build_lexical_corpus((), rows)
-    total = len(rows)
+    corpus = corpus or _build_lexical_corpus((), chunks)
+    total = len(chunks)
     scores: dict[int, float] = {}
     for token in set(query_tokens):
         posting = corpus.postings.get(token, [])
@@ -71,13 +92,44 @@ def _bm25(query: str, rows: list[tuple[Chunk, str]], limit: int, corpus: _Lexica
                 0.25 + 0.75 * corpus.document_lengths[index] / corpus.average_length
             )
             scores[index] = scores.get(index, 0.0) + inverse_frequency * frequency * 2.5 / denominator
-    scored = [(score, *rows[index]) for index, score in scores.items() if score > 0]
+    scored = [(score, chunks[index]) for index, score in scores.items() if score > 0]
     scored.sort(key=lambda item: item[0], reverse=True)
-    return [{"id": str(chunk.id), "score": score, "payload": {"chunk_id": str(chunk.id), "document_id": str(chunk.document_id), "filename": filename, "chunk_index": chunk.chunk_index, "content": chunk.content}} for score, chunk, filename in scored[:limit]]
+    return [
+        {
+            "id": str(chunk.id),
+            "score": score,
+            "payload": {
+                "chunk_id": str(chunk.id),
+                "document_id": str(chunk.document_id),
+                "filename": chunk.filename,
+                "chunk_index": chunk.chunk_index,
+                "content": chunk.content,
+            },
+        }
+        for score, chunk in scored[:limit]
+    ]
+
+
+_version_cache: OrderedDict[tuple[str, ...], tuple[tuple[tuple[str, str], ...], float]] = OrderedDict()
+_VERSION_CACHE_MAX = 128
 
 
 def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
+    global _lexical_cache_total_weight
     scope_key = tuple(sorted(str(value) for value in scoped_ids))
+
+    # Fast path: check version cache first to avoid DB query on repeated scopes
+    with _lexical_cache_lock:
+        cached_version = _version_cache.get(scope_key)
+        if cached_version is not None:
+            cached_signature, _ = cached_version
+            cached_corpus = _lexical_cache.get(scope_key)
+            if cached_corpus is not None and cached_corpus.signature == cached_signature:
+                _lexical_cache.move_to_end(scope_key)
+                _version_cache.move_to_end(scope_key)
+                return cached_corpus
+
+    # Slow path: fetch current versions from DB
     versions = db.execute(
         select(Document.id, Document.updated_at).where(Document.id.in_(scoped_ids))
     ).all()
@@ -85,23 +137,60 @@ def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
         (str(document_id), updated_at.isoformat() if updated_at is not None else "")
         for document_id, updated_at in versions
     ))
-    with _lexical_cache_lock:
-        cached = _lexical_cache.get(scope_key)
-        if cached is not None and cached.signature == signature:
-            _lexical_cache.move_to_end(scope_key)
-            return cached
 
+    # Double-check after DB read (another thread may have populated cache)
+    with _lexical_cache_lock:
+        cached_corpus = _lexical_cache.get(scope_key)
+        if cached_corpus is not None and cached_corpus.signature == signature:
+            _lexical_cache.move_to_end(scope_key)
+            _version_cache[scope_key] = (signature, perf_counter())
+            _version_cache.move_to_end(scope_key)
+            return cached_corpus
+
+    # Cache miss: build corpus from scratch with session-independent snapshots
     rows = list(db.execute(
         select(Chunk, Document.filename)
         .join(Document, Document.id == Chunk.document_id)
         .where(Chunk.document_id.in_(scoped_ids), Chunk.is_active.is_(True))
     ).all())
-    corpus = _build_lexical_corpus(signature, rows)
+
+    # Create detached snapshots with pre-computed tokens
+    snapshots = [
+        _ChunkSnapshot(
+            id=chunk.id,
+            document_id=chunk.document_id,
+            chunk_index=chunk.chunk_index,
+            parent_index=getattr(chunk, "parent_index", None),
+            content=chunk.content,
+            tokens=_tokens(chunk.content),
+            filename=filename,
+        )
+        for chunk, filename in rows
+    ]
+
+    corpus = _build_lexical_corpus(signature, snapshots)
+
     with _lexical_cache_lock:
+        # Evict old entry if exists
+        old = _lexical_cache.pop(scope_key, None)
+        if old is not None:
+            _lexical_cache_total_weight -= old.total_weight
+
         _lexical_cache[scope_key] = corpus
         _lexical_cache.move_to_end(scope_key)
-        while len(_lexical_cache) > _LEXICAL_CACHE_MAX_SIZE:
-            _lexical_cache.popitem(last=False)
+        _lexical_cache_total_weight += corpus.total_weight
+
+        # Weighted LRU eviction
+        while _lexical_cache_total_weight > _LEXICAL_CACHE_MAX_WEIGHT and len(_lexical_cache) > 1:
+            _, evicted = _lexical_cache.popitem(last=False)
+            _lexical_cache_total_weight -= evicted.total_weight
+
+        # Update version cache
+        _version_cache[scope_key] = (signature, perf_counter())
+        _version_cache.move_to_end(scope_key)
+        while len(_version_cache) > _VERSION_CACHE_MAX:
+            _version_cache.popitem(last=False)
+
     return corpus
 
 
@@ -134,21 +223,21 @@ def _rerank(query: str, candidates: list[dict], limit: int) -> list[dict]:
     return reranked[:limit]
 
 
-def _expand_parents(rows: list[tuple[Chunk, str]], ranked_children: list[dict], limit: int) -> list[dict]:
-    chunks = {str(chunk.id): chunk for chunk, _ in rows if chunk.is_active}
-    parents: dict[tuple[str, int], list[Chunk]] = {}
-    for chunk in chunks.values():
+def _expand_parents(chunks: list[_ChunkSnapshot], ranked_children: list[dict], limit: int) -> list[dict]:
+    chunk_map = {str(c.id): c for c in chunks}
+    parents: dict[tuple[str, int | None], list[_ChunkSnapshot]] = {}
+    for chunk in chunk_map.values():
         parents.setdefault((str(chunk.document_id), chunk.parent_index), []).append(chunk)
-    # Cached parent_content predates edits and can include disabled siblings.
+    # Build parent texts from active snapshots only
     parent_texts = {
-        key: "\n\n".join(chunk.content for chunk in sorted(children, key=lambda item: item.chunk_index))
+        key: "\n\n".join(c.content for c in sorted(children, key=lambda item: item.chunk_index))
         for key, children in parents.items()
     }
-    seen_parents: set[tuple[str, int]] = set()
+    seen_parents: set[tuple[str, int | None]] = set()
     expanded = []
     for child in ranked_children:
         payload = child["payload"]
-        chunk = chunks.get(str(payload.get("chunk_id")))
+        chunk = chunk_map.get(str(payload.get("chunk_id")))
         if chunk is None:
             continue
         parent_key = (str(chunk.document_id), chunk.parent_index)
@@ -187,9 +276,9 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
     vector_ms = round((perf_counter() - started) * 1000, 2) if vector_weight > 0 else 0.0
     started = perf_counter()
     corpus = _lexical_corpus(db, scoped_ids)
-    rows = corpus.rows
-    lexical_results = _bm25(query, rows, candidate_limit, corpus) if bm25_weight > 0 else []
-    active_chunks = {str(chunk.id): (chunk, filename) for chunk, filename in rows}
+    chunks = corpus.chunks
+    lexical_results = _bm25(query, chunks, candidate_limit, corpus) if bm25_weight > 0 else []
+    active_chunks = {str(c.id): c for c in chunks}
     lexical_ms = round((perf_counter() - started) * 1000, 2)
     fused: dict[str, dict] = {}
     for source, source_name in ((vector_results, "vector"), (lexical_results, "bm25")):
@@ -197,11 +286,11 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
             chunk_id = str(result.get("payload", {}).get("chunk_id") or result.get("id"))
             if chunk_id not in active_chunks:
                 continue
-            chunk, filename = active_chunks[chunk_id]
+            chunk = active_chunks[chunk_id]
             # Vector payloads may be stale after an edit or a failed reindex.
             result = {**result, "payload": {
                 "chunk_id": chunk_id, "document_id": str(chunk.document_id),
-                "filename": filename, "chunk_index": chunk.chunk_index, "content": chunk.content,
+                "filename": chunk.filename, "chunk_index": chunk.chunk_index, "content": chunk.content,
             }}
             item = fused.setdefault(chunk_id, {"point": result, "score": 0.0, "vector_rank": None, "lexical_rank": None})
             item["score"] += (vector_weight if source_name == "vector" else bm25_weight) / (RRF_K + rank)
@@ -218,7 +307,7 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
     started = perf_counter()
     reranked_children = _rerank(query, candidates, candidate_limit) if use_reranker else candidates[:candidate_limit]
     rerank_ms = round((perf_counter() - started) * 1000, 2)
-    expanded = _expand_parents(rows, reranked_children, limit)
+    expanded = _expand_parents(chunks, reranked_children, limit)
     if trace is not None:
         trace.update({"vector_ms": vector_ms, "bm25_ms": lexical_ms, "rerank_ms": rerank_ms, "vector_count": len(vector_results), "bm25_count": len(lexical_results), "fused_count": len(candidates), "reranked_count": len(reranked_children), "answer_context_count": len(expanded)})
     return expanded
