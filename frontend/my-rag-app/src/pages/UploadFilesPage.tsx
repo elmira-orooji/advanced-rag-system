@@ -32,7 +32,11 @@ type UploadTask = {
   error?: string;
 };
 
-export default function UploadFilesPage() {
+interface UploadFilesPageProps {
+  initialAction?: "create" | "upload";
+}
+
+export default function UploadFilesPage({ initialAction }: UploadFilesPageProps) {
   const { i18n, t } = useTranslation();
   const reducedMotion = useReducedMotion();
   const isFa = i18n.language.startsWith("fa");
@@ -96,6 +100,10 @@ export default function UploadFilesPage() {
   }, [applyDocuments]);
 
   useEffect(() => { selectedSetIdRef.current = selectedSetId; }, [selectedSetId]);
+  useEffect(() => {
+    if (initialAction === "create" && isAdmin) setDialog("create");
+    if (initialAction === "upload" && selectedSetId) window.setTimeout(() => document.getElementById("knowledge-upload-dropzone")?.focus(), 0);
+  }, [initialAction, isAdmin, selectedSetId]);
   useEffect(() => {
     let active = true;
     knowledgeService.listSets()
@@ -245,7 +253,7 @@ export default function UploadFilesPage() {
         <div className="kb-set-content flex min-h-0 flex-1 flex-col gap-4">
           {selectedSet && <div className="flex shrink-0 items-center justify-between gap-3"><div className="min-w-0"><h2 className="truncate text-lg font-semibold">{selectedSet.name}</h2><p className="mt-1 truncate text-xs kb-muted">{selectedSet.description}</p></div><div className="flex items-center gap-2">{(isAdmin || selectedSet.access_level === "edit" || selectedSet.access_level === "manage") && <button onClick={() => setConnectorDialog(true)} className="kb-connect flex h-9 items-center gap-1.5 px-3 text-xs font-medium"><Link2 size={13} />{copy.connect}</button>}{(isAdmin || selectedSet.access_level === "manage") && <div className="relative"><button aria-label={isFa ? "گزینه‌های مجموعه" : "Set options"} aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)} className="app-icon-button grid size-9 place-items-center rounded-xl kb-muted"><MoreHorizontal size={17} /></button>{menuOpen && <div className="nexora-dropdown absolute end-0 top-11 z-30 w-40 rounded-xl border border-white/10 bg-[#15121c] p-1.5 shadow-2xl"><button onClick={() => { setDialog("edit"); setMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs kb-text hover:bg-white/5"><Pencil size={13} />{copy.edit}</button><button onClick={deleteSet} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-rose-300/75 hover:bg-rose-400/5"><Trash2 size={13} />{copy.delete}</button></div>}</div>}</div></div>}
           {connectors.length > 0 && <div className="flex shrink-0 gap-2 overflow-x-auto pb-1">{connectors.map((connector) => <div key={connector.id} className="flex h-10 min-w-0 shrink-0 items-center gap-2 rounded-xl border border-white/[.07] bg-white/[.025] ps-3 pe-1.5"><span className="kb-accent">{connector.connector_type === "github" ? <Github size={13} /> : <Globe2 size={13} />}</span><span className="max-w-36 truncate text-xs kb-muted">{connector.name}</span><span className={`size-1.5 rounded-full ${connector.status === "ready" ? "bg-emerald-300" : connector.status === "failed" ? "bg-rose-300" : "bg-amber-300"}`} /><button title="Sync" disabled={syncingId === connector.id} onClick={async () => { const setId = selectedSetId; setSyncingId(connector.id); try { const result = await connectorService.sync(setId, connector.id); toast.success(`${result.created} created · ${result.updated} updated`); await refreshSetData(setId); await loadSets(); } catch (e) { toast.error((e as Error).message); } finally { setSyncingId(null); } }} className="grid size-7 place-items-center rounded-lg kb-muted hover:bg-white/5 hover:text-white"><RefreshCw size={12} className={syncingId === connector.id ? "animate-spin" : ""} /></button></div>)}</div>}
-          {(isAdmin || selectedSet?.access_level === "edit" || selectedSet?.access_level === "manage") && selectedSet && <div {...getRootProps()} onClick={open} className={`knowledge-dropzone flex min-h-28 shrink-0 cursor-pointer items-center justify-center gap-4 rounded-[22px] p-4 transition ${isDragActive ? "is-active" : ""}`}><input {...getInputProps()} /><span className="kb-upload-icon">{uploading ? <span className="size-4 animate-spin rounded-full border-2 border-white/20 border-t-[#d9a6ff]" /> : <UploadCloud size={20} />}</span><div className="text-start"><p className="text-sm font-semibold kb-text">{copy.drop}</p><p className="mt-1 text-xs kb-muted">{copy.browse} · {copy.formats}</p></div></div>}
+          {(isAdmin || selectedSet?.access_level === "edit" || selectedSet?.access_level === "manage") && selectedSet && <div id="knowledge-upload-dropzone" tabIndex={-1} {...getRootProps()} onClick={open} className={`knowledge-dropzone flex min-h-28 shrink-0 cursor-pointer items-center justify-center gap-4 rounded-[22px] p-4 transition ${isDragActive ? "is-active" : ""}`}><input {...getInputProps()} /><span className="kb-upload-icon">{uploading ? <span className="size-4 animate-spin rounded-full border-2 border-white/20 border-t-[#d9a6ff]" /> : <UploadCloud size={20} />}</span><div className="text-start"><p className="text-sm font-semibold kb-text">{copy.drop}</p><p className="mt-1 text-xs kb-muted">{copy.browse} · {copy.formats}</p></div></div>}
           {uploadTasks.length > 0 && <section className="app-glass-panel shrink-0 rounded-2xl border border-white/[.07] p-3" aria-label={isFa ? "وضعیت بارگذاری فایل‌ها" : "File upload status"}>
             <div className="mb-2 flex items-center justify-between"><p className="text-xs font-semibold kb-muted">{isFa ? "صف بارگذاری" : "Upload queue"}</p>{!uploading && <button type="button" onClick={() => setUploadTasks([])} className="text-xs kb-muted hover:text-white">{isFa ? "پاک‌کردن" : "Clear"}</button>}</div>
             <div className="grid gap-2 sm:grid-cols-2">{uploadTasks.map((task) => <article key={task.id} className="rounded-xl border border-white/[.06] bg-white/[.025] p-2.5" title={task.error}>

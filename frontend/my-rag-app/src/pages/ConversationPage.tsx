@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronDown, FileSearch, FileText, FileUp, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { BookOpen, Check, ChevronDown, FileSearch, FileText, FileUp, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -10,13 +10,14 @@ import ChatInput from "../components/ChatInput";
 import OnyxChatWindow from "../components/OnyxChatWindow";
 import { conversationService, type ConversationDetail, type PersistedMessage } from "../services/conversationService";
 import { knowledgeService, type DocumentSet } from "../services/knowledgeService";
+import { authService } from "../services/authService";
 import type { ChatMessage } from "../types/chat";
 
 interface ConversationPageProps {
   conversationId: string | null;
   onConversationChange: (id: string) => void;
   onConversationsUpdated: () => void;
-  onOpenKnowledge: () => void;
+  onOpenKnowledge: (intent?: "create" | "upload") => void;
 }
 
 function toChatMessage(message: PersistedMessage): ChatMessage {
@@ -98,6 +99,8 @@ export default function ConversationPage({ conversationId, onConversationChange,
     return [...persisted, { id: "pending-user-message", role: "user" as const, content: pendingPrompt, createdAt: new Date().toISOString() }];
   }, [detail, pendingPrompt]);
   const selectedSet = sets.find((item) => item.id === selectedSetId);
+  const knowledgeReady = Boolean(selectedSet && selectedSet.indexed_document_count > 0);
+  const canCreateKnowledge = authService.getUser()?.role === "admin";
   const detailMatchesConversation = conversationId
     ? detail?.id === conversationId
     : detail === null;
@@ -108,7 +111,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
     try {
       let id = conversationId ?? createdConversationId.current;
       if (!id) {
-        if (!selectedSetId) throw new Error("Create or select a knowledge base first.");
+        if (!selectedSetId || !knowledgeReady) throw new Error(isFa ? "ابتدا یک سند را بارگذاری و آماده‌سازی کنید." : "Upload and finish indexing a document before starting a conversation.");
         const created = await conversationService.createForSet(selectedSetId);
         id = created.id;
         createdConversationId.current = id;
@@ -193,14 +196,14 @@ export default function ConversationPage({ conversationId, onConversationChange,
             {selectedSet && <span className="shrink-0 text-xs conversation-muted">{selectedSet.indexed_document_count} {isFa ? "سند آماده" : "indexed documents"}</span>}
           </div>
 
-          {sets.length ? <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={sending || !selectedSetId} onSend={send} /> : <div className="mx-auto w-full max-w-2xl rounded-2xl border border-[#18c7f4]/15 bg-[#18c7f4]/[.045] p-5 text-center"><BookOpen className="mx-auto text-[#8de8ff]" size={24} /><h2 className="mt-3 text-sm font-semibold">{isFa ? "برای شروع، یک پایگاه دانش بسازید" : "Create a knowledge base to get started"}</h2><p className="mx-auto mt-2 max-w-md text-xs leading-5 conversation-muted">{isFa ? "اسناد سازمانی خود را اضافه کنید تا پاسخ‌های مستند دریافت کنید." : "Add your organization’s documents to receive source-grounded answers."}</p><div className="mt-4 flex flex-wrap items-center justify-center gap-2"><button type="button" onClick={onOpenKnowledge} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#7c27ff] px-4 text-xs font-semibold text-white transition hover:bg-[#9238ff]"><PlusIcon />{isFa ? "ساخت پایگاه دانش" : "Create knowledge base"}</button><button type="button" onClick={onOpenKnowledge} className="inline-flex h-10 items-center gap-2 rounded-xl border border-white/10 px-4 text-xs font-semibold text-white/75 transition hover:border-[#18c7f4]/35 hover:text-white"><FileUp size={14} />{isFa ? "بارگذاری اولین سند" : "Upload first document"}</button></div></div>}
+          {knowledgeReady ? <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={sending} onSend={send} /> : <KnowledgeStartPanel isFa={isFa} hasSet={Boolean(selectedSet)} canCreate={canCreateKnowledge} onOpenKnowledge={onOpenKnowledge} />}
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          {knowledgeReady && <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {suggestions.map(([label, prompt], index) => <button key={label} type="button" onClick={() => setSuggestedPrompt((current) => ({ value: prompt, revision: current.revision + 1 }))} className="conversation-suggestion">
               <span className="conversation-suggestion-icon">{index === 0 ? <FileText size={13} /> : index === 1 ? <FileSearch size={13} /> : <ShieldCheck size={13} />}</span>
               <span className="conversation-suggestion-label">{label}</span>
             </button>)}
-          </div>
+          </div>}
 
           <div className="mt-4 flex items-center justify-center gap-1.5 text-xs conversation-muted"><ShieldCheck size={10} />{isFa ? "پاسخ‌ها همراه با ارجاع به منابع ذخیره می‌شوند" : "Answers are saved with traceable source citations"}</div>
         </div>
@@ -232,6 +235,33 @@ export default function ConversationPage({ conversationId, onConversationChange,
     </section>
     <div className="conversation-dock relative z-20 shrink-0 px-0 pb-4 pt-3 sm:px-3 sm:pb-5"><ChatInput prominent disabled={sending || (!conversationId && !selectedSetId)} onSend={send} /><div className="mt-2 flex items-center justify-center gap-1.5 text-xs conversation-muted"><FileText size={10} />{isFa ? "پاسخ‌ها ممکن است خطا داشته باشند؛ منابع را بررسی کنید." : "AI can make mistakes. Verify important details in the cited sources."}</div></div>
   </div>;
+}
+
+function KnowledgeStartPanel({ isFa, hasSet, canCreate, onOpenKnowledge }: { isFa: boolean; hasSet: boolean; canCreate: boolean; onOpenKnowledge: (intent?: "create" | "upload") => void }) {
+  const steps = isFa
+    ? ["ساخت پایگاه دانش", "بارگذاری و پردازش سند", "شروع گفتگوی مستند"]
+    : ["Create a knowledge base", "Upload and index a document", "Start a grounded conversation"];
+  const title = hasSet
+    ? (isFa ? "این پایگاه دانش هنوز برای پاسخ‌گویی آماده نیست" : "This knowledge base is not ready for answers yet")
+    : (isFa ? "برای شروع، دانش سازمانی را اضافه کنید" : "Add organizational knowledge to get started");
+  const description = hasSet
+    ? (isFa ? "حداقل یک سند را بارگذاری کنید و پس از پایان پردازش، گفتگو را آغاز کنید." : "Upload at least one document, then start the conversation after indexing finishes.")
+    : (isFa ? "یک پایگاه دانش بسازید، اولین سند را اضافه کنید و سپس پاسخ‌های دارای منبع دریافت کنید." : "Create a knowledge base, add a first document, then receive answers with sources.");
+
+  return <section className="conversation-knowledge-start mx-auto w-full max-w-2xl" aria-labelledby="knowledge-start-title">
+    <div className="conversation-knowledge-start__icon"><BookOpen size={22} /></div>
+    <span className="nexora-status nexora-status--info">{isFa ? "مسیر شروع" : "Getting started"}</span>
+    <h2 id="knowledge-start-title">{title}</h2>
+    <p>{description}</p>
+    <ol className="conversation-knowledge-start__steps">
+      {steps.map((step, index) => <li key={step} className={hasSet && index === 0 ? "is-complete" : ""}><span>{hasSet && index === 0 ? <Check size={12} /> : index + 1}</span>{step}</li>)}
+    </ol>
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      {!hasSet && canCreate && <button type="button" onClick={() => onOpenKnowledge("create")} className="nexora-action nexora-action--primary"><PlusIcon />{isFa ? "ساخت پایگاه دانش" : "Create knowledge base"}</button>}
+      <button type="button" onClick={() => onOpenKnowledge("upload")} className={hasSet ? "nexora-action nexora-action--primary" : "nexora-action nexora-action--secondary"}><FileUp size={14} />{isFa ? "بارگذاری اولین سند" : "Upload first document"}</button>
+    </div>
+    {!canCreate && !hasSet && <p className="conversation-knowledge-start__access">{isFa ? "برای ساخت پایگاه دانش، از مدیر فضای کاری دسترسی بگیرید." : "Ask a workspace administrator to create a knowledge base for you."}</p>}
+  </section>;
 }
 
 function PlusIcon() { return <span aria-hidden="true" className="text-sm leading-none">+</span>; }

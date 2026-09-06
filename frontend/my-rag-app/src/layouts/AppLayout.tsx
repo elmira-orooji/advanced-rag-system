@@ -186,8 +186,8 @@ export default function AppLayout() {
         <main className="relative z-10 min-h-0 flex-1 overflow-hidden"><Suspense fallback={<PageFallback />}>
           {!validRoute && <Navigate to="/home" replace />}
           {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <WorkspacePage currentUser={currentUser} conversations={conversations} onNewConversation={newConversation} onOpenConversation={selectConversation} onOpenKnowledge={() => selectPage("upload")} />)}
-          {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} onOpenKnowledge={() => selectPage("upload")} />}
-          {activePage === "upload" && <UploadFilesPage />}
+          {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} onOpenKnowledge={(intent) => navigate(PAGE_PATHS.upload, { state: { knowledgeIntent: intent } })} />}
+          {activePage === "upload" && <UploadFilesPage initialAction={location.state?.knowledgeIntent === "create" || location.state?.knowledgeIntent === "upload" ? location.state.knowledgeIntent : undefined} />}
           {activePage === "assistants" && <AssistantsPage onStartConversation={startAssistantConversation} />}
           {activePage === "users" && (canManageUsers(currentUser) ? <UsersPage /> : <Navigate to="/home" replace />)}
           {activePage === "settings" && <SettingsPage theme={theme} setTheme={setTheme} />}

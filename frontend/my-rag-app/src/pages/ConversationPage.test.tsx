@@ -15,6 +15,7 @@ vi.mock("react-i18next", () => ({
 }));
 vi.mock("react-hot-toast", () => ({ default: { error: vi.fn() } }));
 vi.mock("../services/assistantService", () => ({ assistantService: { list: vi.fn() } }));
+vi.mock("../services/authService", () => ({ authService: { getUser: () => ({ role: "admin" }) } }));
 vi.mock("../services/conversationService", () => ({
   conversationService: {
     createForSet: mocks.createForSet,
@@ -69,7 +70,18 @@ describe("ConversationPage", () => {
     render(<ConversationPage conversationId={null} onConversationChange={vi.fn()} onConversationsUpdated={vi.fn()} onOpenKnowledge={onOpenKnowledge} />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Create knowledge base" }));
-    expect(onOpenKnowledge).toHaveBeenCalledOnce();
+    expect(onOpenKnowledge).toHaveBeenCalledWith("create");
+    fireEvent.click(screen.getByRole("button", { name: "Upload first document" }));
+    expect(onOpenKnowledge).toHaveBeenLastCalledWith("upload");
+  });
+
+  it("holds the chat until a selected knowledge base has an indexed document", async () => {
+    mocks.listSets.mockResolvedValueOnce([{ id: "set-1", name: "Knowledge", indexed_document_count: 0 }]);
+
+    render(<ConversationPage conversationId={null} onConversationChange={vi.fn()} onConversationsUpdated={vi.fn()} onOpenKnowledge={vi.fn()} />);
+
+    expect(await screen.findByText("This knowledge base is not ready for answers yet")).toBeInTheDocument();
+    expect(screen.queryByRole("textbox", { name: "Message" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload first document" })).toBeInTheDocument();
   });
 });

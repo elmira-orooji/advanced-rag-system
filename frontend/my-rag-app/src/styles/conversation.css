@@ -33,6 +33,16 @@ html:not(.dark) .conversation-page {
 .conversation-page[dir="rtl"] .conversation-title { font-size: clamp(21px, 2vw, 27px); letter-spacing: 0; }
 .conversation-description { max-width: 500px; margin: 10px auto 0; font-size: 12px; line-height: 1.9; color: var(--cv-muted); text-wrap: pretty; }
 .conversation-compose-area { width: 100%; max-width: 800px; }
+.conversation-knowledge-start { padding: 28px; border: 1px solid var(--cv-line); border-radius: var(--radius-dialog); background: var(--cv-panel); box-shadow: var(--shadow-soft); text-align: center; }
+.conversation-knowledge-start__icon { display: grid; width: 44px; height: 44px; place-items: center; margin: 0 auto 12px; border-radius: 12px; color: var(--cv-accent); background: var(--cv-tint); }
+.conversation-knowledge-start h2 { margin: 10px 0 0; color: var(--cv-text); font-size: 17px; font-weight: 650; line-height: 1.5; }
+.conversation-knowledge-start > p { max-width: 480px; margin: 7px auto 0; color: var(--cv-muted); font-size: var(--font-size-body-sm); line-height: 1.75; }
+.conversation-knowledge-start__steps { display: grid; gap: 8px; max-width: 410px; margin: 20px auto; padding: 0; text-align: start; list-style: none; }
+.conversation-knowledge-start__steps li { display: flex; align-items: center; gap: 9px; color: var(--cv-muted); font-size: var(--font-size-helper); }
+.conversation-knowledge-start__steps span { display: grid; width: 22px; height: 22px; place-items: center; flex: 0 0 auto; border: 1px solid var(--cv-line); border-radius: 999px; color: var(--cv-accent); background: var(--cv-tint); font-size: 11px; font-weight: 700; }
+.conversation-knowledge-start__steps .is-complete { color: var(--cv-text); }
+.conversation-knowledge-start__steps .is-complete span { color: var(--text-inverse); border-color: var(--cv-success); background: var(--cv-success); }
+.conversation-knowledge-start__access { font-size: var(--font-size-helper) !important; }
 .conversation-context { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; margin-bottom: 10px; padding-inline: 2px; }
 .conversation-selector { position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; max-width: 100%; color: var(--cv-muted); font-size: var(--font-size-helper); }
 .app-shell .conversation-page select.conversation-select {
@@ -77,6 +87,7 @@ html:not(.dark) .conversation-page {
   .conversation-intro { margin-bottom: 24px; }
   .conversation-description { max-width: 340px; }
   .conversation-suggestion { padding: 10px 12px; }
+  .conversation-knowledge-start { padding: 22px 16px; }
   .app-shell .conversation-page .app-composer { gap: 6px; padding: 8px; }
 }
 @media (prefers-reduced-motion: reduce) {
