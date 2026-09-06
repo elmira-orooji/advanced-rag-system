@@ -1,4 +1,4 @@
-export type OperationKind = "load" | "upload" | "processing" | "sync" | "answer";
+export type OperationKind = "load" | "members" | "upload" | "processing" | "sync" | "answer";
 
 export function operationError(error: unknown, operation: OperationKind, isFa: boolean): string {
   const raw = error instanceof Error ? error.message.trim() : "";
@@ -7,6 +7,7 @@ export function operationError(error: unknown, operation: OperationKind, isFa: b
   const copy = isFa
     ? {
         load: "دریافت اطلاعات انجام نشد. اتصال را بررسی کنید و دوباره تلاش کنید.",
+        members: "دریافت اعضای تیم انجام نشد. اتصال سرویس را بررسی کنید یا دوباره تلاش کنید.",
         upload: "بارگذاری فایل انجام نشد. اتصال و نوع فایل را بررسی کنید و دوباره تلاش کنید.",
         processing: "پردازش سند انجام نشد. دوباره تلاش کنید؛ اگر ادامه داشت، فایل را بررسی کنید.",
         sync: "همگام‌سازی انجام نشد. اتصال منبع را بررسی کنید و دوباره تلاش کنید.",
@@ -14,6 +15,7 @@ export function operationError(error: unknown, operation: OperationKind, isFa: b
       }
     : {
         load: "We couldn't load this information. Check your connection and try again.",
+        members: "We couldn't load team members. Check the service connection and try again.",
         upload: "The file couldn't be uploaded. Check the connection and file type, then try again.",
         processing: "The document couldn't be processed. Try again; if it persists, check the file.",
         sync: "The connector couldn't sync. Check the source connection and try again.",
