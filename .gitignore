@@ -15,3 +15,9 @@ backend/ocr_lab/output/
 
 # OS
 .DS_Store
+
+# IDE / Tools
+.deep-copilot/
+
+# TypeScript build cache
+*.tsbuildinfo
