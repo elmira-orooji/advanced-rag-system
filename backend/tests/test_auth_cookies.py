@@ -75,6 +75,7 @@ class AuthCookieTests(unittest.TestCase):
         self.assertIn("HttpOnly", cookie)
         self.assertIn("Secure", cookie)
         self.assertIn("SameSite=lax", cookie)
+        self.assertIn("Path=/", cookie)
         self.assertNotIn("Max-Age", cookie)
         self.assertEqual(result.expires_in, AUTH_SESSION_SECONDS)
         self.assertFalse(hasattr(result, "access_token"))
@@ -137,7 +138,8 @@ class AuthCookieTests(unittest.TestCase):
         cookie = response.headers["set-cookie"]
         self.assertIn(f"{AUTH_COOKIE_NAME}=", cookie)
         self.assertIn("Max-Age=0", cookie)
-        self.assertIn("Path=/api/v1", cookie)
+        # A deletion cookie must use the exact same path as the login cookie.
+        self.assertIn("Path=/", cookie)
 
     def test_logout_revokes_the_presented_session(self):
         session_id = uuid4()
