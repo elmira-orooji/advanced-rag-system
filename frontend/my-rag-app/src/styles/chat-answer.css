@@ -72,6 +72,9 @@ html:not(.dark) :is(.chat-answer, .chat-question, .chat-evidence) {
   font-size: 12px;
   line-height: 1.8;
 }
+.answer-trust-badge.is-actionable { padding: 0; border: 0; background: transparent; cursor: pointer; text-align: start; }
+.answer-trust-badge.is-actionable:hover { text-decoration: underline; text-underline-offset: 3px; }
+.answer-trust-badge.is-actionable:focus-visible { outline: 2px solid var(--answer-accent); outline-offset: 3px; border-radius: 5px; }
 .chat-answer-grounding svg, .answer-trust-badge svg { flex-shrink: 0; width: 15px; height: 15px; }
 .chat-answer-grounding.is-grounded, .answer-trust-badge.is-sources { color: var(--answer-success); }
 .chat-answer-grounding.is-ungrounded, .answer-trust-badge:is(.is-general, .is-hybrid, .is-insufficient) { color: var(--answer-warning); }
