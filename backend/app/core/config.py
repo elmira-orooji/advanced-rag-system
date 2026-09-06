@@ -92,6 +92,23 @@ def resolve_document_path(stored: str) -> Path:
         pass
     return (BASE_DIR / candidate).resolve()
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+# Cloud OCR is deliberately opt-in: documents stay local unless a provider is
+# configured.  "auto" prioritizes Google Vision and falls back to Azure.
+OCR_PROVIDER = os.getenv("OCR_PROVIDER", "disabled").strip().lower()
+if OCR_PROVIDER not in {"disabled", "auto", "google_vision", "azure_document_intelligence"}:
+    raise RuntimeError("OCR_PROVIDER must be disabled, auto, google_vision, or azure_document_intelligence")
+OCR_LANGUAGE_HINTS = [
+    language.strip()
+    for language in os.getenv("OCR_LANGUAGE_HINTS", "fa,en").split(",")
+    if language.strip()
+]
+OCR_TIMEOUT_SECONDS = float(os.getenv("OCR_TIMEOUT_SECONDS", "30"))
+OCR_MAX_PAGES = int(os.getenv("OCR_MAX_PAGES", "100"))
+if OCR_TIMEOUT_SECONDS <= 0 or OCR_MAX_PAGES < 1:
+    raise RuntimeError("OCR_TIMEOUT_SECONDS and OCR_MAX_PAGES must be positive")
+GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY", "")
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT", "").rstrip("/")
+AZURE_DOCUMENT_INTELLIGENCE_KEY = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY", "")
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "")
 if len(AUTH_SECRET_KEY) < 32:
     raise RuntimeError("AUTH_SECRET_KEY must be set to at least 32 characters")

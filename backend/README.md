@@ -27,3 +27,12 @@ The connector scheduler is also a separate process. Run one scheduler instance;
 it handles `SIGINT` and `SIGTERM` cleanly and is independent of the number of API
 workers. Remote connector discovery releases its SQLAlchemy Session connection
 while OAuth and network downloads are in progress.
+
+## OCR for scanned documents
+
+PDFs with an embedded text layer are extracted locally. To read scanned PDFs,
+configure `OCR_PROVIDER=auto` with `GOOGLE_VISION_API_KEY`; Google Vision is
+tried first with `fa,en` language hints. Set the Azure Document Intelligence
+endpoint and key as well to enable the fallback. OCR is disabled by default, so
+documents are never sent to a cloud provider without an explicit configuration.
+The API also accepts JPEG, PNG, and TIFF images when OCR is configured.

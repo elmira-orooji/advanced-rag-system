@@ -4,7 +4,7 @@ from io import BytesIO
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-from app.api.routes.documents import _save_upload, ingest_document, upload_document
+from app.api.routes.documents import ALLOWED_FILE_TYPES, _save_upload, ingest_document, upload_document
 
 
 class DocumentUploadExecutionTests(unittest.TestCase):
@@ -21,3 +21,7 @@ class DocumentUploadExecutionTests(unittest.TestCase):
 
         self.assertEqual(size, len(b"uploaded content"))
         output.write.assert_called_once_with(b"uploaded content")
+
+    def test_ocr_image_extensions_are_accepted(self):
+        self.assertIn(".jpeg", ALLOWED_FILE_TYPES["image/jpeg"])
+        self.assertIn(".tif", ALLOWED_FILE_TYPES["image/tiff"])

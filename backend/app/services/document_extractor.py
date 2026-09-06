@@ -5,6 +5,8 @@ from pathlib import Path
 
 from pypdf import PdfReader
 
+from app.services.cloud_ocr import OCRUnavailableError, extract_scanned_document_text
+
 
 class ExtractionError(ValueError):
     pass
@@ -13,6 +15,9 @@ class ExtractionError(ValueError):
 # Supported MIME types mapped to extraction functions
 _EXTRACTORS: dict[str, str] = {
     "application/pdf": "_extract_pdf",
+    "image/jpeg": "_extract_image",
+    "image/png": "_extract_image",
+    "image/tiff": "_extract_image",
     "text/plain": "_extract_text_file",
     "text/markdown": "_extract_text_file",
     "text/csv": "_extract_csv",
@@ -44,9 +49,26 @@ def _extract_pdf(file_path: Path) -> str:
         raise ExtractionError("Could not read the PDF file") from exc
 
     text = text.strip()
-    if not text:
-        raise ExtractionError("No extractable text found in the PDF")
+    if text:
+        return text
+    try:
+        return extract_scanned_document_text(file_path, "application/pdf")
+    except OCRUnavailableError as exc:
+        raise ExtractionError(str(exc)) from exc
+
+
+def _extract_image(file_path: Path) -> str:
+    try:
+        text = extract_scanned_document_text(file_path, _content_type_for_image(file_path))
+    except OCRUnavailableError as exc:
+        raise ExtractionError(str(exc)) from exc
+    if not text.strip():
+        raise ExtractionError("No text was found in the image")
     return text
+
+
+def _content_type_for_image(file_path: Path) -> str:
+    return {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".tif": "image/tiff", ".tiff": "image/tiff"}.get(file_path.suffix.lower(), "image/png")
 
 
 def _extract_text_file(file_path: Path) -> str:

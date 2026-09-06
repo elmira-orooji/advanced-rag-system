@@ -21,6 +21,8 @@ MarkupSafe==3.0.3
 
 # --- Document Processing ---
 pypdf==6.14.2
+pypdfium2==5.2.0
+Pillow==12.1.1
 python-multipart==0.0.32
 sentence-transformers==3.4.1
 

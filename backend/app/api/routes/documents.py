@@ -37,8 +37,11 @@ from app.services.chunk_enrichment import enrich_chunk
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 ALLOWED_FILE_TYPES = {
-    "application/pdf": ".pdf",
-    "text/plain": ".txt",
+    "application/pdf": (".pdf",),
+    "text/plain": (".txt",),
+    "image/jpeg": (".jpg", ".jpeg"),
+    "image/png": (".png",),
+    "image/tiff": (".tif", ".tiff"),
 }
 
 
@@ -154,20 +157,21 @@ def upload_document(
     user: User = Depends(get_current_user),
 ):
     content_type = file.content_type or ""
-    expected_suffix = ALLOWED_FILE_TYPES.get(content_type)
+    expected_suffixes = ALLOWED_FILE_TYPES.get(content_type)
     safe_filename = Path(file.filename or "").name
+    suffix = Path(safe_filename).suffix.lower()
 
-    if expected_suffix is None or Path(safe_filename).suffix.lower() != expected_suffix:
+    if expected_suffixes is None or suffix not in expected_suffixes:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only PDF and UTF-8 TXT files are supported",
+            detail="Only PDF, UTF-8 TXT, JPEG, PNG, and TIFF files are supported",
         )
     if not safe_filename:
         raise HTTPException(status_code=400, detail="A filename is required")
 
     document_id = uuid.uuid4()
     document_dir = UPLOAD_DIR / str(document_id)
-    original_path = document_dir / f"original{expected_suffix}"
+    original_path = document_dir / f"original{suffix}"
     extracted_path = document_dir / "extracted.txt"
 
     try:
@@ -239,14 +243,15 @@ def ingest_document(
     document_dir: Path | None = None
     try:
         content_type = file.content_type or ""
-        expected_suffix = ALLOWED_FILE_TYPES.get(content_type)
+        expected_suffixes = ALLOWED_FILE_TYPES.get(content_type)
         safe_filename = Path(file.filename or "").name
-        if expected_suffix is None or Path(safe_filename).suffix.lower() != expected_suffix:
-            raise HTTPException(status_code=415, detail="Only PDF and UTF-8 TXT files are supported")
+        suffix = Path(safe_filename).suffix.lower()
+        if expected_suffixes is None or suffix not in expected_suffixes:
+            raise HTTPException(status_code=415, detail="Only PDF, UTF-8 TXT, JPEG, PNG, and TIFF files are supported")
         document_id = uuid.uuid4()
         document_dir = UPLOAD_DIR / str(document_id)
         document_dir.mkdir(parents=True, exist_ok=False)
-        original_path = document_dir / f"original{expected_suffix}"
+        original_path = document_dir / f"original{suffix}"
         size = _save_upload(file, original_path)
         if size == 0:
             raise HTTPException(status_code=400, detail="The uploaded file is empty")
