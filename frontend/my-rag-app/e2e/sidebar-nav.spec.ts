@@ -12,14 +12,15 @@ test.describe("Sidebar navigation", () => {
     // Should start on Workspace page.
     await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 10_000 });
 
-    // Click Knowledge base in sidebar.
-    await page.getByRole("button", { name: /knowledge base/i }).click();
+    // Click Knowledge base in sidebar nav.
+    const sidebar = page.getByRole("complementary", { name: "Main sidebar" });
+    await sidebar.getByRole("button", { name: "Knowledge base" }).click();
 
-    // Should navigate to the knowledge base page.
-    await expect(page.getByText(/onboarding manual/i)).toBeVisible({ timeout: 10_000 });
+    // Should navigate to the knowledge base page - use heading for uniqueness.
+    await expect(page.getByRole("heading", { name: /onboarding manual/i })).toBeVisible({ timeout: 10_000 });
 
-    // Click Workspace (Home) in sidebar to go back.
-    await page.getByRole("button", { name: /workspace|home/i }).first().click();
+    // Click Workspace in sidebar to go back.
+    await sidebar.getByRole("button", { name: "Workspace" }).click();
 
     // Should be back on Workspace.
     await expect(page.getByRole("heading", { name: /welcome back/i })).toBeVisible({ timeout: 10_000 });
@@ -31,16 +32,18 @@ test.describe("Sidebar navigation", () => {
 
     await page.goto("/home");
 
-    // The Workspace/Home button should have aria-current="page".
-    const homeButton = page.getByRole("button", { name: /workspace|home/i }).first();
+    const sidebar = page.getByRole("complementary", { name: "Main sidebar" });
+
+    // The Workspace button should have aria-current="page".
+    const homeButton = sidebar.getByRole("button", { name: "Workspace" });
     await expect(homeButton).toHaveAttribute("aria-current", "page");
 
     // Navigate to Knowledge base.
-    await page.getByRole("button", { name: /knowledge base/i }).click();
-    await expect(page.getByText(/onboarding manual/i)).toBeVisible({ timeout: 10_000 });
+    await sidebar.getByRole("button", { name: "Knowledge base" }).click();
+    await expect(page.getByRole("heading", { name: /onboarding manual/i })).toBeVisible({ timeout: 10_000 });
 
     // Now Knowledge base should be active.
-    const kbButton = page.getByRole("button", { name: /knowledge base/i });
+    const kbButton = sidebar.getByRole("button", { name: "Knowledge base" });
     await expect(kbButton).toHaveAttribute("aria-current", "page");
   });
 
@@ -50,22 +53,24 @@ test.describe("Sidebar navigation", () => {
 
     await page.goto("/home");
 
+    const sidebar = page.getByRole("complementary", { name: "Main sidebar" });
+
     // Sidebar should be expanded initially.
-    const collapseButton = page.getByRole("button", { name: /collapse sidebar/i });
+    const collapseButton = sidebar.getByRole("button", { name: /collapse sidebar/i });
     await expect(collapseButton).toBeVisible({ timeout: 10_000 });
 
     // Click to collapse.
     await collapseButton.click();
 
-    // Navigation labels should be hidden when collapsed.
-    await expect(page.getByText("Workspace")).not.toBeVisible({ timeout: 3_000 });
+    // Navigation labels should be hidden when collapsed (scoped to sidebar).
+    await expect(sidebar.getByText("Workspace")).not.toBeVisible({ timeout: 3_000 });
 
     // Click expand button to restore.
-    const expandButton = page.getByRole("button", { name: /expand sidebar/i });
+    const expandButton = sidebar.getByRole("button", { name: /expand sidebar/i });
     await expect(expandButton).toBeVisible();
     await expandButton.click();
 
     // Labels should be visible again.
-    await expect(page.getByText("Workspace")).toBeVisible({ timeout: 5_000 });
+    await expect(sidebar.getByText("Workspace")).toBeVisible({ timeout: 5_000 });
   });
 });

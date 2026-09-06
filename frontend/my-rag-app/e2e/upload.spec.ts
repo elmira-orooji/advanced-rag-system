@@ -9,10 +9,11 @@ test.describe("File upload", () => {
 
     // Navigate to Knowledge base page via sidebar.
     await page.goto("/home");
-    await page.getByRole("button", { name: /knowledge base/i }).click();
+    const sidebar = page.getByRole("complementary", { name: "Main sidebar" });
+    await sidebar.getByRole("button", { name: "Knowledge base" }).click();
 
-    // Wait for the knowledge base page to load.
-    await expect(page.getByText(/onboarding manual/i)).toBeVisible({ timeout: 10_000 });
+    // Wait for the knowledge base page to load (use heading for uniqueness).
+    await expect(page.getByRole("heading", { name: /onboarding manual/i })).toBeVisible({ timeout: 10_000 });
 
     // The existing document should be visible.
     await expect(page.getByText("handbook.pdf")).toBeVisible({ timeout: 5_000 });
@@ -26,7 +27,7 @@ test.describe("File upload", () => {
     });
 
     // A success toast should appear.
-    await expect(page.getByText(/uploaded|بارگذاری/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/file uploaded successfully|با موفقیت بارگذاری/i)).toBeVisible({ timeout: 5_000 });
   });
 
   test("shows drag-and-drop zone on the knowledge base page", async ({ page }) => {
@@ -34,9 +35,13 @@ test.describe("File upload", () => {
     await stubApi(page, { documents: [] });
 
     await page.goto("/home");
-    await page.getByRole("button", { name: /knowledge base/i }).click();
+    const sidebar = page.getByRole("complementary", { name: "Main sidebar" });
+    await sidebar.getByRole("button", { name: "Knowledge base" }).click();
 
-    // The dropzone should be visible with appropriate text.
-    await expect(page.getByText(/drag.*drop|بارگذاری اسناد/i)).toBeVisible({ timeout: 10_000 });
+    // Wait for KB page to load first.
+    await expect(page.getByRole("heading", { name: /onboarding manual/i })).toBeVisible({ timeout: 10_000 });
+
+    // The dropzone should be visible for users who can edit the set.
+    await expect(page.getByText("Drop files into this set")).toBeVisible({ timeout: 10_000 });
   });
 });

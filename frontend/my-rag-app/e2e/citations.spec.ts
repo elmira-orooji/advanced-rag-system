@@ -11,10 +11,9 @@ test.describe("Citation interaction", () => {
 
     await page.goto("/home");
 
-    // Navigate to new conversation via Workspace main button.
-    const newConvButton = page.getByRole("main").getByRole("button", { name: "New conversation", exact: true });
-    await expect(newConvButton).toBeVisible({ timeout: 10_000 });
-    await newConvButton.click();
+    // Navigate to new conversation via sidebar button (unique).
+    const sidebar = page.getByRole("complementary", { name: "Main sidebar" });
+    await sidebar.getByRole("button", { name: "New conversation" }).click();
 
     await expect(page.locator('textarea[aria-label="Message"]')).toBeVisible({ timeout: 10_000 });
 

@@ -42,10 +42,29 @@ export const sampleDocument = {
   filename: "handbook.pdf",
   status: "indexed",
   size_bytes: 102400,
+  created_at: "2025-01-15T00:00:00Z",
   uploaded_at: "2025-01-15T00:00:00Z",
   indexed_at: "2025-01-15T00:01:00Z",
   chunk_count: 12,
   error: null,
+};
+
+const analyticsOverview = {
+  period_days: 7,
+  total_queries: 0,
+  active_users: 1,
+  grounded_rate: 0,
+  positive_feedback_rate: null,
+  feedback_coverage: 0,
+  unanswered_queries: 0,
+  average_citations: 0,
+  indexed_documents: 1,
+  failed_documents: 0,
+  daily: [],
+  assistants: [],
+  knowledge_sets: [],
+  negative_reasons: [],
+  recent_issues: [],
 };
 
 /** Seed a valid auth session before the app boots (localStorage). */
@@ -109,6 +128,11 @@ export async function stubApi(page: Page, options: { answer?: string; conversati
       return route.fulfill({ status: 204 });
     }
 
+    // Analytics overview (admin users see AnalyticsPage on /home)
+    if (method === "GET" && pathname.startsWith("/api/v1/analytics/overview")) {
+      return json(route, analyticsOverview);
+    }
+
     // Conversation sidebar list
     if (method === "GET" && pathname === "/api/v1/conversations") {
       return json(route, conversations);
@@ -120,11 +144,28 @@ export async function stubApi(page: Page, options: { answer?: string; conversati
     }
 
     // Documents list for a set
+    if (method === "GET" && pathname === "/api/v1/documents") {
+      return json(route, documents);
+    }
+
     if (method === "GET" && /\/document-sets\/[^/]+\/documents$/.test(pathname)) {
       return json(route, documents);
     }
 
     // Upload file
+    if (method === "POST" && pathname === "/api/v1/documents/ingest") {
+      return json(route, {
+        id: "doc-new",
+        filename: "uploaded-file.pdf",
+        status: "queued",
+        size_bytes: 51200,
+        uploaded_at: "2025-02-01T00:00:00Z",
+        indexed_at: null,
+        chunk_count: 0,
+        error: null,
+      });
+    }
+
     if (method === "POST" && /\/document-sets\/[^/]+\/documents$/.test(pathname)) {
       return json(route, {
         id: "doc-new",
@@ -136,6 +177,15 @@ export async function stubApi(page: Page, options: { answer?: string; conversati
         chunk_count: 0,
         error: null,
       });
+    }
+
+    // Cloud connectors and retrieval/evaluation side panels on the Knowledge page.
+    if (method === "GET" && /\/document-sets\/[^/]+\/connectors$/.test(pathname)) {
+      return json(route, []);
+    }
+
+    if (method === "GET" && /\/document-sets\/[^/]+\/evaluation-cases$/.test(pathname)) {
+      return json(route, []);
     }
 
     // Rename conversation
