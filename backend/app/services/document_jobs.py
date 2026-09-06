@@ -15,7 +15,9 @@ from app.models.processing_job import ProcessingJob
 from app.services.document_extractor import extract_text
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
+from app.services.semantic_chunker import semantic_chunks
 from app.services.incremental_index import checksum, incremental_chunks
+from app.core.config import CHUNKING_STRATEGY, SEMANTIC_CHUNK_MIN_SIZE, SEMANTIC_CHUNK_MAX_SIZE, SEMANTIC_SIMILARITY_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +224,18 @@ def process_document_job(
             document.extracted_text_path = document_storage_relative(extracted_path)
             document.content_checksum = None
             _progress(db, document, job, worker_id, 35, "chunking")
-            contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
+            if CHUNKING_STRATEGY == "semantic":
+                # Semantic chunking produces flat chunks; wrap as (child, parent_idx=0, parent=child)
+                # to maintain compatibility with the hierarchical storage schema.
+                raw_semantic = semantic_chunks(
+                    text,
+                    min_chunk_size=SEMANTIC_CHUNK_MIN_SIZE,
+                    max_chunk_size=SEMANTIC_CHUNK_MAX_SIZE,
+                    similarity_threshold=SEMANTIC_SIMILARITY_THRESHOLD,
+                )
+                contents = [(chunk, 0, chunk) for chunk in raw_semantic]
+            else:
+                contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
             if not contents:
                 raise RuntimeError("Document contains no text to index")
             _progress(db, document, job, worker_id, 65, "indexing")

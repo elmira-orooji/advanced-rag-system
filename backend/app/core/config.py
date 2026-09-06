@@ -139,3 +139,13 @@ CONNECTOR_SECRET_MANAGER_TOKEN = os.getenv("CONNECTOR_SECRET_MANAGER_TOKEN", "")
 CONNECTOR_SECRET_MANAGER_TIMEOUT_SECONDS = float(
     os.getenv("CONNECTOR_SECRET_MANAGER_TIMEOUT_SECONDS", "3")
 )
+
+
+# --- Chunking Strategy ---
+CHUNKING_STRATEGY = os.getenv("CHUNKING_STRATEGY", "hierarchical").strip().lower()
+if CHUNKING_STRATEGY not in {"hierarchical", "semantic"}:
+    raise RuntimeError("CHUNKING_STRATEGY must be 'hierarchical' or 'semantic'")
+SEMANTIC_CHUNK_MIN_SIZE = int(os.getenv("SEMANTIC_CHUNK_MIN_SIZE", "200"))
+SEMANTIC_CHUNK_MAX_SIZE = int(os.getenv("SEMANTIC_CHUNK_MAX_SIZE", "1500"))
+SEMANTIC_SIMILARITY_THRESHOLD = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.45"))
+
