@@ -1,23 +1,30 @@
-"""Opt-in cloud OCR with Google Vision as the preferred provider.
+"""Opt-in OCR providers for scanned documents.
 
-No network request is made unless OCR_PROVIDER and the matching credential are
-configured. Google Vision receives rasterized PDF pages, which avoids requiring
-Cloud Storage for ordinary uploaded PDFs.
+MinerU uses its hosted asynchronous Precision API, so no local model is loaded.
 """
 
 from __future__ import annotations
 
 import base64
+import hashlib
+from io import BytesIO
 import json
 import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from zipfile import BadZipFile, ZipFile
 
 from app.core.config import (
     AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
     AZURE_DOCUMENT_INTELLIGENCE_KEY,
     GOOGLE_VISION_API_KEY,
+    MINERU_API_BASE_URL,
+    MINERU_API_TOKEN,
+    MINERU_LANGUAGE,
+    MINERU_MODEL_VERSION,
+    MINERU_POLL_SECONDS,
+    MINERU_TIMEOUT_SECONDS,
     OCR_LANGUAGE_HINTS,
     OCR_MAX_PAGES,
     OCR_PROVIDER,
@@ -33,7 +40,7 @@ def extract_scanned_document_text(file_path: Path, content_type: str) -> str:
     providers = _providers()
     if not providers:
         raise OCRUnavailableError(
-            "This document has no embedded text. Configure OCR_PROVIDER with Google Vision or Azure Document Intelligence."
+            "This document has no embedded text. Configure OCR_PROVIDER with MinerU, Google Vision, or Azure Document Intelligence."
         )
 
     errors: list[str] = []
@@ -45,13 +52,15 @@ def extract_scanned_document_text(file_path: Path, content_type: str) -> str:
             errors.append("provider returned no text")
         except OCRUnavailableError as exc:
             errors.append(str(exc))
-    raise OCRUnavailableError("Cloud OCR could not read this document. " + " | ".join(errors[:2]))
+    raise OCRUnavailableError("OCR could not read this document. " + " | ".join(errors[:2]))
 
 
 def _providers():
     if OCR_PROVIDER == "disabled":
         return []
     available = []
+    if MINERU_API_TOKEN:
+        available.append(_mineru)
     if GOOGLE_VISION_API_KEY:
         available.append(_google_vision)
     if AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY:
@@ -60,7 +69,101 @@ def _providers():
         return [_google_vision] if GOOGLE_VISION_API_KEY else []
     if OCR_PROVIDER == "azure_document_intelligence":
         return [_azure_document_intelligence] if AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY else []
+    if OCR_PROVIDER == "mineru":
+        return [_mineru] if MINERU_API_TOKEN else []
     return available
+
+
+def _mineru(file_path: Path, content_type: str) -> str:
+    """Upload one document to MinerU and return its generated Markdown."""
+    if not MINERU_API_TOKEN:
+        raise OCRUnavailableError("MinerU OCR requires MINERU_API_TOKEN")
+    data_id = hashlib.sha256(file_path.read_bytes()).hexdigest()
+    headers = {"Authorization": f"Bearer {MINERU_API_TOKEN}", "Content-Type": "application/json"}
+    payload = {
+        "files": [{"name": file_path.name, "data_id": data_id, "is_ocr": True}],
+        "model_version": MINERU_MODEL_VERSION,
+        "language": MINERU_LANGUAGE,
+        "enable_formula": False,
+        "enable_table": True,
+    }
+    submitted = _mineru_json_request(f"{MINERU_API_BASE_URL}/file-urls/batch", headers=headers, payload=payload)
+    batch_id, upload_url = _mineru_upload_target(submitted)
+    _mineru_upload(upload_url, file_path.read_bytes())
+    result = _mineru_wait_for_result(batch_id, headers)
+    return _mineru_markdown(result)
+
+
+def _mineru_upload_target(response: dict) -> tuple[str, str]:
+    data = _mineru_success_data(response)
+    batch_id = data.get("batch_id")
+    urls = data.get("file_urls") or []
+    if not isinstance(batch_id, str) or not batch_id or not urls or not isinstance(urls[0], str):
+        raise OCRUnavailableError("MinerU did not return an upload target")
+    return batch_id, urls[0]
+
+
+def _mineru_upload(upload_url: str, content: bytes) -> None:
+    request = Request(upload_url, data=content, method="PUT")
+    try:
+        with urlopen(request, timeout=OCR_TIMEOUT_SECONDS):
+            return
+    except (HTTPError, URLError, TimeoutError) as exc:
+        raise OCRUnavailableError("MinerU file upload failed") from exc
+
+
+def _mineru_wait_for_result(batch_id: str, headers: dict[str, str]) -> dict:
+    deadline = time.monotonic() + MINERU_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        response = _mineru_json_request(f"{MINERU_API_BASE_URL}/extract-results/batch/{batch_id}", headers=headers)
+        data = _mineru_success_data(response)
+        results = data.get("extract_result") or []
+        result = results[0] if results else {}
+        state = result.get("state")
+        if state == "done":
+            return result
+        if state == "failed":
+            raise OCRUnavailableError(f"MinerU could not read this document: {result.get('err_msg') or 'unknown error'}")
+        time.sleep(MINERU_POLL_SECONDS)
+    raise OCRUnavailableError("MinerU OCR timed out")
+
+
+def _mineru_success_data(response: dict) -> dict:
+    if response.get("code") != 0 or not isinstance(response.get("data"), dict):
+        raise OCRUnavailableError(f"MinerU request failed: {response.get('msg') or 'unknown error'}")
+    return response["data"]
+
+
+def _mineru_json_request(url: str, *, headers: dict[str, str], payload: dict | None = None) -> dict:
+    request = Request(
+        url,
+        data=json.dumps(payload).encode("utf-8") if payload is not None else None,
+        headers=headers,
+        method="POST" if payload is not None else "GET",
+    )
+    try:
+        with urlopen(request, timeout=OCR_TIMEOUT_SECONDS) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise OCRUnavailableError("MinerU request failed") from exc
+
+
+def _mineru_markdown(result: dict) -> str:
+    zip_url = result.get("full_zip_url")
+    if not isinstance(zip_url, str) or not zip_url:
+        raise OCRUnavailableError("MinerU did not return an extraction archive")
+    try:
+        with urlopen(zip_url, timeout=OCR_TIMEOUT_SECONDS) as response:
+            archive = response.read()
+        with ZipFile(BytesIO(archive)) as bundle:
+            markdown_names = [name for name in bundle.namelist() if name.endswith("/full.md") or name == "full.md"]
+            if len(markdown_names) != 1:
+                raise OCRUnavailableError("MinerU archive did not contain one Markdown result")
+            return bundle.read(markdown_names[0]).decode("utf-8").strip()
+    except OCRUnavailableError:
+        raise
+    except (HTTPError, URLError, TimeoutError, BadZipFile, UnicodeDecodeError) as exc:
+        raise OCRUnavailableError("MinerU result archive could not be read") from exc
 
 
 def _google_vision(file_path: Path, content_type: str) -> str:

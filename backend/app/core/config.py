@@ -92,11 +92,11 @@ def resolve_document_path(stored: str) -> Path:
         pass
     return (BASE_DIR / candidate).resolve()
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
-# Cloud OCR is deliberately opt-in: documents stay local unless a provider is
-# configured.  "auto" prioritizes Google Vision and falls back to Azure.
+# OCR is deliberately opt-in: documents stay local unless a provider is
+# configured.  "auto" tries MinerU, Google Vision, then Azure.
 OCR_PROVIDER = os.getenv("OCR_PROVIDER", "disabled").strip().lower()
-if OCR_PROVIDER not in {"disabled", "auto", "google_vision", "azure_document_intelligence"}:
-    raise RuntimeError("OCR_PROVIDER must be disabled, auto, google_vision, or azure_document_intelligence")
+if OCR_PROVIDER not in {"disabled", "auto", "mineru", "google_vision", "azure_document_intelligence"}:
+    raise RuntimeError("OCR_PROVIDER must be disabled, auto, mineru, google_vision, or azure_document_intelligence")
 OCR_LANGUAGE_HINTS = [
     language.strip()
     for language in os.getenv("OCR_LANGUAGE_HINTS", "fa,en").split(",")
@@ -104,8 +104,16 @@ OCR_LANGUAGE_HINTS = [
 ]
 OCR_TIMEOUT_SECONDS = float(os.getenv("OCR_TIMEOUT_SECONDS", "30"))
 OCR_MAX_PAGES = int(os.getenv("OCR_MAX_PAGES", "100"))
-if OCR_TIMEOUT_SECONDS <= 0 or OCR_MAX_PAGES < 1:
-    raise RuntimeError("OCR_TIMEOUT_SECONDS and OCR_MAX_PAGES must be positive")
+MINERU_API_TOKEN = os.getenv("MINERU_API_TOKEN", "")
+MINERU_API_BASE_URL = os.getenv("MINERU_API_BASE_URL", "https://mineru.net/api/v4").rstrip("/")
+MINERU_MODEL_VERSION = os.getenv("MINERU_MODEL_VERSION", "vlm").strip().lower()
+MINERU_LANGUAGE = os.getenv("MINERU_LANGUAGE", "fa").strip().lower()
+MINERU_TIMEOUT_SECONDS = float(os.getenv("MINERU_TIMEOUT_SECONDS", "300"))
+MINERU_POLL_SECONDS = float(os.getenv("MINERU_POLL_SECONDS", "2"))
+if OCR_TIMEOUT_SECONDS <= 0 or OCR_MAX_PAGES < 1 or MINERU_TIMEOUT_SECONDS <= 0 or MINERU_POLL_SECONDS <= 0:
+    raise RuntimeError("OCR_TIMEOUT_SECONDS, OCR_MAX_PAGES, MINERU_TIMEOUT_SECONDS, and MINERU_POLL_SECONDS must be positive")
+if MINERU_MODEL_VERSION not in {"pipeline", "vlm"}:
+    raise RuntimeError("MINERU_MODEL_VERSION must be pipeline or vlm")
 GOOGLE_VISION_API_KEY = os.getenv("GOOGLE_VISION_API_KEY", "")
 AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT", "").rstrip("/")
 AZURE_DOCUMENT_INTELLIGENCE_KEY = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY", "")

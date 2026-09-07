@@ -30,12 +30,16 @@ while OAuth and network downloads are in progress.
 
 ## OCR for scanned documents
 
-PDFs with an embedded text layer are extracted locally. To read scanned PDFs,
-configure `OCR_PROVIDER=auto` with `GOOGLE_VISION_API_KEY`; Google Vision is
-tried first with `fa,en` language hints. Set the Azure Document Intelligence
-endpoint and key as well to enable the fallback. OCR is disabled by default, so
-documents are never sent to a cloud provider without an explicit configuration.
-The API also accepts JPEG, PNG, and TIFF images when OCR is configured.
+PDFs with an embedded text layer are extracted locally. Scanned PDFs and images
+can use MinerU's hosted Precision API without installing a local OCR model. Set
+`OCR_PROVIDER=mineru`, configure `MINERU_API_TOKEN`, and use `MINERU_LANGUAGE=fa`
+for Persian documents. MinerU receives the original file through a signed upload
+URL, processes it asynchronously, and returns structured Markdown; keep OCR
+disabled unless the organisation has approved sending documents to MinerU.
+
+Set `OCR_PROVIDER=auto` to try configured MinerU, Google Vision, then Azure
+Document Intelligence. The API also accepts JPEG, PNG, and TIFF images when OCR
+is configured.
 
 The ordinary test suite mocks cloud providers. To run the opt-in live smoke
 test, set a provider credential and its explicit switch, then run:

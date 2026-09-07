@@ -4,6 +4,7 @@ from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.error import HTTPError
+from zipfile import ZipFile
 
 from app.services import cloud_ocr
 from app.services.document_extractor import _extract_pdf
@@ -28,9 +29,40 @@ class CloudOCRTests(unittest.TestCase):
         self.assertEqual(payload["requests"][0]["imageContext"]["languageHints"], ["fa", "en"])
         self.assertEqual(payload["requests"][0]["features"][0]["type"], "DOCUMENT_TEXT_DETECTION")
 
-    def test_auto_prefers_google_then_azure(self):
-        with patch.object(cloud_ocr, "OCR_PROVIDER", "auto"), patch.object(cloud_ocr, "GOOGLE_VISION_API_KEY", "google"), patch.object(cloud_ocr, "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT", "https://example.test"), patch.object(cloud_ocr, "AZURE_DOCUMENT_INTELLIGENCE_KEY", "azure"):
-            self.assertEqual(cloud_ocr._providers(), [cloud_ocr._google_vision, cloud_ocr._azure_document_intelligence])
+    def test_auto_prefers_mineru_then_google_and_azure(self):
+        with patch.object(cloud_ocr, "OCR_PROVIDER", "auto"), patch.object(cloud_ocr, "MINERU_API_TOKEN", "mineru"), patch.object(cloud_ocr, "GOOGLE_VISION_API_KEY", "google"), patch.object(cloud_ocr, "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT", "https://example.test"), patch.object(cloud_ocr, "AZURE_DOCUMENT_INTELLIGENCE_KEY", "azure"):
+            self.assertEqual(cloud_ocr._providers(), [cloud_ocr._mineru, cloud_ocr._google_vision, cloud_ocr._azure_document_intelligence])
+
+    def test_mineru_uploads_then_polls_and_reads_markdown(self):
+        archive = BytesIO()
+        with ZipFile(archive, "w") as bundle:
+            bundle.writestr("result/full.md", "# عنوان\n\nسلام NEXORA")
+        responses = [
+            _context(json.dumps({"code": 0, "data": {"batch_id": "batch-1", "file_urls": ["https://upload.test/file"]}}).encode()),
+            _context(),
+            _context(json.dumps({"code": 0, "data": {"extract_result": [{"state": "done", "full_zip_url": "https://result.test/archive.zip"}]}}).encode()),
+            _context(archive.getvalue()),
+        ]
+        source = Path(__file__).parent / "fixtures" / "scanned-blank.pdf"
+        with patch.object(cloud_ocr, "MINERU_API_TOKEN", "test-token"), patch.object(cloud_ocr, "urlopen", side_effect=responses) as urlopen, patch.object(cloud_ocr.time, "sleep"):
+            text = cloud_ocr._mineru(source, "application/pdf")
+
+        self.assertEqual(text, "# عنوان\n\nسلام NEXORA")
+        requests = [call.args[0] for call in urlopen.call_args_list]
+        self.assertEqual(requests[0].full_url, "https://mineru.net/api/v4/file-urls/batch")
+        self.assertEqual(requests[0].get_header("Authorization"), "Bearer test-token")
+        self.assertEqual(json.loads(requests[0].data)["language"], cloud_ocr.MINERU_LANGUAGE)
+        self.assertEqual(requests[1].method, "PUT")
+        self.assertEqual(requests[2].full_url, "https://mineru.net/api/v4/extract-results/batch/batch-1")
+
+    def test_mineru_rejects_archive_without_markdown(self):
+        archive = BytesIO()
+        with ZipFile(archive, "w") as bundle:
+            bundle.writestr("result/layout.json", "{}")
+        response = _context(archive.getvalue())
+        with patch.object(cloud_ocr, "urlopen", return_value=response):
+            with self.assertRaisesRegex(cloud_ocr.OCRUnavailableError, "Markdown"):
+                cloud_ocr._mineru_markdown({"full_zip_url": "https://result.test/archive.zip"})
 
     def test_scanned_pdf_uses_ocr_after_native_extraction_is_empty(self):
         reader = MagicMock()
@@ -87,3 +119,11 @@ class CloudOCRTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def _context(body: bytes = b"") -> MagicMock:
+    response = MagicMock()
+    response.read.return_value = body
+    context = MagicMock()
+    context.__enter__.return_value = response
+    return context
