@@ -21,15 +21,9 @@
 
 .nexora-login__shell {
   display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); min-height: 100dvh;
-  background: #080d20;
-}
-.nexora-login:not(.nexora-login--light) .nexora-login__shell {
   background:
     linear-gradient(90deg, #04081714 0%, #050a1b33 44%, #080d20 56%),
     url("/assets/nexora-gradient-bg-4k.jpg") center / cover no-repeat;
-}
-.nexora-login--light .nexora-login__shell {
-  background: linear-gradient(90deg, #f9f7fc14 0%, #f5f1fa33 44%, #f5f7fae0 100%), url("/assets/nexora-gradient-bg-4k.jpg") center / cover no-repeat;
 }
 .nexora-login__visual { position: relative; min-height: 640px; overflow: visible; isolation: isolate; }
 .nexora-login__visual > img:first-child {
