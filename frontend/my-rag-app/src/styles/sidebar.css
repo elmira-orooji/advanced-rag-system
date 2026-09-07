@@ -41,6 +41,11 @@
   transform: translateX(-100%);
   transition: width 180ms ease, transform 180ms ease, visibility 180ms;
 }
+html.dark .nexora-sidebar {
+  --sb-accent: #c7b5ff;
+  --sb-active: #a78bfa1f;
+  --sb-accent-line: #a78bfa73;
+}
 html:not(.dark) .nexora-sidebar {
   --sb-bg: var(--surface-raised);
   --sb-text: var(--text-primary);
@@ -132,9 +137,10 @@ html:not(.dark) .nexora-sidebar {
 .nexora-sidebar__new {
   display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 12px;
   border: 1px solid var(--sb-accent-line); border-radius: 8px;
-  background: var(--sb-active); color: var(--sb-accent);
+  background: var(--sb-active); color: var(--sb-text);
   font-size: 12px; font-weight: 600; text-align: start;
 }
+.nexora-sidebar__new svg { color: var(--sb-accent); }
 .nexora-sidebar__new:hover { border-color: var(--sb-accent); }
 .nexora-sidebar__body { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; padding: 0 12px 8px; }
 .nexora-sidebar__navigation { flex-shrink: 0; }
@@ -149,7 +155,8 @@ html:not(.dark) .nexora-sidebar {
   color: var(--sb-muted); background: transparent; font-size: 12px; font-weight: 450; text-align: start;
 }
 .nexora-sidebar__nav-item:hover { background: var(--sb-hover); color: var(--sb-text); }
-.nexora-sidebar__nav-item.is-active { color: var(--sb-accent); background: var(--sb-active); font-weight: 600; }
+.nexora-sidebar__nav-item.is-active { color: var(--sb-text); background: var(--sb-active); font-weight: 600; }
+.nexora-sidebar__nav-item.is-active svg { color: var(--sb-accent); }
 .nexora-sidebar__nav-item.is-active::after { content: ''; width: 4px; height: 4px; margin-inline-start: auto; flex-shrink: 0; border-radius: 50%; background: var(--sb-accent); }
 .nexora-sidebar__recent { display: flex; flex-direction: column; flex: 1; min-height: 0; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--sb-line); overflow: hidden; }
 .nexora-sidebar__recent-heading { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; padding: 0 12px 10px; }
@@ -159,7 +166,8 @@ html:not(.dark) .nexora-sidebar {
 .nexora-sidebar__conversation.is-active { background: var(--sb-active); }
 .nexora-sidebar__conversation-link { display: flex; align-items: center; gap: 9px; min-width: 0; flex: 1; height: 39px; color: var(--sb-muted); font-size: var(--font-size-control); text-align: start; }
 .nexora-sidebar__conversation-link span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nexora-sidebar__conversation.is-active .nexora-sidebar__conversation-link { color: var(--sb-accent); }
+.nexora-sidebar__conversation.is-active .nexora-sidebar__conversation-link { color: var(--sb-text); }
+.nexora-sidebar__conversation.is-active .nexora-sidebar__conversation-link svg { color: var(--sb-accent); }
 .nexora-sidebar__conversation-actions { display: flex; flex-shrink: 0; }
 .nexora-sidebar .nexora-sidebar__icon-button { display: grid; place-items: center; width: 28px; height: 28px; flex-shrink: 0; border-radius: 6px; color: var(--sb-muted); }
 .nexora-sidebar .nexora-sidebar__icon-button:hover { color: var(--sb-accent); background: var(--sb-active); }
