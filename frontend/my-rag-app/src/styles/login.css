@@ -21,7 +21,15 @@
 
 .nexora-login__shell {
   display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); min-height: 100dvh;
-  background: linear-gradient(90deg, #04081714 0%, #050a1b33 44%, #050918a8 100%), url("/assets/nexora-gradient-bg-4k.jpg") center / cover no-repeat;
+  background: #080d20;
+}
+.nexora-login:not(.nexora-login--light) .nexora-login__shell {
+  background:
+    linear-gradient(90deg, #04081714 0%, #050a1b33 44%, #080d20 56%),
+    url("/assets/nexora-gradient-bg-4k.jpg") center / cover no-repeat;
+}
+.nexora-login--light .nexora-login__shell {
+  background: linear-gradient(90deg, #f9f7fc14 0%, #f5f1fa33 44%, #f5f7fae0 100%), url("/assets/nexora-gradient-bg-4k.jpg") center / cover no-repeat;
 }
 .nexora-login__visual { position: relative; min-height: 640px; overflow: visible; isolation: isolate; }
 .nexora-login__visual > img:first-child {
@@ -31,8 +39,11 @@
 .nexora-login__visual-shade { position: absolute; inset: 0; background: linear-gradient(180deg, transparent 65%, #07031233); pointer-events: none; }
 .nexora-login__main {
   position: relative; z-index: 1; display: flex; min-width: 0; min-height: 100dvh; align-items: center;
-  justify-content: center; padding: 120px 56px 64px; overflow: hidden; border-left: 1px solid #6e57921a;
-  background: linear-gradient(90deg, #09081f 0%, var(--surface-panel) 18%, #11132c 100%);
+  justify-content: center; padding: 120px 56px 64px; overflow: hidden; border-left: 1px solid #8b6bd21f;
+  background:
+    radial-gradient(ellipse at -8% 48%, #6938d81c, transparent 46%),
+    radial-gradient(ellipse at 100% 6%, #1675d414, transparent 44%),
+    linear-gradient(125deg, #080d20 0%, #0a1124 54%, #0c1430 100%);
 }
 .nexora-login--light .nexora-login__main {
   border-left-color: var(--login-border);
