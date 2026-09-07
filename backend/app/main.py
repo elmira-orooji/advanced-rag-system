@@ -28,35 +28,14 @@ app.add_middleware(
 )
 
 
-_QDRANT_COLLECTION_READY = False
-
-
 @app.on_event("startup")
 async def startup_collection_setup():
-    """Attempt to configure Qdrant collection without blocking startup.
+    """Keep API startup independent from external vector-store availability.
 
-    The API now starts in a degraded mode when Qdrant is temporarily
-    unavailable so that authentication, user management, and settings
-    endpoints remain accessible. Collection preparation should ideally
-    be handled by deployment migrations; this hook only warms the cache
-    when the vector store is reachable.
+    Collection creation belongs to the indexing worker or deployment setup.
+    Readiness performs the bounded, read-only vector-store probe.
     """
-    global _QDRANT_COLLECTION_READY  # noqa: PLW0603
-    try:
-        client = QdrantClient()
-        client.ensure_collection()
-        _QDRANT_COLLECTION_READY = True
-        logger.info("Qdrant collection ensured successfully at startup")
-    except QdrantError as exc:
-        logger.warning(
-            "Qdrant collection setup deferred; starting in degraded mode: %s",
-            exc,
-        )
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "Unexpected error during Qdrant collection setup; starting in degraded mode: %s",
-            exc,
-        )
+    logger.info("API started; Qdrant collection setup is deferred to indexing")
 
 
 app.include_router(auth_router, prefix="/api/v1")

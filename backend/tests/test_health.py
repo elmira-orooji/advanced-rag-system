@@ -4,11 +4,18 @@ from unittest.mock import MagicMock, patch
 from fastapi import Response, status
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.main import health, readiness
+from app.main import health, readiness, startup_collection_setup
 from app.services.qdrant import QdrantError
 
 
 class HealthCheckTests(unittest.TestCase):
+    def test_startup_does_not_connect_to_qdrant(self):
+        with patch("app.main.QdrantClient") as qdrant:
+            import asyncio
+            asyncio.run(startup_collection_setup())
+
+        qdrant.assert_not_called()
+
     def test_liveness_is_lightweight(self):
         with (
             patch("app.main.QdrantClient") as qdrant,
