@@ -50,7 +50,7 @@ function routeState(pathname: string): { page: AppPage; conversationId: string |
 }
 
 export default function AppLayout() {
-  const { t } = useTranslation();
+  const { i18n, t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const currentUser = authService.getUser();
@@ -88,6 +88,10 @@ export default function AppLayout() {
   };
 
   const handleLogout = async () => {
+    const message = i18n.language.startsWith("fa")
+      ? "از حساب کاربری خارج می‌شوید؟"
+      : "Do you want to log out?";
+    if (!await confirmAction(message)) return;
     await authService.logout();
     navigate("/", { replace: true });
   };
