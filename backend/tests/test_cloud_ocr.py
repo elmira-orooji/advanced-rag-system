@@ -64,10 +64,23 @@ class CloudOCRTests(unittest.TestCase):
             with self.assertRaisesRegex(cloud_ocr.OCRUnavailableError, "Markdown"):
                 cloud_ocr._mineru_markdown({"full_zip_url": "https://result.test/archive.zip"})
 
-    def test_mineru_upload_reports_the_safe_http_status(self):
-        upload_error = HTTPError("https://signed-upload.test/file", 403, "Forbidden", {}, BytesIO())
+    def test_mineru_upload_sends_raw_bytes_without_content_type(self):
+        response = MagicMock(status=200)
+        connection = MagicMock()
+        connection.getresponse.return_value = response
 
-        with patch.object(cloud_ocr, "urlopen", side_effect=upload_error):
+        with patch.object(cloud_ocr, "HTTPSConnection", return_value=connection):
+            cloud_ocr._mineru_upload("https://signed-upload.test/file?signature=secret", b"pdf-bytes")
+
+        connection.request.assert_called_once_with("PUT", "/file?signature=secret", body=b"pdf-bytes", headers={"Content-Length": "9"})
+        connection.close.assert_called_once()
+
+    def test_mineru_upload_reports_the_safe_http_status(self):
+        response = MagicMock(status=403)
+        connection = MagicMock()
+        connection.getresponse.return_value = response
+
+        with patch.object(cloud_ocr, "HTTPSConnection", return_value=connection):
             with self.assertRaisesRegex(cloud_ocr.OCRUnavailableError, "HTTP 403"):
                 cloud_ocr._mineru_upload("https://signed-upload.test/file", b"pdf-bytes")
 

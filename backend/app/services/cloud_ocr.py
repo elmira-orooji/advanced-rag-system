@@ -7,11 +7,13 @@ from __future__ import annotations
 
 import base64
 import hashlib
+from http.client import HTTPConnection, HTTPSConnection, HTTPException
 from io import BytesIO
 import json
 import time
 from pathlib import Path
 from urllib.error import HTTPError, URLError
+from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from zipfile import BadZipFile, ZipFile
 
@@ -104,18 +106,34 @@ def _mineru_upload_target(response: dict) -> tuple[str, str]:
 
 
 def _mineru_upload(upload_url: str, content: bytes) -> None:
-    request = Request(upload_url, data=content, method="PUT")
+    """PUT raw bytes without a Content-Type header to MinerU's signed URL.
+
+    urllib adds ``application/x-www-form-urlencoded`` for request bodies. That
+    extra header invalidates the object-storage signature issued by MinerU.
+    """
+    target = urlsplit(upload_url)
+    if target.scheme not in {"http", "https"} or not target.netloc:
+        raise OCRUnavailableError("MinerU returned an invalid upload URL")
+    connection_type = HTTPSConnection if target.scheme == "https" else HTTPConnection
+    connection = None
     try:
-        with urlopen(request, timeout=OCR_TIMEOUT_SECONDS):
+        connection = connection_type(target.netloc, timeout=OCR_TIMEOUT_SECONDS)
+        request_target = target.path or "/"
+        if target.query:
+            request_target = f"{request_target}?{target.query}"
+        connection.request("PUT", request_target, body=content, headers={"Content-Length": str(len(content))})
+        response = connection.getresponse()
+        response.read()
+        if 200 <= response.status < 300:
             return
-    except HTTPError as exc:
+        raise OCRUnavailableError(f"MinerU file upload failed (HTTP {response.status})")
+    except (HTTPException, OSError, TimeoutError) as exc:
         # Do not include the signed URL: it can grant temporary access to the
-        # object. The status is sufficient for an operator to diagnose access.
-        raise OCRUnavailableError(f"MinerU file upload failed (HTTP {exc.code})") from exc
-    except URLError as exc:
-        raise OCRUnavailableError(f"MinerU file upload failed: network error ({exc.reason})") from exc
-    except TimeoutError as exc:
-        raise OCRUnavailableError("MinerU file upload timed out") from exc
+        # object. The transport reason is sufficient for an operator to act.
+        raise OCRUnavailableError(f"MinerU file upload failed: network error ({exc})") from exc
+    finally:
+        if connection is not None:
+            connection.close()
 
 
 def _mineru_wait_for_result(batch_id: str, headers: dict[str, str]) -> dict:
