@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import delete, update
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session
 
 from app.models.sync_lease import SyncLease
@@ -43,26 +43,35 @@ def connector_sync_lock(db: Session, connector_id: UUID):
     # The expiry predicate must be part of the UPDATE itself. PostgreSQL
     # re-checks it after waiting for a concurrent updater, so only one owner
     # can take over an expired lease.
-    result = db.execute(
-        update(SyncLease)
-        .where(
-            SyncLease.connector_id == connector_id,
-            SyncLease.expires_at < now,
+    contended = False
+    try:
+        result = db.execute(
+            update(SyncLease)
+            .where(
+                SyncLease.connector_id == connector_id,
+                SyncLease.expires_at < now,
+            )
+            .values(owner_id=owner_id, expires_at=expires_at)
         )
-        .values(owner_id=owner_id, expires_at=expires_at)
-    )
-    acquired = result.rowcount == 1
+        acquired = result.rowcount == 1
+    except OperationalError:
+        # SQLite can surface write contention as "database table is locked"
+        # instead of waiting and re-checking the predicate like PostgreSQL.
+        # A contending scheduler must simply skip this run.
+        db.rollback()
+        acquired = False
+        contended = True
 
     if acquired:
         db.commit()
-    else:
+    elif not contended:
         # No row was expired. If the lease does not exist, a primary-key
         # constrained INSERT acquires it; concurrent inserts leave one winner.
         try:
             db.add(SyncLease(connector_id=connector_id, owner_id=owner_id, expires_at=expires_at))
             db.commit()
             acquired = True
-        except IntegrityError:
+        except (IntegrityError, OperationalError):
             db.rollback()
 
     if not acquired:
