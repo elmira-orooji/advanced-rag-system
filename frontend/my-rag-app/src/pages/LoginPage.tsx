@@ -101,13 +101,17 @@ export default function LoginPage() {
     };
   }, []);
 
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    saveTheme(theme);
+  }, [theme]);
+
   const updateCapsLock = (event: KeyboardEvent<HTMLInputElement>) =>
     setCapsLock(event.getModifierState("CapsLock"));
 
   const toggleTheme = () => {
     setTheme((current) => {
       const next = current === "dark" ? "light" : "dark";
-      saveTheme(next);
       return next;
     });
   };
