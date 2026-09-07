@@ -8,7 +8,7 @@ import RenameConversationDialog from "../components/RenameConversationDialog";
 import { authService } from "../services/authService";
 import { conversationService, type ConversationSummary } from "../services/conversationService";
 import toast from "react-hot-toast";
-import { canManageUsers } from "../lib/permissions";
+import { canManageKnowledge, canManageUsers } from "../lib/permissions";
 import { useTranslation } from "react-i18next";
 import { getPreferredTheme, saveTheme, type Theme } from "../utils/theme";
 
@@ -54,6 +54,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const currentUser = authService.getUser();
+  const canManageKnowledgeSets = canManageKnowledge(currentUser);
   const { page: activePage, conversationId: activeConversationId, valid: validRoute } = routeState(location.pathname);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const closeMobileMenu = useCallback(() => setMobileMenuOpen(false), []);
@@ -187,7 +188,7 @@ export default function AppLayout() {
           {!validRoute && <Navigate to="/home" replace />}
           {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <WorkspacePage currentUser={currentUser} conversations={conversations} onNewConversation={newConversation} onOpenConversation={selectConversation} onOpenKnowledge={() => selectPage("upload")} />)}
           {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} onOpenKnowledge={(intent) => navigate(PAGE_PATHS.upload, { state: { knowledgeIntent: intent } })} />}
-          {activePage === "upload" && <UploadFilesPage initialAction={location.state?.knowledgeIntent === "create" || location.state?.knowledgeIntent === "upload" ? location.state.knowledgeIntent : undefined} />}
+          {activePage === "upload" && (canManageKnowledgeSets ? <UploadFilesPage initialAction={location.state?.knowledgeIntent === "create" || location.state?.knowledgeIntent === "upload" ? location.state.knowledgeIntent : undefined} /> : <Navigate to="/home" replace />)}
           {activePage === "assistants" && <AssistantsPage onStartConversation={startAssistantConversation} />}
           {activePage === "users" && (canManageUsers(currentUser) ? <UsersPage /> : <Navigate to="/home" replace />)}
           {activePage === "settings" && <SettingsPage theme={theme} setTheme={setTheme} />}

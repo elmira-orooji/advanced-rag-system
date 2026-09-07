@@ -24,6 +24,13 @@ const props = {
 };
 
 describe("SidebarV2 mobile accessibility", () => {
+  it("hides knowledge and team management from regular users", () => {
+    render(<SidebarV2 {...props} mobileOpen={false} />);
+
+    expect(screen.queryByRole("button", { name: "sidebar.upload" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "sidebar.users" })).not.toBeInTheDocument();
+  });
+
   it("focuses close, closes on Escape, and traps Tab within the menu", async () => {
     const opener = document.createElement("button");
     opener.textContent = "Open";

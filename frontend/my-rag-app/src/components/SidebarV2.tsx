@@ -20,7 +20,7 @@ import type { AppPage } from "../layouts/AppLayout";
 import { useTranslation } from "react-i18next";
 import type { ConversationSummary } from "../services/conversationService";
 import "../styles/sidebar.css";
-import { canManageUsers } from "../lib/permissions";
+import { canManageKnowledge, canManageUsers } from "../lib/permissions";
 import { sectionCopy } from "../locales/copy";
 
 interface SidebarV2Props {
@@ -62,7 +62,7 @@ export default function SidebarV2({
   const labels = sectionCopy(t, "sidebar", ["home", "upload", "assistants", "users", "settings", "newChat", "recent", "navigation", "search", "collapse", "account"]);
   const navigation = [
     { id: "home" as const, label: labels.home, icon: Home },
-    { id: "upload" as const, label: labels.upload, icon: FileUp },
+    ...(canManageKnowledge(currentUser) ? [{ id: "upload" as const, label: labels.upload, icon: FileUp }] : []),
     { id: "assistants" as const, label: labels.assistants, icon: Bot },
     ...(canManageUsers(currentUser) ? [{ id: "users" as const, label: labels.users, icon: UserCog }] : []),
     { id: "settings" as const, label: labels.settings, icon: Settings },

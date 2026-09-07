@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 
 import type { ConversationSummary } from "../services/conversationService";
 import type { AuthUser } from "../types/auth";
+import { canManageKnowledge } from "../lib/permissions";
 
 interface WorkspacePageProps {
   currentUser: AuthUser | null;
@@ -16,6 +17,7 @@ export default function WorkspacePage({ currentUser, conversations, onNewConvers
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const recentConversations = conversations.slice(0, 5);
+  const showKnowledgeManagement = canManageKnowledge(currentUser);
 
   return <div dir={isFa ? "rtl" : "ltr"} className="h-full overflow-y-auto px-4 py-6 sm:px-7 lg:px-10">
     <div className="mx-auto max-w-5xl">
@@ -28,11 +30,11 @@ export default function WorkspacePage({ currentUser, conversations, onNewConvers
         <button type="button" onClick={onNewConversation} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#7c27ff] px-4 text-sm font-semibold text-white shadow-[0_10px_28px_rgba(124,39,255,.3)] transition hover:bg-[#9238ff]"><Plus size={17} />{isFa ? "گفتگوی جدید" : "New conversation"}</button>
       </header>
 
-      <section className="mt-8 grid gap-4 sm:grid-cols-2">
+      <section className={`mt-8 grid gap-4 ${showKnowledgeManagement ? "sm:grid-cols-2" : ""}`}>
         <div className="rounded-2xl border border-white/[.08] bg-white/[.035] p-5">
           <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#7c27ff]/20 text-[#d8a8ff]"><MessageSquareText size={19} /></span><div><p className="text-2xl font-semibold">{conversations.length}</p><p className="text-xs text-white/45">{isFa ? "گفتگوی ذخیره‌شده" : "Saved conversations"}</p></div></div>
         </div>
-        <button type="button" onClick={onOpenKnowledge} className="rounded-2xl border border-white/[.08] bg-white/[.035] p-5 text-start transition hover:border-[#18c7f4]/30 hover:bg-[#18c7f4]/[.06]"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#18c7f4]/10 text-[#8de8ff]"><BookOpen size={19} /></span><div><p className="text-sm font-semibold">{isFa ? "پایگاه دانش" : "Knowledge base"}</p><p className="mt-1 text-xs text-white/45">{isFa ? "اسناد و مجموعه‌های دانش را مدیریت کنید" : "Manage source documents and knowledge sets"}</p></div></div></button>
+        {showKnowledgeManagement && <button type="button" onClick={onOpenKnowledge} className="rounded-2xl border border-white/[.08] bg-white/[.035] p-5 text-start transition hover:border-[#18c7f4]/30 hover:bg-[#18c7f4]/[.06]"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#18c7f4]/10 text-[#8de8ff]"><BookOpen size={19} /></span><div><p className="text-sm font-semibold">{isFa ? "پایگاه دانش" : "Knowledge base"}</p><p className="mt-1 text-xs text-white/45">{isFa ? "اسناد و مجموعه‌های دانش را مدیریت کنید" : "Manage source documents and knowledge sets"}</p></div></div></button>}
       </section>
 
       <section className="mt-8 rounded-2xl border border-white/[.08] bg-[#0d1730]/65 p-5 sm:p-6">
