@@ -19,6 +19,12 @@ from app.services.qdrant import QdrantError
 
 
 class DocumentJobRecoveryTests(unittest.TestCase):
+    def test_outbox_action_column_accepts_replacement_action(self):
+        self.assertGreaterEqual(
+            IndexingOutbox.__table__.c.action.type.length,
+            len("replace_document_chunks"),
+        )
+
     def setUp(self):
         self.engine = create_engine("sqlite://")
         ProcessingJob.__table__.create(self.engine)
