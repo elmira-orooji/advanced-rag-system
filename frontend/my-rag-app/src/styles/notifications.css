@@ -51,7 +51,7 @@ html:not(.dark) .nexora-toast--warning { --notice-accent: #9a6819; }
 .nexora-message-dialog h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; color: var(--notice-text); }
 .nexora-message-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }
 .nexora-message-actions button { min-height: 38px; padding: 8px 16px; border: 1px solid var(--notice-border); border-radius: 8px; background: transparent; color: var(--notice-text); font-family: inherit; font-size: 12px; cursor: pointer; }
-.nexora-message-actions .is-primary { background: var(--brand); border-color: var(--brand); color: var(--text-inverse); }
+.nexora-message-actions .is-primary { background: var(--brand-action); border-color: var(--brand-action); color: var(--text-inverse); }
 .nexora-message-actions .is-confirm { color: var(--notice-accent); }
 .nexora-message-actions button:hover { filter: brightness(1.08); }
 .nexora-message-actions button:focus-visible { outline: 2px solid var(--notice-accent); outline-offset: 3px; }

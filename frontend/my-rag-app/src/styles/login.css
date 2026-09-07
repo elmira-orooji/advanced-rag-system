@@ -5,7 +5,7 @@
 .nexora-login {
   --login-panel: var(--surface-panel); --login-field: var(--surface-raised); --login-text: var(--text-primary);
   --login-muted: var(--text-muted); --login-border: var(--brand-line); --login-control-border: var(--border-subtle);
-  --login-primary: var(--brand); --login-on-primary: var(--text-inverse); --login-error: var(--status-danger);
+  --login-primary: var(--brand-action); --login-on-primary: var(--text-inverse); --login-error: var(--status-danger);
   --login-warning: var(--status-warning); --login-success: var(--status-success); --motion-fast: 140ms;
   min-height: 100dvh; overflow: auto; color: var(--login-text); color-scheme: dark;
   background: var(--surface-canvas); font-family: var(--font-ui); -webkit-font-smoothing: antialiased;
@@ -13,7 +13,7 @@
 .nexora-login--light {
   --login-panel: var(--surface-panel); --login-field: var(--surface-raised); --login-text: var(--text-primary);
   --login-muted: var(--text-muted); --login-border: var(--border-subtle); --login-control-border: var(--border-subtle);
-  --login-primary: var(--brand); --login-error: var(--status-danger); --login-warning: var(--status-warning);
+  --login-primary: var(--brand-action); --login-error: var(--status-danger); --login-warning: var(--status-warning);
   --login-success: var(--status-success); color-scheme: light;
 }
 .nexora-login *, .nexora-login *::before, .nexora-login *::after { box-sizing: border-box; }

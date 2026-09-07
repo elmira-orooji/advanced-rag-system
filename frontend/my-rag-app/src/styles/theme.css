@@ -4,6 +4,8 @@
   --brand: #7950bb;
   --brand-strong: #32127a;
   --brand-hover: #7040ba;
+  --brand-action: #7950bb;
+  --brand-action-hover: #7040ba;
   --brand-soft: #7c3aed0b;
   --brand-line: #7c3aed24;
   --accent-magenta: #b84ee7;
@@ -44,12 +46,14 @@
 }
 
 .dark {
-  --brand: #8050cc;
-  --brand-strong: #7c27ff;
-  --brand-hover: #9238ff;
-  --brand-soft: #a78bfa12;
-  --brand-line: #a78bfa38;
-  --accent-magenta: #c43cff;
+  --brand: #c7b5ff;
+  --brand-strong: #e0d6ff;
+  --brand-hover: #e0d6ff;
+  --brand-action: #6941b8;
+  --brand-action-hover: #7a50c9;
+  --brand-soft: #c7b5ff1a;
+  --brand-line: #c7b5ff66;
+  --accent-magenta: #e0b8ff;
   --accent-cyan: #18c7f4;
   --accent-blue: #1b4dff;
   --surface-canvas: #0a1122;

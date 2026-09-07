@@ -40,7 +40,7 @@ button {
 
 ::selection {
   color: var(--text-inverse);
-  background: var(--brand-strong);
+  background: var(--brand-action);
 }
 
 button:focus-visible,
@@ -514,7 +514,7 @@ html:not(.dark) .knowledge-answer-mode button.is-active {
 }
 .team-input option:checked {
   color: #ffffff;
-  background-color: #7c27ff;
+  background-color: var(--brand-action);
 }
 .settings-segmented {
   border: 1px solid rgba(255,255,255,.07);
@@ -530,7 +530,7 @@ html:not(.dark) .knowledge-answer-mode button.is-active {
 }
 .settings-select option:checked {
   color: #fff;
-  background: #7c27ff;
+  background: var(--brand-action);
 }
 .knowledge-chat-panel [class*="overflow-y-auto"] {
   scrollbar-width: none;

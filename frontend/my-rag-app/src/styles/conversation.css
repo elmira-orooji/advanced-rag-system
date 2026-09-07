@@ -71,10 +71,10 @@ html:not(.dark) .conversation-page {
 .app-shell .conversation-page .app-composer .app-icon-button:hover { color: var(--cv-accent) !important; background: var(--cv-tint); border-color: var(--cv-accent); }
 .app-shell .conversation-page .chat-rag-label { color: var(--cv-muted) !important; font-size: var(--font-size-helper); align-self: center; }
 .app-shell .conversation-page .chat-send-button {
-  border-radius: 9px; background: var(--brand); color: var(--text-inverse) !important; box-shadow: none; transform: none;
+  border-radius: 9px; background: var(--brand-action); color: var(--text-inverse) !important; box-shadow: none; transform: none;
   transition: background-color 140ms ease;
 }
-.app-shell .conversation-page .chat-send-button:hover:not(:disabled) { background: var(--brand-hover); }
+.app-shell .conversation-page .chat-send-button:hover:not(:disabled) { background: var(--brand-action-hover); }
 .app-shell .conversation-page .chat-send-button:disabled { background: var(--cv-tint) !important; color: var(--cv-muted) !important; cursor: not-allowed; }
 .conversation-suggestion { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 12px; border: 1px solid var(--cv-line); border-radius: 9px; background: transparent; text-align: start; cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
 .conversation-suggestion:hover { background: var(--cv-tint); border-color: var(--cv-accent); }

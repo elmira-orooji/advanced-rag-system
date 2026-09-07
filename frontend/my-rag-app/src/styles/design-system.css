@@ -47,11 +47,21 @@
 
 .nexora-action:hover:not(:disabled) { transform: translateY(-1px); }
 .nexora-action:disabled { cursor: not-allowed; opacity: .56; }
-.nexora-action--primary { color: var(--text-inverse); background: var(--brand); box-shadow: 0 8px 20px color-mix(in srgb, var(--brand) 24%, transparent); }
-.nexora-action--primary:hover:not(:disabled) { background: var(--brand-hover); }
+.nexora-action--primary { color: var(--text-inverse); background: var(--brand-action); box-shadow: 0 8px 20px color-mix(in srgb, var(--brand-action) 24%, transparent); }
+.nexora-action--primary:hover:not(:disabled) { background: var(--brand-action-hover); }
 .nexora-action--secondary { color: var(--text-primary); border-color: var(--border-subtle); background: var(--surface-raised); }
 .nexora-action--secondary:hover:not(:disabled) { border-color: var(--brand-line); background: var(--brand-soft); }
 .nexora-action--danger { color: var(--status-danger); border-color: color-mix(in srgb, var(--status-danger) 30%, var(--border-subtle)); background: var(--state-danger-soft); }
+
+/* Legacy Tailwind action utilities use this literal. Keep every primary action
+   on the same accessible surface without changing the softer violet tints. */
+html.dark .app-shell [class$="bg-[#7c27ff]"],
+html.dark .app-shell [class*="bg-[#7c27ff] "] {
+  background-color: var(--brand-action) !important;
+}
+html.dark .app-shell [class*="hover:bg-[#9238ff]"]:hover:not(:disabled) {
+  background-color: var(--brand-action-hover) !important;
+}
 
 .nexora-status {
   display: inline-flex;

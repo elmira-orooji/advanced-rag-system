@@ -24,7 +24,7 @@ html:not(.dark) .team-page { --tm-bg: var(--surface-canvas); --tm-panel: var(--s
 .app-shell .team-page .enterprise-side-panel { background: var(--tm-panel); border-color: var(--tm-line) !important; box-shadow: none; backdrop-filter: none; }
 .team-page .enterprise-side-panel header { height: 68px; }
 .team-page .enterprise-side-panel button[aria-pressed="true"] { background: var(--tm-tint); border-color: var(--tm-accent); color: var(--tm-accent); }
-.team-page .enterprise-side-panel > div:last-child > button, .team-page .team-member-form footer > button:last-child { border-radius: var(--radius-control); background: var(--brand); color: var(--text-inverse); box-shadow: none; }
+.team-page .enterprise-side-panel > div:last-child > button, .team-page .team-member-form footer > button:last-child { border-radius: var(--radius-control); background: var(--brand-action); color: var(--text-inverse); box-shadow: none; }
 .team-page .team-member-form [role="alert"] { color: #bc435b; }
 html.dark .team-page .team-member-form [role="alert"] { color: #ee91a0; }
 .team-page button { cursor: pointer; }
