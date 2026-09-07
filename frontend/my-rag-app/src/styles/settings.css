@@ -33,7 +33,7 @@ html:not(.dark) .preferences-page {
 .preferences-choice:has(input:focus-visible) { outline: 2px solid var(--pref-accent); outline-offset: 3px; }
 .preferences-choice > input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .preferences-preview { display: flex; height: 100px; overflow: hidden; border: 1px solid var(--preview-line); border-radius: 5px; background: var(--preview-bg); }
-.preferences-preview--light { --preview-bg: var(--surface-canvas); --preview-panel: var(--surface-panel); --preview-line: var(--border-subtle); --preview-mark: #c9c5d8; }
+.preferences-preview--light { --preview-bg: #f5f7fa; --preview-panel: #ffffff; --preview-line: #dfe4ed; --preview-mark: #69758b; }
 .preferences-preview--dark { --preview-bg: #0a1122; --preview-panel: #141e32; --preview-line: #273249; --preview-mark: #4b526b; }
 .preferences-preview-sidebar { display: flex; flex-direction: column; gap: 8px; width: 25%; padding: 14px 8px; background: var(--preview-panel); border-inline-end: 1px solid var(--preview-line); }
 .preferences-preview i { display: block; height: 5px; border-radius: 2px; background: var(--preview-mark); }
