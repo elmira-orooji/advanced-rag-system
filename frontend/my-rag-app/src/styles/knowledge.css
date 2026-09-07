@@ -141,11 +141,14 @@ html:not(.dark) .kb-page {
 .kb-page .kb-text { color: var(--kb-text); }
 .kb-page .kb-muted { color: var(--kb-muted); }
 .kb-page .kb-accent { color: var(--kb-accent); }
-.kb-set-card { width: 216px; flex-shrink: 0; padding: 16px; border: 1px solid var(--kb-line); border-radius: 10px; background: var(--kb-panel); text-align: start; transition: border-color 140ms ease, background-color 140ms ease; }
+.kb-set-card-wrap { width: 216px; flex-shrink: 0; }
+.kb-set-card { width: 100%; min-height: 132px; padding: 16px; border: 1px solid var(--kb-line); border-radius: 10px; background: var(--kb-panel); text-align: start; transition: border-color 140ms ease, background-color 140ms ease; }
 .kb-set-card.is-active { border-color: var(--kb-accent); background: var(--kb-tint); }
 .kb-set-card:hover { border-color: var(--kb-accent); }
+.kb-set-card-delete { position: absolute; top: 10px; inset-inline-end: 10px; opacity: .72; transition: opacity 140ms ease, color 140ms ease, background-color 140ms ease; }
+.kb-set-card-wrap:hover .kb-set-card-delete, .kb-set-card-delete:focus-visible { opacity: 1; }
 .kb-set-icon, .kb-upload-icon { display: grid; place-items: center; width: 34px; height: 34px; flex-shrink: 0; border: 1px solid var(--kb-line); border-radius: 9px; color: var(--kb-accent); background: var(--kb-panel); }
-.kb-selected-dot { width: 5px; height: 5px; margin-top: 4px; border-radius: 50%; background: var(--kb-accent); }
+.kb-selected-dot { width: 5px; height: 5px; margin-top: 4px; margin-inline-end: 38px; border-radius: 50%; background: var(--kb-accent); }
 .kb-page .kb-connect { border: 1px solid var(--kb-line); border-radius: 8px; color: var(--kb-accent); background: var(--kb-tint); }
 .app-shell .kb-page .app-icon-button { border-color: var(--kb-line); border-radius: 8px; color: var(--kb-muted); background: var(--kb-panel); backdrop-filter: none; }
 .app-shell .kb-page .app-icon-button:hover { border-color: var(--kb-accent); color: var(--kb-accent); background: var(--kb-tint); }
