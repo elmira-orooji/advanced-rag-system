@@ -64,6 +64,13 @@ class CloudOCRTests(unittest.TestCase):
             with self.assertRaisesRegex(cloud_ocr.OCRUnavailableError, "Markdown"):
                 cloud_ocr._mineru_markdown({"full_zip_url": "https://result.test/archive.zip"})
 
+    def test_mineru_upload_reports_the_safe_http_status(self):
+        upload_error = HTTPError("https://signed-upload.test/file", 403, "Forbidden", {}, BytesIO())
+
+        with patch.object(cloud_ocr, "urlopen", side_effect=upload_error):
+            with self.assertRaisesRegex(cloud_ocr.OCRUnavailableError, "HTTP 403"):
+                cloud_ocr._mineru_upload("https://signed-upload.test/file", b"pdf-bytes")
+
     def test_scanned_pdf_uses_ocr_after_native_extraction_is_empty(self):
         reader = MagicMock()
         reader.pages = [MagicMock(extract_text=lambda: "")]

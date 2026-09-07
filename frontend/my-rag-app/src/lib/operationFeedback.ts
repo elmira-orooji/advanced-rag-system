@@ -4,6 +4,7 @@ export function operationError(error: unknown, operation: OperationKind, isFa: b
   const raw = error instanceof Error ? error.message.trim() : "";
   const normalized = raw.toLowerCase();
   const genericNetworkError = !raw || normalized.includes("failed to fetch") || normalized.includes("network error") || normalized === "request failed";
+  const ocrProviderError = operation === "processing" && /mineru|google vision|azure document intelligence/.test(normalized);
   const copy = isFa
     ? {
         load: "دریافت اطلاعات انجام نشد. اتصال را بررسی کنید و دوباره تلاش کنید.",
@@ -21,6 +22,11 @@ export function operationError(error: unknown, operation: OperationKind, isFa: b
         sync: "The connector couldn't sync. Check the source connection and try again.",
         answer: "We couldn't generate an answer. Please try again in a moment.",
       };
+  if (ocrProviderError) {
+    return isFa
+      ? `OCR با سرویس خارجی انجام نشد. ${raw}`
+      : `OCR could not be completed by the external service. ${raw}`;
+  }
   return genericNetworkError ? copy[operation] : raw;
 }
 

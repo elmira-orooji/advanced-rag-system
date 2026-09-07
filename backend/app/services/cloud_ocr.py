@@ -108,8 +108,14 @@ def _mineru_upload(upload_url: str, content: bytes) -> None:
     try:
         with urlopen(request, timeout=OCR_TIMEOUT_SECONDS):
             return
-    except (HTTPError, URLError, TimeoutError) as exc:
-        raise OCRUnavailableError("MinerU file upload failed") from exc
+    except HTTPError as exc:
+        # Do not include the signed URL: it can grant temporary access to the
+        # object. The status is sufficient for an operator to diagnose access.
+        raise OCRUnavailableError(f"MinerU file upload failed (HTTP {exc.code})") from exc
+    except URLError as exc:
+        raise OCRUnavailableError(f"MinerU file upload failed: network error ({exc.reason})") from exc
+    except TimeoutError as exc:
+        raise OCRUnavailableError("MinerU file upload timed out") from exc
 
 
 def _mineru_wait_for_result(batch_id: str, headers: dict[str, str]) -> dict:
