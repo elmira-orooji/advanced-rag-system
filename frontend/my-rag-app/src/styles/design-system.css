@@ -41,6 +41,17 @@
 
 .app-composer { min-width: 0; width: 100%; }
 
+/* Text containers opt into a predictable overflow policy instead of letting
+   long Persian sentences, URLs, or filenames stretch their parent layout. */
+.nexora-text-wrap { min-width: 0; overflow-wrap: anywhere; word-break: normal; }
+.nexora-file-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  unicode-bidi: plaintext;
+}
+
 .nexora-action {
   display: inline-flex;
   min-height: var(--control-height);
@@ -120,4 +131,20 @@ html.dark .app-shell [class*="hover:bg-[#9238ff]"]:hover:not(:disabled) {
   .app-shell .app-icon-button { min-width: 44px; min-height: 44px; }
   .nexora-page-frame { padding-inline: 12px; }
   .nexora-dialog-surface { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
+}
+
+/* iOS Safari zooms a focused text field below 16px. Controls can remain
+   compact elsewhere while mobile typing stays stable and readable. */
+@media (max-width: 767px) {
+  .app-shell :is(input:not([type="checkbox"]):not([type="radio"]), textarea) {
+    font-size: 16px !important;
+  }
+
+  .nexora-file-name {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
 }

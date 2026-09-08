@@ -21,7 +21,7 @@ export default function ActionableError({ error, isFa, operation, title, onRetry
       <p className="mt-2 text-sm leading-6 tm-muted">{message}</p>
       {rawError && rawError !== message && <details className="mt-3 text-start text-xs tm-muted">
         <summary className="cursor-pointer select-none underline underline-offset-4">{isFa ? "جزئیات فنی" : "Technical details"}</summary>
-        <p className="mt-2 break-words rounded-lg bg-black/10 p-2 text-[11px] leading-5">{rawError}</p>
+        <p className="nexora-text-wrap mt-2 rounded-lg bg-black/10 p-2 text-xs leading-5">{rawError}</p>
       </details>}
       <button type="button" onClick={onRetry} className="team-primary mx-auto mt-5 flex h-10 items-center gap-2 px-4 text-xs font-semibold">
         <RefreshCw size={14} aria-hidden="true" />{isFa ? "تلاش مجدد" : "Try again"}
