@@ -136,7 +136,7 @@ html.dark .app-shell [class*="hover:bg-[#9238ff]"]:hover:not(:disabled) {
 /* iOS Safari zooms a focused text field below 16px. Controls can remain
    compact elsewhere while mobile typing stays stable and readable. */
 @media (max-width: 767px) {
-  .app-shell :is(input:not([type="checkbox"]):not([type="radio"]), textarea) {
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]), textarea) {
     font-size: 16px !important;
   }
 
