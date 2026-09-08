@@ -103,7 +103,8 @@ html:not(.dark) .assistants-page {
 .assistants-page .assistant-dialog button[aria-pressed="true"] { border-color: var(--as-accent); background: var(--as-tint); color: var(--as-text); }
 .app-shell .assistants-page .app-composer { padding: 8px; border-color: var(--as-line); border-radius: 12px; background: var(--as-panel); box-shadow: none; backdrop-filter: none; }
 .app-shell .assistants-page .app-composer:focus-within { border-color: var(--as-accent); box-shadow: 0 0 0 3px var(--as-tint); }
-.app-shell .assistants-page .chat-composer-textarea { font-size: 12px; border: 0; background: transparent; box-shadow: none; }
+.app-shell .assistants-page .chat-composer-textarea { color: var(--as-text); caret-color: var(--as-text); font-size: 14px; line-height: 1.5; border: 0; background: transparent; box-shadow: none; }
+.app-shell .assistants-page .chat-composer-textarea::placeholder { color: var(--as-muted); }
 .app-shell .assistants-page .chat-composer-textarea:focus { box-shadow: none; }
 .app-shell .assistants-page .chat-rag-label { display: none; }
 .app-shell .assistants-page .chat-send-button { background: var(--brand-action); border-radius: var(--radius-control); color: var(--text-inverse) !important; transform: none; box-shadow: none; }

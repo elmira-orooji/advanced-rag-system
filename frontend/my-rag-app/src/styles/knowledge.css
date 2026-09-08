@@ -193,7 +193,8 @@ html:not(.dark) .kb-page {
 .app-shell .kb-page .knowledge-answer-mode button.is-active { color: var(--kb-accent); background: var(--kb-tint); box-shadow: none; }
 .app-shell .kb-page .app-composer { border-color: var(--kb-line); border-radius: 12px; padding: 8px; background: var(--kb-panel); box-shadow: none; backdrop-filter: none; }
 .app-shell .kb-page .app-composer:focus-within { border-color: var(--kb-accent); box-shadow: 0 0 0 3px var(--kb-tint); }
-.app-shell .kb-page .chat-composer-textarea { font-size: 12px; background: transparent; border: 0; box-shadow: none; }
+.app-shell .kb-page .chat-composer-textarea { color: var(--kb-text); caret-color: var(--kb-text); font-size: 14px; line-height: 1.5; background: transparent; border: 0; box-shadow: none; }
+.app-shell .kb-page .chat-composer-textarea::placeholder { color: var(--kb-muted); }
 .app-shell .kb-page .chat-composer-textarea:focus { box-shadow: none; }
 .app-shell .kb-page .chat-rag-label { display: none; }
 .app-shell .kb-page .chat-send-button { background: var(--brand-action); color: var(--text-inverse) !important; border-radius: var(--radius-control); box-shadow: none; transform: none; }

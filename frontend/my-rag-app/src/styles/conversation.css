@@ -61,7 +61,7 @@ html:not(.dark) .conversation-page {
 }
 .app-shell .conversation-page .app-composer:focus-within { border-color: var(--cv-accent); box-shadow: 0 0 0 3px var(--cv-tint); }
 .app-shell .conversation-page textarea.chat-composer-textarea {
-  color: var(--cv-text); background: transparent; border: 0; box-shadow: none; font-size: 13px;
+  color: var(--cv-text); caret-color: var(--cv-text); background: transparent; border: 0; box-shadow: none; font-size: 14px; line-height: 1.5;
 }
 .app-shell .conversation-page textarea.chat-composer-textarea:focus { box-shadow: none; }
 .app-shell .conversation-page textarea.chat-composer-textarea::placeholder { color: var(--cv-muted); }
