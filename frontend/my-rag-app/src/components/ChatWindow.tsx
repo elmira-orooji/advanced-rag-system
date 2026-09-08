@@ -1,6 +1,6 @@
 import { confirmAction } from "../services/confirmation";
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
-import { Copy, FileText, Quote, Share2, Sparkles, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
+import { Copy, FileText, Quote, Share2, Telescope, ThumbsDown, ThumbsUp, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 import type { ChatMessage, Source } from "../types/chat";
@@ -8,6 +8,9 @@ import { feedbackService, type FeedbackReason } from "../services/feedbackServic
 import { shareService } from "../services/shareService";
 import AnswerTrustBadge from "./AnswerTrustBadge";
 import AnswerSources from "./AnswerSources";
+import AnswerLoading from "./AnswerLoading";
+import NexoraAvatar from "./NexoraAvatar";
+import "../styles/chat-answer.css";
 
 interface ChatWindowProps { messages: ChatMessage[]; isThinking: boolean; }
 
@@ -74,21 +77,24 @@ export default function ChatWindow({ messages, isThinking }: ChatWindowProps) {
   const [evidence, setEvidence] = useState<Source | null>(null);
   const [shareOpen, setShareOpen] = useState(false);
 
-  return <div className="relative h-full">
-    <div className="flex h-full flex-col gap-5 overflow-y-auto pe-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
-      {messages.map((message) => <article key={message.id} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-        {message.role === "assistant" && <span className="mt-1 grid size-8 shrink-0 place-items-center rounded-xl border border-[#18c7f4]/20 bg-[#7c27ff]/25 text-[#c43cff]"><Sparkles size={14} /></span>}
-        <div className={`max-w-[88%] rounded-2xl px-4 py-3 text-sm leading-6 sm:max-w-[82%] ${message.role === "user" ? "rounded-br-md bg-[#7c27ff] text-white shadow-[0_10px_28px_rgba(124,39,255,.25)]" : "rounded-tl-md border border-white/[.08] bg-white/[.045] text-white/75"}`}>
-          <p className="whitespace-pre-wrap">{message.role === "assistant" ? <CitedText content={message.content} sources={message.sources || []} onOpen={setEvidence} /> : message.content}</p>
-          {message.role === "assistant" && <>
+  return <div className="chat-thread knowledge-chat relative h-full" dir={isFa ? "rtl" : "ltr"}>
+    <div className="chat-thread-scroll h-full overflow-y-auto pe-1">
+      <div className="chat-thread-messages">
+      {messages.map((message) => message.role === "user"
+        ? <article key={message.id} className="chat-question"><div className="chat-question-bubble">{message.content}</div></article>
+        : <article key={message.id} className="chat-answer">
+          <NexoraAvatar />
+          <div className="chat-answer-body">
+            <header className="chat-answer-heading"><strong>Nexora</strong></header>
+            <div className="chat-answer-text"><CitedText content={message.content} sources={message.sources || []} onOpen={setEvidence} /></div>
             <AnswerTrustBadge answerBasis={message.answerBasis} grounded={message.grounded} sourceCount={message.sources?.length ?? 0} isFa={isFa} onOpenSources={message.sources?.length ? () => setEvidence(message.sources![0]) : undefined} />
             {message.research && <details className="mt-3 rounded-xl border border-[#18c7f4]/15 bg-[#7c27ff]/10 p-3"><summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-semibold text-[#d9a6ff]"><Telescope size={12} />{isFa ? "مراحل پژوهش" : "Research trail"}<span className="ms-auto text-xs font-normal text-white/45">{message.research.steps.length} {isFa ? "جست‌وجو" : "searches"} · {message.research.evidenceReviewed} {isFa ? "شاهد" : "evidence"}</span></summary><div className="mt-3 space-y-2 border-t border-white/[.06] pt-3">{message.research.steps.map((step, index) => <div key={index} className="flex gap-2 text-xs leading-5 text-white/55"><span className="grid size-5 shrink-0 place-items-center rounded bg-[#7c27ff]/40 text-xs text-[#d9a6ff]">{index + 1}</span><span className="min-w-0 flex-1">{step.query}</span><span className="shrink-0 text-white/40">{step.evidence_count}</span></div>)}</div></details>}
             {message.sources?.length ? <AnswerSources sources={message.sources} isFa={isFa} onOpen={setEvidence} /> : null}
-            <div className="mt-3 flex items-center gap-1"><button aria-label="Copy response" onClick={() => void copyToClipboard(message.content, isFa ? "پاسخ کپی شد" : "Response copied", isFa ? "کپی پاسخ ناموفق بود" : "Could not copy response")} className="grid size-7 place-items-center rounded-lg text-white/25 hover:bg-white/[.06] hover:text-white/70"><Copy size={13} /></button>{message.responseId && <MessageFeedback responseId={message.responseId} isFa={isFa} />}<button onClick={() => setShareOpen(true)} aria-label="Share conversation" className="grid size-7 place-items-center rounded-lg text-white/25 hover:bg-white/[.06] hover:text-white/70"><Share2 size={13} /></button></div>
-          </>}
-        </div>
-      </article>)}
-      {isThinking && <div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-xl border border-[#18c7f4]/20 bg-[#7c27ff]/25 text-[#c43cff]"><Sparkles size={14} /></span><div className="flex gap-1.5 rounded-2xl border border-white/[.08] bg-white/[.045] px-4 py-4">{[0, 1, 2].map((item) => <span key={item} className="size-1.5 animate-bounce rounded-full bg-[#c43cff]" style={{ animationDelay: `${item * 120}ms` }} />)}</div></div>}
+            <div className="chat-answer-actions"><button aria-label="Copy response" onClick={() => void copyToClipboard(message.content, isFa ? "پاسخ کپی شد" : "Response copied", isFa ? "کپی پاسخ ناموفق بود" : "Could not copy response")} className="chat-answer-action"><Copy size={13} /></button>{message.responseId && <MessageFeedback responseId={message.responseId} isFa={isFa} />}<button onClick={() => setShareOpen(true)} aria-label="Share conversation" className="chat-answer-action"><Share2 size={13} /></button></div>
+          </div>
+        </article>)}
+      {isThinking && <AnswerLoading isFa={isFa} />}
+      </div>
     </div>
     {evidence && <EvidenceDrawer source={evidence} isFa={isFa} onClose={() => setEvidence(null)} />}
     {shareOpen && <ShareDialog messages={messages} isFa={isFa} onClose={() => setShareOpen(false)} />}
