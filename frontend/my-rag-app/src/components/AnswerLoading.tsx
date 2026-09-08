@@ -11,10 +11,8 @@ export default function AnswerLoading({ isFa, assistantName }: { isFa: boolean; 
         <span className="answer-thinking-state"><span />{liveLabel}</span>
       </header>
       <div className="answer-thinking-content" aria-hidden="true">
-        <div className="answer-thinking-orbit"><span /><span /><i /></div>
-        <div className="answer-thinking-copy"><p>{label}</p><div className="answer-thinking-wave"><span /><span /><span /><span /><span /></div></div>
+        <p>{label}</p><span className="answer-thinking-dots"><i /><i /><i /></span>
       </div>
-      <div className="answer-thinking-lines" aria-hidden="true"><span /><span /><span /></div>
     </div>
   </article>;
 }
