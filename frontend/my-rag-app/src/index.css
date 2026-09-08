@@ -1,6 +1,16 @@
 @import "tailwindcss";
 @plugin "tailwind-scrollbar";
 @custom-variant dark (&:where(.dark, .dark *));
+
+/* Responsive contract: base = 320–479px; phone = 480–767px;
+   tablet = 768–1023px; laptop = 1024–1439px; desktop = 1440px+. */
+@theme {
+  --breakpoint-phone: 30rem;
+  --breakpoint-tablet: 48rem;
+  --breakpoint-laptop: 64rem;
+  --breakpoint-desktop: 90rem;
+}
+
 @import "./styles/theme.css";
 @import "./styles/design-system.css";
 

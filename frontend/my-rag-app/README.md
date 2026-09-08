@@ -71,3 +71,14 @@ export default defineConfig([
   },
 ])
 ```
+# Responsive breakpoints
+
+The UI is mobile-first. Use the following Tailwind v4 variants for new responsive work:
+
+- Base: 320–479px (small mobile)
+- `phone:`: 480–767px (large mobile)
+- `tablet:`: 768–1023px
+- `laptop:`: 1024–1439px
+- `desktop:`: 1440px and above
+
+The existing Tailwind defaults remain available for backward compatibility. Do not redefine `sm`, `md`, `lg`, or `xl`; use the named product breakpoints above for new layouts.
