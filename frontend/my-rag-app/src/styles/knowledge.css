@@ -208,6 +208,18 @@ html:not(.dark) .kb-page {
   .kb-library-toolbar > div { flex-wrap: wrap; }
   .app-shell .kb-page .knowledge-dropzone { justify-content: flex-start; }
 }
+@media (max-width: 767px) {
+  .app-shell .kb-page .knowledge-chat-panel {
+    top: auto !important;
+    width: 100% !important;
+    height: min(82dvh, 720px);
+    border-top: 1px solid var(--kb-line) !important;
+    border-inline-start: 0 !important;
+    border-radius: 20px 20px 0 0;
+  }
+  .app-shell .kb-page .knowledge-chat-panel > div { width: 100% !important; }
+  .app-shell .kb-page .knowledge-assistant-tools { grid-template-columns: 1fr; }
+}
 @media (max-width: 479px) {
   .kb-main { padding: 14px 12px; }
   .kb-content { gap: 16px; }

@@ -101,3 +101,8 @@ html.dark .app-shell [class*="hover:bg-[#9238ff]"]:hover:not(:disabled) {
 }
 @keyframes nexora-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .nexora-action { transition: none; } .nexora-action:hover:not(:disabled) { transform: none; } .nexora-loader { animation-duration: 1.4s; } }
+
+/* Mobile touch targets: visual icon size can stay compact while its hit area is reliable. */
+@media (max-width: 479px) {
+  .app-shell .app-icon-button { min-width: 44px; min-height: 44px; }
+}

@@ -183,6 +183,9 @@ html:not(.dark) .nexora-sidebar {
 .nexora-sidebar__collapse { display: none; align-items: center; justify-content: center; flex: 0 0 28px; width: 28px; height: 28px; margin-left: auto; border-radius: 7px; color: var(--sb-muted); }
 .nexora-sidebar__collapse:hover { color: var(--sb-text); background: var(--sb-hover); }
 .nexora-sidebar__mobile-close { margin-inline-start: auto; }
+@media (max-width: 479px) {
+  .nexora-sidebar .nexora-sidebar__icon-button { width: 44px; height: 44px; }
+}
 .nexora-sidebar-backdrop { position: fixed; inset: 0; z-index: 40; background: #02061780; visibility: hidden; opacity: 0; transition: opacity 180ms ease, visibility 180ms; }
 .nexora-sidebar-backdrop.is-open { visibility: visible; opacity: 1; }
 @media (hover: hover) and (pointer: fine) {
