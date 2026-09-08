@@ -49,4 +49,7 @@ html .app-shell .nexora-dropdown [class*="text-white/"], html .app-shell .nexora
 html .app-shell .nexora-dropdown .kb-text { color: var(--menu-text); }
 html .app-shell .nexora-dropdown button[class*="text-rose-"] { color: #bc435b !important; }
 html.dark .app-shell .nexora-dropdown button[class*="text-rose-"] { color: #ee91a0 !important; }
+@media (max-width: 479px) {
+  html .app-shell .nexora-dropdown { max-width: calc(100vw - 24px); max-height: min(60dvh, 28rem); overflow-y: auto; }
+}
 @media (prefers-reduced-motion: reduce) { html .app-shell .nexora-dropdown button { transition: none; } }

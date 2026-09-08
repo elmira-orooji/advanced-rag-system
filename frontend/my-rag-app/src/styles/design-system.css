@@ -7,6 +7,11 @@
   --space-5: 24px;
   --space-6: 32px;
   --control-height: 40px;
+  --touch-target: 44px;
+  --page-gutter: clamp(12px, 3vw, 32px);
+  --content-max: 80rem;
+  --dialog-inline-space: 24px;
+  --dialog-max-height: calc(100dvh - 32px);
   --transition-fast: 160ms ease;
   --state-info: var(--accent-blue);
   --state-info-soft: color-mix(in srgb, var(--accent-blue) 12%, transparent);
@@ -21,12 +26,20 @@
   background: var(--app-background, var(--surface-canvas));
 }
 
+/* Shared responsive primitives for application pages and overlays. */
+.nexora-app-content { min-width: 0; min-height: 0; }
+.nexora-page-frame { width: min(100%, var(--content-max)); min-width: 0; margin-inline: auto; padding-inline: var(--page-gutter); }
+.nexora-scroll-region { min-width: 0; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.nexora-dialog-surface { width: min(var(--dialog-width, 42rem), calc(100vw - var(--dialog-inline-space))); max-height: var(--dialog-max-height); overflow: auto; }
+
 .nexora-surface {
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-panel);
   background: var(--surface-panel);
   box-shadow: var(--shadow-panel);
 }
+
+.app-composer { min-width: 0; width: 100%; }
 
 .nexora-action {
   display: inline-flex;
@@ -105,4 +118,6 @@ html.dark .app-shell [class*="hover:bg-[#9238ff]"]:hover:not(:disabled) {
 /* Mobile touch targets: visual icon size can stay compact while its hit area is reliable. */
 @media (max-width: 479px) {
   .app-shell .app-icon-button { min-width: 44px; min-height: 44px; }
+  .nexora-page-frame { padding-inline: 12px; }
+  .nexora-dialog-surface { width: calc(100vw - 24px); max-height: calc(100dvh - 24px); }
 }
