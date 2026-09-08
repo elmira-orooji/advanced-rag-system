@@ -4,7 +4,7 @@ import threading
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import case, or_, select, update
 from sqlalchemy.orm import selectinload
 
 from app.core.config import BASE_DIR, DOCUMENT_JOB_HEARTBEAT_SECONDS, DOCUMENT_JOB_LEASE_SECONDS, DOCUMENT_JOB_MAX_ATTEMPTS, DOCUMENT_JOB_RETRY_BASE_SECONDS, DOCUMENT_JOB_RETRY_MAX_SECONDS, document_storage_relative, resolve_document_path
@@ -65,7 +65,11 @@ def claim_document_job(worker_id: str) -> uuid.UUID | None:
                 ProcessingJob.status.in_(["queued", "retrying"]),
                 or_(ProcessingJob.next_attempt_at.is_(None), ProcessingJob.next_attempt_at <= now),
             )
-            .order_by(ProcessingJob.created_at, ProcessingJob.id)
+            .order_by(
+                case((ProcessingJob.status == "queued", 0), else_=1),
+                ProcessingJob.created_at,
+                ProcessingJob.id,
+            )
             .with_for_update(skip_locked=True)
             .limit(1)
         )

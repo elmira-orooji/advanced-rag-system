@@ -76,6 +76,20 @@ class DocumentJobRecoveryTests(unittest.TestCase):
             self.assertEqual((job.status, job.worker_id, job.attempts), ("running", "worker-1", 1))
             self.assertIsNotNone(job.locked_at)
 
+    def test_new_queued_job_is_not_blocked_by_a_retrying_job(self):
+        retrying_id, queued_id = uuid4(), uuid4()
+        with self.sessions() as db:
+            db.add(ProcessingJob(id=retrying_id, organization_id=uuid4(), document_id=uuid4(), status="retrying", stage="retry_wait"))
+            db.add(ProcessingJob(id=queued_id, organization_id=uuid4(), document_id=uuid4(), status="queued", stage="queued"))
+            db.commit()
+
+        with patch("app.services.document_jobs.SessionLocal", self.sessions):
+            self.assertEqual(claim_document_job("worker-1"), queued_id)
+
+        with self.sessions() as db:
+            self.assertEqual(db.get(ProcessingJob, retrying_id).status, "retrying")
+            self.assertEqual(db.get(ProcessingJob, queued_id).status, "running")
+
     def test_future_retry_is_not_claimed_until_due(self):
         job_id = uuid4()
         with self.sessions() as db:
