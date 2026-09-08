@@ -174,21 +174,30 @@ html:not(.dark) :is(.chat-answer, .chat-question, .chat-evidence) {
 .chat-thread .chat-answer-actions { margin-top: 16px; padding-top: 8px; gap: 3px; border-top-style: dashed; }
 .chat-thread .chat-answer-action { width: 32px; height: 32px; }
 .chat-thread .chat-answer-source-count { margin-inline-start: auto; font-size: var(--font-size-helper); }
-.chat-loading .chat-answer-body { width: 100%; padding-bottom: 24px; }
-.message-loading-dots { margin-inline-start: auto; fill: var(--answer-accent); }
-.message-loading-dots circle { animation: answer-dot .9s ease-in-out infinite; }
-.message-loading-dots circle:nth-child(2) { animation-delay: .1s; }
-.message-loading-dots circle:nth-child(3) { animation-delay: .2s; }
-.answer-kinetic { font-size: 13px; color: var(--answer-accent); line-height: 2; }
-.answer-kinetic span { display: inline-block; white-space: pre; transform-origin: center bottom; animation: answer-word 1.8s ease-in-out infinite; }
-.answer-loading-lines { display: grid; gap: 10px; margin-top: 18px; max-width: 460px; }
-.answer-loading-lines span { height: 7px; border-radius: 10px; background: var(--answer-tint); }
-.answer-loading-lines span:nth-child(2) { width: 88%; }
-.answer-loading-lines span:nth-child(3) { width: 58%; }
-@keyframes answer-dot { 0%, 60%, 100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
-@keyframes answer-word { 0%, 100% { transform: translateY(0); opacity: .65; } 35% { transform: translateY(-2px); opacity: 1; } }
+.chat-loading .chat-answer-body { width: 100%; padding-bottom: 20px; }
+.answer-thinking-state { display: inline-flex; align-items: center; gap: 7px; margin-inline-start: auto; color: var(--answer-muted); font-size: var(--font-size-helper); font-weight: 500; }
+.answer-thinking-state > span { width: 7px; height: 7px; border-radius: 99px; background: var(--answer-accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--answer-accent) 45%, transparent); animation: answer-thinking-pulse 1.8s ease-out infinite; }
+.answer-thinking-content { display: flex; align-items: center; gap: 13px; min-height: 42px; padding-inline-start: 48px; }
+.answer-thinking-orbit { position: relative; flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid var(--answer-border); border-radius: 50%; background: color-mix(in srgb, var(--answer-tint) 72%, transparent); }
+.answer-thinking-orbit > span { position: absolute; width: 7px; height: 7px; border-radius: 50%; background: var(--answer-accent); box-shadow: 0 0 12px color-mix(in srgb, var(--answer-accent) 50%, transparent); animation: answer-thinking-orbit 2.1s linear infinite; }
+.answer-thinking-orbit > span:first-child { inset: -3px auto auto 12px; }
+.answer-thinking-orbit > span:nth-child(2) { inset: auto 3px 1px auto; animation-delay: -1.05s; opacity: .6; }
+.answer-thinking-orbit > i { position: absolute; inset: 11px; border-radius: 50%; background: var(--answer-accent); opacity: .18; animation: answer-thinking-core 1.8s ease-in-out infinite; }
+.answer-thinking-copy { min-width: 0; flex: 1; }
+.answer-thinking-copy p { margin: 0; color: var(--answer-text); font-size: 14px; line-height: 1.5; }
+.answer-thinking-wave { display: flex; align-items: center; gap: 3px; height: 14px; margin-top: 7px; }
+.answer-thinking-wave span { display: block; width: 3px; height: 5px; border-radius: 99px; background: var(--answer-accent); opacity: .5; animation: answer-thinking-wave 1.15s ease-in-out infinite; }
+.answer-thinking-wave span:nth-child(2) { animation-delay: .1s; }.answer-thinking-wave span:nth-child(3) { animation-delay: .2s; }.answer-thinking-wave span:nth-child(4) { animation-delay: .3s; }.answer-thinking-wave span:nth-child(5) { animation-delay: .4s; }
+.answer-thinking-lines { display: grid; gap: 7px; max-width: 440px; margin: 16px 0 0 48px; }
+.answer-thinking-lines span { display: block; height: 5px; border-radius: 99px; background: linear-gradient(90deg, var(--answer-tint) 0%, color-mix(in srgb, var(--answer-accent) 20%, var(--answer-tint)) 48%, var(--answer-tint) 100%); background-size: 220% 100%; animation: answer-thinking-shimmer 1.8s ease-in-out infinite; }
+.answer-thinking-lines span:nth-child(2) { width: 76%; animation-delay: .15s; }.answer-thinking-lines span:nth-child(3) { width: 48%; animation-delay: .3s; }
+@keyframes answer-thinking-pulse { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--answer-accent) 32%, transparent); } 55% { box-shadow: 0 0 0 6px transparent; } }
+@keyframes answer-thinking-orbit { from { transform: rotate(0deg) translateX(9px) rotate(0deg); } to { transform: rotate(360deg) translateX(9px) rotate(-360deg); } }
+@keyframes answer-thinking-core { 0%, 100% { transform: scale(.78); opacity: .16; } 50% { transform: scale(1.18); opacity: .35; } }
+@keyframes answer-thinking-wave { 0%, 100% { height: 4px; opacity: .35; } 50% { height: 13px; opacity: .9; } }
+@keyframes answer-thinking-shimmer { from { background-position: 100% 0; } to { background-position: -120% 0; } }
 @media (max-width: 640px) { .chat-thread-messages { padding: 16px 2px 24px; gap: 16px; } .chat-answer-body { padding: 16px 14px 10px; border-radius: 15px; } .chat-answer-heading { margin-bottom: 12px; } }
-@media (prefers-reduced-motion: reduce) { .message-loading-dots circle, .answer-kinetic span { animation: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .answer-thinking-state > span, .answer-thinking-orbit > span, .answer-thinking-orbit > i, .answer-thinking-wave span, .answer-thinking-lines span { animation: none; opacity: 1; } }
 
 /* Codex-style overview rail; the bright ticks represent the visible viewport. */
 .chat-thread-scroll { scrollbar-width: none; padding-inline-end: 30px; }
@@ -293,7 +302,8 @@ html:not(.dark) .conversation-scroll-preview > span { color: #687287; }
 .chat-thread .chat-loading .chat-answer-body { padding-bottom: 12px; }
 .chat-loading .chat-answer-heading { padding-inline-start: 0; margin-bottom: 8px; }
 .chat-thread .chat-loading .chat-answer-heading { padding-inline-start: 0; }
-.chat-loading .answer-kinetic { padding-inline-start: 48px; font-size: 12px; }
+.chat-thread .chat-loading .answer-thinking-content { padding-inline-start: 48px; }
+@media (max-width: 640px) { .answer-thinking-content { padding-inline-start: 38px; gap: 11px; } .answer-thinking-lines { margin-inline-start: 38px; } .answer-thinking-state { font-size: 11px; } .answer-thinking-copy p { font-size: 13px; } }
 @media (max-width: 640px) { .chat-thread .answer-markdown { font-size: 14px; } .chat-thread-messages { gap: 24px; } .answer-markdown h1 { font-size: 20px; } .answer-markdown h2 { font-size: 18px; } }
 
 .chat-thread .chat-answer { animation: answer-arrive 220ms ease-out both; }
