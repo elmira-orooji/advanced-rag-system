@@ -22,6 +22,7 @@ class Conversation(Base):
     )
     document_set_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("document_sets.id", ondelete="SET NULL"), index=True)
     assistant_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("assistants.id", ondelete="SET NULL"), index=True)
+    workspace_scope: Mapped[bool] = mapped_column(default=False, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

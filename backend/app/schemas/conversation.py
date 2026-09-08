@@ -12,6 +12,7 @@ class ConversationCreate(BaseModel):
     document_id: uuid.UUID | None = None
     document_set_id: uuid.UUID | None = None
     assistant_id: uuid.UUID | None = None
+    workspace_scope: bool = False
 
 
 class ConversationUpdate(BaseModel):
@@ -26,6 +27,7 @@ class ConversationResponse(BaseModel):
     document_id: uuid.UUID | None
     document_set_id: uuid.UUID | None
     assistant_id: uuid.UUID | None
+    workspace_scope: bool = False
     created_at: datetime
     updated_at: datetime
 

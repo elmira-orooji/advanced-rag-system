@@ -7,6 +7,7 @@ export interface ConversationSummary {
   document_id: string | null;
   document_set_id: string | null;
   assistant_id: string | null;
+  workspace_scope?: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +46,9 @@ export const conversationService = {
   get: (id: string) => request<ConversationDetail>(`/conversations/${id}`, { headers: headers() }),
   createForSet: (documentSetId: string, title?: string) => request<ConversationSummary>("/conversations", {
     method: "POST", headers: headers(), body: JSON.stringify({ document_set_id: documentSetId, title: title || undefined }),
+  }),
+  createForWorkspace: (title?: string) => request<ConversationSummary>("/conversations", {
+    method: "POST", headers: headers(), body: JSON.stringify({ workspace_scope: true, title: title || undefined }),
   }),
   createForAssistant: (assistantId: string, title?: string) => request<ConversationSummary>("/conversations", {
     method: "POST", headers: headers(), body: JSON.stringify({ assistant_id: assistantId, title: title || undefined }),

@@ -44,6 +44,7 @@ function toChatMessage(message: PersistedMessage): ChatMessage {
 }
 
 export default function ConversationPage({ conversationId, onConversationChange, onConversationsUpdated, onOpenKnowledge }: ConversationPageProps) {
+  const allKnowledgeSetsId = "__all_knowledge_sets__";
   const [assistant, setAssistant] = useState<Pick<CustomAssistant, "id" | "name" | "document_set_names"> | null>(null);
   const [detail, setDetail] = useState<ConversationDetail | null>(null);
   const [sets, setSets] = useState<DocumentSet[]>([]);
@@ -68,7 +69,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
       : knowledgeService.listSets().then((value) => {
           if (!active) return;
           setSets(value);
-          setSelectedSetId((current) => current || value[0]?.id || "");
+          setSelectedSetId((current) => current || (value.length ? allKnowledgeSetsId : ""));
           setDetail(null);
         });
     task
@@ -103,7 +104,11 @@ export default function ConversationPage({ conversationId, onConversationChange,
     return [...persisted, { id: "pending-user-message", role: "user" as const, content: pendingPrompt, createdAt: new Date().toISOString() }];
   }, [detail, pendingPrompt]);
   const selectedSet = sets.find((item) => item.id === selectedSetId);
-  const knowledgeReady = Boolean(selectedSet && selectedSet.indexed_document_count > 0);
+  const isAllKnowledgeSets = selectedSetId === allKnowledgeSetsId;
+  const indexedDocumentCount = isAllKnowledgeSets
+    ? sets.reduce((total, item) => total + item.indexed_document_count, 0)
+    : (selectedSet?.indexed_document_count ?? 0);
+  const knowledgeReady = indexedDocumentCount > 0;
   const canCreateKnowledge = authService.getUser()?.role === "admin";
   const detailMatchesConversation = conversationId
     ? detail?.id === conversationId
@@ -116,7 +121,9 @@ export default function ConversationPage({ conversationId, onConversationChange,
       let id = conversationId ?? createdConversationId.current;
       if (!id) {
         if (!selectedSetId || !knowledgeReady) throw new Error(isFa ? "ابتدا یک سند را بارگذاری و آماده‌سازی کنید." : "Upload and finish indexing a document before starting a conversation.");
-        const created = await conversationService.createForSet(selectedSetId);
+        const created = isAllKnowledgeSets
+          ? await conversationService.createForWorkspace()
+          : await conversationService.createForSet(selectedSetId);
         id = created.id;
         createdConversationId.current = id;
       }
@@ -192,15 +199,15 @@ export default function ConversationPage({ conversationId, onConversationChange,
               <span className="hidden sm:inline">{isFa ? "پایگاه دانش" : "Knowledge base"}</span>
               <span className="relative min-w-0">
                 <select value={selectedSetId} onChange={(event) => setSelectedSetId(event.target.value)} aria-label={isFa ? "انتخاب پایگاه دانش" : "Select knowledge base"} className="conversation-select">
-                  {sets.length ? sets.map((set) => <option  key={set.id} value={set.id}>{set.name}</option>) : <option  value="">{isFa ? "پایگاه دانشی موجود نیست" : "No knowledge base available"}</option>}
+                  {sets.length ? <><option value={allKnowledgeSetsId}>{isFa ? "همهٔ پایگاه‌های دانش" : "All knowledge bases"}</option>{sets.map((set) => <option key={set.id} value={set.id}>{set.name}</option>)}</> : <option value="">{isFa ? "پایگاه دانشی موجود نیست" : "No knowledge base available"}</option>}
                 </select>
                 <ChevronDown size={11} className="pointer-events-none absolute end-0 top-1/2 -translate-y-1/2 conversation-muted" />
               </span>
             </label>
-            {selectedSet && <span className="shrink-0 text-xs conversation-muted">{selectedSet.indexed_document_count} {isFa ? "سند آماده" : "indexed documents"}</span>}
+            {selectedSetId && <span className="shrink-0 text-xs conversation-muted">{indexedDocumentCount} {isFa ? "سند آماده" : "indexed documents"}</span>}
           </div>
 
-          {knowledgeReady ? <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={sending} onSend={send} /> : <KnowledgeStartPanel isFa={isFa} hasSet={Boolean(selectedSet)} canCreate={canCreateKnowledge} onOpenKnowledge={onOpenKnowledge} />}
+          {knowledgeReady ? <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={sending} onSend={send} /> : <KnowledgeStartPanel isFa={isFa} hasSet={Boolean(selectedSet) || (isAllKnowledgeSets && sets.length > 0)} canCreate={canCreateKnowledge} onOpenKnowledge={onOpenKnowledge} />}
 
           {knowledgeReady && <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {suggestions.map(([label, prompt], index) => <button key={label} type="button" onClick={() => setSuggestedPrompt((current) => ({ value: prompt, revision: current.revision + 1 }))} className="conversation-suggestion">

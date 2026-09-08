@@ -5,6 +5,7 @@ import ConversationPage from "./ConversationPage";
 
 const mocks = vi.hoisted(() => ({
   createForSet: vi.fn(),
+  createForWorkspace: vi.fn(),
   send: vi.fn(),
   get: vi.fn(),
   listSets: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("../services/authService", () => ({ authService: { getUser: () => ({ rol
 vi.mock("../services/conversationService", () => ({
   conversationService: {
     createForSet: mocks.createForSet,
+    createForWorkspace: mocks.createForWorkspace,
     send: mocks.send,
     get: mocks.get,
   },
@@ -36,6 +38,7 @@ describe("ConversationPage", () => {
     vi.clearAllMocks();
     mocks.listSets.mockResolvedValue([{ id: "set-1", name: "Knowledge", indexed_document_count: 1 }]);
     mocks.createForSet.mockResolvedValue({ id: "conversation-1" });
+    mocks.createForWorkspace.mockResolvedValue({ id: "conversation-1" });
     mocks.get.mockResolvedValue({ id: "conversation-1", title: "First chat", messages: [] });
     mocks.listAssistants.mockResolvedValue([]);
   });
@@ -58,6 +61,7 @@ describe("ConversationPage", () => {
     fireEvent.change(input, { target: { value: "First question" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
 
+    await waitFor(() => expect(mocks.createForWorkspace).toHaveBeenCalledOnce());
     await waitFor(() => expect(mocks.send).toHaveBeenCalledWith("conversation-1", "First question"));
     expect(onConversationChange).not.toHaveBeenCalled();
 

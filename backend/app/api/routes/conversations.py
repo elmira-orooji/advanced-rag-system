@@ -44,8 +44,8 @@ def _assistant_sets(db: Session, assistant: Assistant, user: User) -> list[uuid.
 
 @router.post("", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)
 def create_conversation(payload: ConversationCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    scopes = sum(value is not None for value in (payload.document_id, payload.document_set_id, payload.assistant_id))
-    if scopes != 1: raise HTTPException(status_code=422, detail="Choose exactly one document, knowledge set, or assistant")
+    scopes = sum(value is not None for value in (payload.document_id, payload.document_set_id, payload.assistant_id)) + int(payload.workspace_scope)
+    if scopes != 1: raise HTTPException(status_code=422, detail="Choose exactly one document, knowledge set, assistant, or workspace scope")
     if payload.document_id: require_document_access(db, user, payload.document_id)
     if payload.document_set_id:
         if db.scalar(select(DocumentSet).where(DocumentSet.id == payload.document_set_id, DocumentSet.organization_id == user.organization_id)) is None: raise HTTPException(status_code=404, detail="Document set not found")
@@ -54,7 +54,7 @@ def create_conversation(payload: ConversationCreate, db: Session = Depends(get_d
         assistant = db.scalar(select(Assistant).options(selectinload(Assistant.document_sets)).where(Assistant.id == payload.assistant_id, Assistant.organization_id == user.organization_id))
         if assistant is None: raise HTTPException(status_code=404, detail="Assistant not found")
         _assistant_sets(db, assistant, user)
-    conversation = Conversation(user_id=user.id, title=payload.title or "New conversation", document_id=payload.document_id, document_set_id=payload.document_set_id, assistant_id=payload.assistant_id)
+    conversation = Conversation(user_id=user.id, title=payload.title or "New conversation", document_id=payload.document_id, document_set_id=payload.document_set_id, assistant_id=payload.assistant_id, workspace_scope=payload.workspace_scope)
     db.add(conversation); db.commit(); db.refresh(conversation); return conversation
 
 
@@ -102,6 +102,19 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
         model_id = assistant.model_id
         hybrid = assistant.answer_mode == "hybrid"
         document_ids = [str(value) for value in db.scalars(select(Document.id).join(Document.document_sets).where(DocumentSet.id.in_(set_ids), Document.status == "indexed").distinct()).all()] if set_ids else []
+    elif conversation.workspace_scope:
+        set_ids = accessible_set_ids(db, user)
+        statement = select(Document.id).join(Document.document_sets).where(
+            DocumentSet.organization_id == user.organization_id,
+            Document.status == "indexed",
+        )
+        if set_ids:
+            statement = statement.where(DocumentSet.id.in_(set_ids))
+        elif user.role != "admin":
+            document_ids = []
+            statement = None
+        if statement is not None:
+            document_ids = [str(value) for value in db.scalars(statement.distinct()).all()]
     else: raise HTTPException(status_code=409, detail="Conversation has no valid knowledge scope")
     retrieval_query = payload.content
     if (document_id or document_ids) and should_rewrite(payload.content, history):
