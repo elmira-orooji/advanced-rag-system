@@ -208,6 +208,24 @@ html:not(.dark) .kb-page {
   .kb-library-toolbar > div { flex-wrap: wrap; }
   .app-shell .kb-page .knowledge-dropzone { justify-content: flex-start; }
 }
+@media (max-width: 479px) {
+  .kb-main { padding: 14px 12px; }
+  .kb-content { gap: 16px; }
+  .kb-header { align-items: stretch; flex-direction: column; gap: 12px; }
+  .kb-header-actions { flex-wrap: wrap; justify-content: flex-start; }
+  .kb-header-actions > button { min-width: 44px; }
+  .kb-sets-header { align-items: flex-start; gap: 10px; }
+  .kb-sets-header > button { flex-shrink: 0; }
+  .kb-set-content > div:first-child { align-items: flex-start; flex-wrap: wrap; }
+  .kb-set-content > div:first-child > div:last-child { width: 100%; justify-content: space-between; }
+  .kb-connect { flex: 1; justify-content: center; }
+  .knowledge-dropzone { align-items: flex-start; flex-direction: column; min-height: 0 !important; }
+  .kb-library-toolbar { padding: 12px; }
+  .kb-library-toolbar > div { width: 100%; flex-wrap: wrap; }
+  .kb-library-toolbar > div > label:first-child { flex-basis: 100%; width: 100%; }
+  .kb-library-toolbar > div > label:first-child input { width: 100%; }
+  .kb-document-list > div { padding-inline: 12px; }
+}
 @media (max-height: 850px) {
   .kb-main { padding-block: 12px; }
   .kb-content, .kb-set-content { gap: 10px; }
