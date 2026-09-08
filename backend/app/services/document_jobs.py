@@ -12,7 +12,7 @@ from app.db.database import SessionLocal
 from app.models.document import Document
 from app.models.indexing_outbox import IndexingOutbox
 from app.models.processing_job import ProcessingJob
-from app.services.document_extractor import extract_text
+from app.services.document_extractor import ExtractionError, extract_text
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
 from app.services.semantic_chunker import semantic_chunks
@@ -83,6 +83,9 @@ def claim_document_job(worker_id: str) -> uuid.UUID | None:
 def _retryable_document_error(exc: Exception) -> bool:
     if isinstance(exc, QdrantError):
         return exc.status_code is None or exc.status_code in {408, 429} or exc.status_code >= 500
+    if isinstance(exc, ExtractionError):
+        message = str(exc).lower()
+        return "network error" in message or "timed out" in message
     return isinstance(exc, (TimeoutError, ConnectionError))
 
 

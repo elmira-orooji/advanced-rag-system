@@ -72,6 +72,7 @@ class CloudOCRTests(unittest.TestCase):
         with patch.object(cloud_ocr, "HTTPSConnection", return_value=connection):
             cloud_ocr._mineru_upload("https://signed-upload.test/file?signature=secret", b"pdf-bytes")
 
+        cloud_ocr.HTTPSConnection.assert_called_once_with("signed-upload.test", timeout=cloud_ocr.MINERU_TIMEOUT_SECONDS)
         connection.request.assert_called_once_with("PUT", "/file?signature=secret", body=b"pdf-bytes", headers={"Content-Length": "9"})
         connection.close.assert_called_once()
 

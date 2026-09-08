@@ -15,6 +15,7 @@ from app.services.document_jobs import DocumentJobOwnershipLost, claim_document_
 from app.services import document_jobs
 from app.db.database import Base
 from app.models.document import Document
+from app.services.document_extractor import ExtractionError
 from app.services.qdrant import QdrantError
 
 
@@ -94,7 +95,9 @@ class DocumentJobRecoveryTests(unittest.TestCase):
         self.assertTrue(document_jobs._retryable_document_error(QdrantError("unavailable", status_code=503)))
         self.assertTrue(document_jobs._retryable_document_error(QdrantError("limited", status_code=429)))
         self.assertTrue(document_jobs._retryable_document_error(TimeoutError("timeout")))
+        self.assertTrue(document_jobs._retryable_document_error(ExtractionError("OCR could not read this document. MinerU file upload failed: network error (timed out)")))
         self.assertFalse(document_jobs._retryable_document_error(QdrantError("bad request", status_code=400)))
+        self.assertFalse(document_jobs._retryable_document_error(ExtractionError("Document contains no text to index")))
         self.assertFalse(document_jobs._retryable_document_error(ValueError("invalid document")))
 
     def test_retry_delay_is_exponential_and_capped(self):

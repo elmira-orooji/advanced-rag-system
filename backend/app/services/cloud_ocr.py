@@ -117,7 +117,10 @@ def _mineru_upload(upload_url: str, content: bytes) -> None:
     connection_type = HTTPSConnection if target.scheme == "https" else HTTPConnection
     connection = None
     try:
-        connection = connection_type(target.netloc, timeout=OCR_TIMEOUT_SECONDS)
+        # Signed object-storage uploads can take longer than a lightweight OCR
+        # request, especially on slower or high-latency links.  Use MinerU's
+        # end-to-end job timeout rather than the short request timeout.
+        connection = connection_type(target.netloc, timeout=MINERU_TIMEOUT_SECONDS)
         request_target = target.path or "/"
         if target.query:
             request_target = f"{request_target}?{target.query}"
