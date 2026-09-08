@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Square } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface ChatInputProps {
   disabled: boolean;
   onSend: (message: string) => boolean | Promise<boolean>;
+  isSending?: boolean;
+  onCancel?: () => void;
   initialValue?: string;
   prominent?: boolean;
 }
 
-export default function ChatInput({ disabled, onSend, initialValue = "", prominent = false }: ChatInputProps) {
+export default function ChatInput({ disabled, onSend, isSending = false, onCancel, initialValue = "", prominent = false }: ChatInputProps) {
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const [value, setValue] = useState(initialValue);
@@ -26,7 +28,7 @@ export default function ChatInput({ disabled, onSend, initialValue = "", promine
         aria-label={isFa ? "پیام" : "Message"}
         rows={1}
         value={value}
-        disabled={disabled}
+        disabled={disabled || isSending}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
@@ -39,12 +41,13 @@ export default function ChatInput({ disabled, onSend, initialValue = "", promine
       />
       <button
         type="button"
-        onClick={() => void handleSend()}
-        disabled={disabled || !value.trim()}
-        aria-label={isFa ? "ارسال پیام" : "Send message"}
-        className="chat-send-button mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl bg-[#7c27ff] text-white shadow-[0_8px_24px_rgba(124,39,255,.35)] transition hover:-translate-y-0.5 hover:bg-[#9238ff] disabled:translate-y-0 disabled:bg-white/[.06] disabled:text-white/20 disabled:shadow-none"
+        onClick={isSending ? onCancel : () => void handleSend()}
+        disabled={isSending ? !onCancel : disabled || !value.trim()}
+        aria-label={isSending ? (isFa ? "توقف تولید پاسخ" : "Stop generating") : (isFa ? "ارسال پیام" : "Send message")}
+        title={isSending ? (isFa ? "توقف تولید پاسخ" : "Stop generating") : undefined}
+        className={`chat-send-button mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl text-white transition ${isSending ? "bg-[#4b556b] shadow-[0_8px_20px_rgba(30,41,59,.22)] hover:bg-[#374151]" : "bg-[#7c27ff] shadow-[0_8px_24px_rgba(124,39,255,.35)] hover:-translate-y-0.5 hover:bg-[#9238ff]"} disabled:translate-y-0 disabled:bg-white/[.06] disabled:text-white/20 disabled:shadow-none`
       >
-        <ArrowUp size={18} />
+        {isSending ? <Square size={15} fill="currentColor" /> : <ArrowUp size={18} />}
       </button>
     </div>
   );

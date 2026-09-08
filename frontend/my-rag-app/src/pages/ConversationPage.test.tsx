@@ -62,7 +62,7 @@ describe("ConversationPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
 
     await waitFor(() => expect(mocks.createForWorkspace).toHaveBeenCalledOnce());
-    await waitFor(() => expect(mocks.send).toHaveBeenCalledWith("conversation-1", "First question"));
+    await waitFor(() => expect(mocks.send).toHaveBeenCalledWith("conversation-1", "First question", expect.any(AbortSignal)));
     expect(onConversationChange).not.toHaveBeenCalled();
 
     finishSend?.();

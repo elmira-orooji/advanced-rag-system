@@ -56,6 +56,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
   const [pendingPrompt, setPendingPrompt] = useState("");
   const [suggestedPrompt, setSuggestedPrompt] = useState({ value: "", revision: 0 });
   const createdConversationId = useRef<string | null>(null);
+  const sendAbortController = useRef<AbortController | null>(null);
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
 
@@ -114,31 +115,48 @@ export default function ConversationPage({ conversationId, onConversationChange,
     ? detail?.id === conversationId
     : detail === null;
 
+  useEffect(() => () => sendAbortController.current?.abort(), []);
+
+  const cancelSend = () => {
+    sendAbortController.current?.abort();
+    sendAbortController.current = null;
+    setPendingPrompt("");
+    setSending(false);
+  };
+
   const send = async (content: string) => {
     setPendingPrompt(content);
     setSending(true);
+    const controller = new AbortController();
+    sendAbortController.current = controller;
     try {
       let id = conversationId ?? createdConversationId.current;
       if (!id) {
         if (!selectedSetId || !knowledgeReady) throw new Error(isFa ? "ابتدا یک سند را بارگذاری و آماده‌سازی کنید." : "Upload and finish indexing a document before starting a conversation.");
         const created = isAllKnowledgeSets
-          ? await conversationService.createForWorkspace()
-          : await conversationService.createForSet(selectedSetId);
+          ? await conversationService.createForWorkspace(undefined, controller.signal)
+          : await conversationService.createForSet(selectedSetId, undefined, controller.signal);
         id = created.id;
         createdConversationId.current = id;
       }
-      await conversationService.send(id, content);
-      const updated = await conversationService.get(id);
+      await conversationService.send(id, content, controller.signal);
+      if (controller.signal.aborted) return false;
+      const updated = await conversationService.get(id, controller.signal);
+      if (controller.signal.aborted) return false;
       setDetail(updated);
       onConversationsUpdated();
       if (!conversationId) onConversationChange(id);
       return true;
     } catch (error) {
+      if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return false;
       toast.error((error as Error).message);
       return false;
     } finally {
-      setPendingPrompt("");
-      setSending(false);
+      if (sendAbortController.current === controller) {
+        sendAbortController.current = null;
+        setPendingPrompt("");
+        setSending(false);
+      }
     }
   };
 
@@ -207,7 +225,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
             {selectedSetId && <span className="shrink-0 text-xs conversation-muted">{indexedDocumentCount} {isFa ? "سند آماده" : "indexed documents"}</span>}
           </div>
 
-          {knowledgeReady ? <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={sending} onSend={send} /> : <KnowledgeStartPanel isFa={isFa} hasSet={Boolean(selectedSet) || (isAllKnowledgeSets && sets.length > 0)} canCreate={canCreateKnowledge} onOpenKnowledge={onOpenKnowledge} />}
+          {knowledgeReady ? <ChatInput key={suggestedPrompt.revision} initialValue={suggestedPrompt.value} prominent disabled={false} isSending={sending} onSend={send} onCancel={cancelSend} /> : <KnowledgeStartPanel isFa={isFa} hasSet={Boolean(selectedSet) || (isAllKnowledgeSets && sets.length > 0)} canCreate={canCreateKnowledge} onOpenKnowledge={onOpenKnowledge} />}
 
           {knowledgeReady && <div className="mt-3 grid gap-2 sm:grid-cols-3">
             {suggestions.map(([label, prompt], index) => <button key={label} type="button" onClick={() => setSuggestedPrompt((current) => ({ value: prompt, revision: current.revision + 1 }))} className="conversation-suggestion">
@@ -244,7 +262,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
         </label>}
       </div>}
     </section>
-    <div className="conversation-dock relative z-20 shrink-0 px-0 pb-4 pt-3 sm:px-3 sm:pb-5"><ChatInput prominent disabled={sending || (!conversationId && !selectedSetId)} onSend={send} /><div className="mt-2 flex items-center justify-center gap-1.5 text-xs conversation-muted"><FileText size={10} />{isFa ? "پاسخ‌ها ممکن است خطا داشته باشند؛ منابع را بررسی کنید." : "AI can make mistakes. Verify important details in the cited sources."}</div></div>
+    <div className="conversation-dock relative z-20 shrink-0 px-0 pb-4 pt-3 sm:px-3 sm:pb-5"><ChatInput prominent disabled={!conversationId && !selectedSetId} isSending={sending} onSend={send} onCancel={cancelSend} /><div className="mt-2 flex items-center justify-center gap-1.5 text-xs conversation-muted"><FileText size={10} />{isFa ? "پاسخ‌ها ممکن است خطا داشته باشند؛ منابع را بررسی کنید." : "AI can make mistakes. Verify important details in the cited sources."}</div></div>
   </div>;
 }
 

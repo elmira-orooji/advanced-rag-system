@@ -30,4 +30,14 @@ describe("ChatInput", () => {
 
     await waitFor(() => expect(input).toHaveValue(""));
   });
+
+  it("replaces send with a stop action while a response is being generated", () => {
+    const onCancel = vi.fn();
+    render(<ChatInput disabled={false} isSending onCancel={onCancel} onSend={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Stop generating" }));
+
+    expect(onCancel).toHaveBeenCalledOnce();
+    expect(screen.getByRole("textbox")).toBeDisabled();
+  });
 });
