@@ -45,7 +45,7 @@ export default function ChatInput({ disabled, onSend, isSending = false, onCance
         disabled={isSending ? !onCancel : disabled || !value.trim()}
         aria-label={isSending ? (isFa ? "توقف تولید پاسخ" : "Stop generating") : (isFa ? "ارسال پیام" : "Send message")}
         title={isSending ? (isFa ? "توقف تولید پاسخ" : "Stop generating") : undefined}
-        className={`chat-send-button mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl text-white transition ${isSending ? "bg-[#4b556b] shadow-[0_8px_20px_rgba(30,41,59,.22)] hover:bg-[#374151]" : "bg-[#7c27ff] shadow-[0_8px_24px_rgba(124,39,255,.35)] hover:-translate-y-0.5 hover:bg-[#9238ff]"} disabled:translate-y-0 disabled:bg-white/[.06] disabled:text-white/20 disabled:shadow-none`
+        className={`chat-send-button mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl text-white transition ${isSending ? "bg-[#4b556b] shadow-[0_8px_20px_rgba(30,41,59,.22)] hover:bg-[#374151]" : "bg-[#7c27ff] shadow-[0_8px_24px_rgba(124,39,255,.35)] hover:-translate-y-0.5 hover:bg-[#9238ff]"} disabled:translate-y-0 disabled:bg-white/[.06] disabled:text-white/20 disabled:shadow-none`}
       >
         {isSending ? <Square size={15} fill="currentColor" /> : <ArrowUp size={18} />}
       </button>
