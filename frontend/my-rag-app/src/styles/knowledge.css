@@ -141,6 +141,13 @@ html:not(.dark) .kb-page {
 .kb-page .kb-text { color: var(--kb-text); }
 .kb-page .kb-muted { color: var(--kb-muted); }
 .kb-page .kb-accent { color: var(--kb-accent); }
+
+/* A filename can be Persian while the UI is English (and the reverse). Its
+   block follows the interface direction; isolation keeps mixed-script text
+   and extensions from changing the surrounding layout. */
+.kb-page[dir="ltr"] .kb-set-content > section .nexora-file-name { direction: ltr; unicode-bidi: isolate; text-align: start; }
+.kb-page[dir="rtl"] .kb-set-content > section .nexora-file-name { direction: rtl; unicode-bidi: isolate; text-align: start; }
+
 .kb-set-card-wrap { width: 216px; flex-shrink: 0; }
 .kb-set-card { width: 100%; min-height: 132px; padding: 16px; border: 1px solid var(--kb-line); border-radius: 10px; background: var(--kb-panel); text-align: start; transition: border-color 140ms ease, background-color 140ms ease; }
 .kb-set-card.is-active { border-color: var(--kb-accent); background: var(--kb-tint); }
