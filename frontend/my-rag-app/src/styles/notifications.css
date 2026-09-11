@@ -46,7 +46,11 @@ html:not(.dark) .nexora-toast--warning { --notice-accent: #9a6819; }
   max-height: calc(100dvh - 40px); padding: 24px; gap: 16px;
   overflow-y: auto; text-align: start;
 }
-.nexora-message-dialog::backdrop { background: #03081770; }
+.nexora-message-dialog::backdrop {
+  background: var(--modal-backdrop);
+  -webkit-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%);
+  backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%);
+}
 .nexora-message-dialog .nexora-toast__icon { width: 40px; height: 40px; border-radius: 11px; }
 .nexora-message-dialog h2 { margin: 0 0 6px; font-size: 16px; font-weight: 600; color: var(--notice-text); }
 .nexora-message-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 4px; }

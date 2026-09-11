@@ -86,7 +86,7 @@ export default function RenameConversationDialog({ conversation, onClose, onRena
   };
 
   return createPortal(
-    <div className="app-shell fixed inset-0 z-[100] grid place-items-center bg-[#020617]/70 p-4 backdrop-blur-sm" dir={isFa ? "rtl" : "ltr"} onMouseDown={close}>
+    <div className="app-shell nexora-modal-backdrop fixed inset-0 z-[100] grid place-items-center p-4" dir={isFa ? "rtl" : "ltr"} onMouseDown={close}>
       <form
         ref={dialogRef}
         role="dialog"

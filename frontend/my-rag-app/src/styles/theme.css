@@ -16,6 +16,8 @@
   --surface-raised: #f8f9fc;
   --surface-muted: #f7f8fb;
   --surface-overlay: #0a112280;
+  --modal-backdrop: rgba(10, 17, 34, 0.52);
+  --modal-backdrop-blur: 12px;
   --text-primary: #252c3e;
   --text-muted: #566177;
   --text-subtle: #6f7a90;
@@ -61,6 +63,8 @@
   --surface-raised: #0c1428;
   --surface-muted: #ffffff04;
   --surface-overlay: #0a112280;
+  --modal-backdrop: rgba(4, 9, 23, 0.62);
+  --modal-backdrop-blur: 12px;
   --text-primary: #e7eaf3;
   --text-muted: #b3bfd2;
   --text-subtle: #9caac1;

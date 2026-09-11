@@ -11,7 +11,11 @@
 }
 .assistant-form-overlay { position: fixed; inset: 0; width: 100%; height: 100dvh; max-width: none; max-height: none; margin: 0; border: 0; padding: 20px; background: transparent; }
 .assistant-form-overlay[open] { display: grid; place-items: center; }
-.assistant-form-overlay::backdrop { background: #0a112280; }
+.assistant-form-overlay::backdrop {
+  background: var(--modal-backdrop);
+  -webkit-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%);
+  backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%);
+}
 .assistant-form { display: flex; flex-direction: column; width: min(560px, 100%); max-height: calc(100dvh - 40px); border: 1px solid var(--as-line); overflow: hidden; color: var(--as-text); }
 .assistant-form-header { display: flex; flex-shrink: 0; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--as-line); }
 .assistant-form-header h2 { font-size: 18px; font-weight: 600; line-height: 1.6; }

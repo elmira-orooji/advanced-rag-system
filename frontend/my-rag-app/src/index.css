@@ -48,6 +48,16 @@ button {
   cursor: pointer;
 }
 
+/* One backdrop treatment for every modal and full-screen inspector. */
+.nexora-modal-backdrop,
+.fixed.inset-0.backdrop-blur-sm,
+.fixed.inset-0.backdrop-blur-md,
+.absolute.inset-0.backdrop-blur-md {
+  background: var(--modal-backdrop) !important;
+  -webkit-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%);
+  backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%);
+}
+
 ::selection {
   color: var(--text-inverse);
   background: var(--brand-action);

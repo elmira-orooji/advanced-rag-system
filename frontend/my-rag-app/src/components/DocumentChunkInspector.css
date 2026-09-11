@@ -1,4 +1,4 @@
-.inspector-overlay { position: fixed; inset: 0; z-index: 96; display: grid; place-items: center; padding: 24px; backdrop-filter: blur(3px); }
+.inspector-overlay { position: fixed; inset: 0; z-index: 96; display: grid; place-items: center; padding: 24px; background: var(--modal-backdrop) !important; -webkit-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%); backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%); }
 .inspector-panel { display: flex; flex-direction: column; width: 100%; max-width: 1120px; height: min(820px, calc(100dvh - 48px)); overflow: hidden; border: 1px solid var(--kb-line); border-radius: 18px; background: var(--kb-panel); color: var(--kb-text); box-shadow: 0 24px 80px #101b3530; }
 .inspector-panel .inspector-text { color: var(--kb-text); }
 .inspector-panel .inspector-muted { color: var(--kb-muted); }

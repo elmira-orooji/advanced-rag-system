@@ -38,7 +38,7 @@ export default function AddUserForm({ isFa, onClose, onCreated }: AddUserFormPro
     finally { setSaving(false); }
   };
 
-  return createPortal(<div className="app-shell"><div className="kb-page fixed inset-0 z-[90] grid place-items-center p-4 backdrop-blur-sm" style={{ background: "#18213380", fontFamily: isFa ? "Vazirmatn, sans-serif" : "Inter, sans-serif" }} dir={isFa ? "rtl" : "ltr"} onMouseDown={onClose}>
+  return createPortal(<div className="app-shell"><div className="kb-page nexora-modal-backdrop fixed inset-0 z-[90] grid place-items-center p-4" style={{ fontFamily: isFa ? "Vazirmatn, sans-serif" : "Inter, sans-serif" }} dir={isFa ? "rtl" : "ltr"} onMouseDown={onClose}>
     <form onSubmit={submit} onMouseDown={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="add-member-title" className="chunk-settings member-dialog" onKeyDown={(event) => { if (event.key === "Escape" && !saving) onClose(); }}>
       <header className="chunk-settings-header"><span className="chunk-settings-icon"><UserPlus size={22} /></span><div><h2 id="add-member-title">{copy.title}</h2><p>{copy.subtitle}</p></div><button type="button" aria-label={copy.cancel} onClick={onClose} className="chunk-settings-close"><X size={19} /></button></header>
       <div className="chunk-settings-content">

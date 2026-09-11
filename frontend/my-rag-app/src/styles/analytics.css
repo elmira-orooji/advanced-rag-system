@@ -93,7 +93,11 @@ html:not(.dark) .analytics-dashboard {
 .analytics-viewport .analytics-health-summary { padding-block: 12px; gap: 8px 20px; }
 .analytics-details-button { align-self: flex-start; padding: 7px 0; color: var(--an-muted); font-size: 12px; }
 .analytics-details-dialog { position: fixed; inset: 0; width: min(760px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); margin: auto; padding: 24px; overflow: auto; border: 1px solid var(--an-line); border-radius: 14px; background: var(--an-panel); color: var(--an-text); }
-.analytics-details-dialog::backdrop { background: #0a112280; }
+.analytics-details-dialog::backdrop {
+  background: var(--modal-backdrop);
+  -webkit-backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%);
+  backdrop-filter: blur(var(--modal-backdrop-blur)) saturate(112%);
+}
 .analytics-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .analytics-dialog-header h2 { font-size: 16px; font-weight: 600; }
 @media (max-height: 720px) and (min-width: 768px) {
