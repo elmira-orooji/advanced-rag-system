@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Activity, ArrowDownToLine, Bot, CircleAlert, Database, FileCheck2, MessageSquareText, UsersRound, type LucideIcon } from "lucide-react";
+import { Activity, ArrowDownToLine, Bot, ChevronDown, CircleAlert, Database, FileSpreadsheet, FileText, FileCheck2, MessageSquareText, Printer, UsersRound, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
 
 import { analyticsService, type AnalyticsOverview, type DailyMetric, type RankedMetric } from "../services/analyticsService";
 import { authService } from "../services/authService";
+import { createXlsxWorkbook } from "../services/xlsxExport";
 import "../styles/analytics.css";
 import { sectionCopy } from "../locales/copy";
 
@@ -17,10 +18,12 @@ export default function AnalyticsPage() {
   const user = authService.getUser();
   const reducedMotion = useReducedMotion();
   const detailsRef = useRef<HTMLDialogElement>(null);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState<{ days: 7 | 30 | 90; revision: number }>({ days: 30, revision: 0 });
   const [loadedDays, setLoadedDays] = useState<7 | 30 | 90>(30);
   const [data, setData] = useState<AnalyticsOverview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -31,19 +34,57 @@ export default function AnalyticsPage() {
     return () => { active = false; };
   }, [query]);
 
+  useEffect(() => {
+    if (!exportMenuOpen) return;
+    const closeMenu = (event: PointerEvent) => {
+      if (!exportMenuRef.current?.contains(event.target as Node)) setExportMenuOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setExportMenuOpen(false); };
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => { document.removeEventListener("pointerdown", closeMenu); document.removeEventListener("keydown", closeOnEscape); };
+  }, [exportMenuOpen]);
+
   const selectPeriod = (value: 7 | 30 | 90) => {
     if (value === loadedDays || loading) return;
     setLoading(true);
     setQuery((current) => ({ days: value, revision: current.revision + 1 }));
   };
 
-  const c = sectionCopy(t, "analytics", ["welcome", "subtitle", "export", "queries", "users", "grounded", "satisfaction", "noFeedback", "unanswered", "coverage", "citations", "performance", "performanceSub", "query", "groundedLabel", "health", "indexed", "failed", "healthy", "quality", "positive", "feedbackCoverage", "assistants", "knowledge", "issues", "empty"]);
+  const c = sectionCopy(t, "analytics", ["welcome", "subtitle", "export", "exportExcel", "exportCsv", "exportPdf", "exportPdfHint", "exportFailed", "reportTitle", "period", "generatedAt", "dailyData", "date", "negativeFeedback", "queries", "users", "grounded", "satisfaction", "noFeedback", "unanswered", "coverage", "citations", "performance", "performanceSub", "query", "groundedLabel", "health", "indexed", "failed", "healthy", "quality", "positive", "feedbackCoverage", "assistants", "knowledge", "issues", "empty"]);
 
-  const exportData = () => {
+  const download = (content: BlobPart, type: string, extension: string) => {
+    const url = URL.createObjectURL(new Blob([content], { type }));
+    const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = `nexora-analytics-${loadedDays}d.${extension}`; anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportCsv = () => {
     if (!data) return;
-    const rows = [["date", "queries", "grounded", "negative_feedback"], ...data.daily.map((item) => [item.date, item.queries, item.grounded, item.negative_feedback])];
-    const url = URL.createObjectURL(new Blob([rows.map((row) => row.join(",")).join("\n")], { type: "text/csv;charset=utf-8" }));
-    const anchor = document.createElement("a"); anchor.href = url; anchor.download = `nexora-analytics-${loadedDays}d.csv`; anchor.click(); URL.revokeObjectURL(url);
+    const rows = [[c.date, c.queries, c.grounded, c.negativeFeedback], ...data.daily.map((item) => [item.date, item.queries, item.grounded, item.negative_feedback])];
+    const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
+    download(`\ufeff${csv}`, "text/csv;charset=utf-8", "csv");
+  };
+
+  const exportExcel = () => {
+    if (!data) return;
+    try {
+      const reportRows = [[c.reportTitle], [c.period, `${loadedDays} ${fa ? "روز" : "days"}`], [c.generatedAt, new Date().toLocaleString(fa ? "fa-IR" : "en")], [], [c.queries, data.total_queries], [c.users, data.active_users], [c.grounded, `${data.grounded_rate}%`], [c.satisfaction, data.positive_feedback_rate == null ? c.noFeedback : `${data.positive_feedback_rate}%`], [c.health, `${data.indexed_documents} ${c.indexed}`]];
+      const dailyRows = [[c.date, c.queries, c.grounded, c.negativeFeedback], ...data.daily.map((item) => [item.date, item.queries, item.grounded, item.negative_feedback])];
+      download(createXlsxWorkbook([{ name: fa ? "خلاصه" : "Overview", rows: reportRows }, { name: fa ? "داده روزانه" : "Daily data", rows: dailyRows }]), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx");
+    } catch { toast.error(c.exportFailed); }
+  };
+
+  const exportPdf = () => {
+    if (!data) return;
+    const report = window.open("", "_blank");
+    if (!report) { toast.error(c.exportFailed); return; }
+    report.opener = null;
+    const escape = (value: string | number) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
+    const rows = data.daily.map((item) => `<tr><td>${escape(item.date)}</td><td>${item.queries}</td><td>${item.grounded}</td><td>${item.negative_feedback}</td></tr>`).join("");
+    report.document.write(`<!doctype html><html dir="${fa ? "rtl" : "ltr"}" lang="${fa ? "fa" : "en"}"><head><title>${escape(c.reportTitle)}</title><style>body{font-family:${fa ? "Vazirmatn, Tahoma, sans-serif" : "Inter, Arial, sans-serif"};color:#15203a;padding:32px}h1{font-size:20px}p{color:#52617a}table{width:100%;border-collapse:collapse;margin-top:24px;font-size:12px}th,td{border:1px solid #dce2eb;padding:9px;text-align:start}th{background:#f4f1ff;color:#5520bd}@media print{body{padding:0}}</style></head><body><h1>${escape(c.reportTitle)}</h1><p>${escape(c.period)}: ${loadedDays} ${fa ? "روز" : "days"} · ${escape(c.generatedAt)}: ${escape(new Date().toLocaleString(fa ? "fa-IR" : "en"))}</p><table><thead><tr><th>${escape(c.date)}</th><th>${escape(c.queries)}</th><th>${escape(c.grounded)}</th><th>${escape(c.negativeFeedback)}</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
+    report.document.close();
   };
 
   if (loading && !data) return <div className="analytics-dashboard grid h-full place-items-center an-surface"><span role="status" aria-label={fa ? "در حال بارگذاری" : "Loading"} className="analytics-spinner" /></div>;
@@ -52,7 +93,7 @@ export default function AnalyticsPage() {
     <div className="analytics-content">
       <header className="analytics-header flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div><h1 className="mt-2 text-xl font-semibold tracking-[-.025em] sm:text-[25px]">{c.welcome}, <span className="an-text">{user?.username ?? (fa ? "کاربر" : "User")}</span></h1><p className="mt-1.5 text-xs an-muted">{c.subtitle}</p></div>
-        <div className="flex flex-wrap items-center gap-2"><div className="analytics-period" role="group" aria-label={fa ? "بازه زمانی" : "Date range"}>{([7, 30, 90] as const).map((value) => <button key={value} onClick={() => selectPeriod(value)} disabled={loading} aria-pressed={loadedDays === value} className={loadedDays === value ? "is-active" : ""}>{fa ? `${value} روز` : `${value} days`}</button>)}</div><button onClick={exportData} disabled={!data || loading} className="analytics-export"><ArrowDownToLine size={13} />{c.export}</button></div>
+        <div className="flex flex-wrap items-center gap-2"><div className="analytics-period" role="group" aria-label={fa ? "بازه زمانی" : "Date range"}>{([7, 30, 90] as const).map((value) => <button key={value} onClick={() => selectPeriod(value)} disabled={loading} aria-pressed={loadedDays === value} className={loadedDays === value ? "is-active" : ""}>{fa ? `${value} روز` : `${value} days`}</button>)}</div><div className="analytics-export-menu" ref={exportMenuRef}><button type="button" onClick={() => setExportMenuOpen((value) => !value)} disabled={!data || loading} className="analytics-export" aria-haspopup="menu" aria-expanded={exportMenuOpen}><ArrowDownToLine size={13} />{c.export}<ChevronDown size={13} aria-hidden="true" /></button>{exportMenuOpen && <div className="analytics-export-options" role="menu"><button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); exportExcel(); }}><FileSpreadsheet size={15} aria-hidden="true" /><span>{c.exportExcel}</span></button><button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); exportCsv(); }}><FileText size={15} aria-hidden="true" /><span>{c.exportCsv}</span></button><button type="button" role="menuitem" title={c.exportPdfHint} onClick={() => { setExportMenuOpen(false); exportPdf(); }}><Printer size={15} aria-hidden="true" /><span>{c.exportPdf}</span></button></div>}</div></div>
       </header>
 
       {data && <>

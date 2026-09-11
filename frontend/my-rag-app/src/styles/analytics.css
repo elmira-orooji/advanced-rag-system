@@ -69,6 +69,10 @@ html:not(.dark) .analytics-dashboard {
 .analytics-period button { min-height: 34px; padding: 6px 12px; border-radius: 5px; color: var(--an-muted); font-size: var(--font-size-control); white-space: nowrap; }
 .analytics-period button.is-active { color: var(--an-violet); background: var(--an-active); font-weight: 600; }
 .analytics-export { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid var(--an-line); border-radius: 8px; background: var(--an-panel); color: var(--an-text); font-size: var(--font-size-control); }
+.analytics-export-menu { position: relative; }
+.analytics-export-options { position: absolute; z-index: 20; top: calc(100% + 8px); inset-inline-end: 0; display: grid; min-width: 190px; padding: 5px; border: 1px solid var(--an-line); border-radius: 10px; background: var(--an-panel); box-shadow: 0 14px 32px rgba(10, 18, 39, .18); }
+.analytics-export-options button { display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 8px 10px; border-radius: 7px; color: var(--an-text); font-size: var(--font-size-control); text-align: start; }
+.analytics-export-options button svg { color: var(--an-violet); flex-shrink: 0; }
 .analytics-dashboard button { cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
 .analytics-dashboard button:hover { background: var(--an-active); }
 .analytics-dashboard button:disabled { opacity: .5; cursor: not-allowed; }
