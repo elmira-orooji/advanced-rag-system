@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
-import { Check, Languages, Moon, Palette, Sun } from "lucide-react";
+import { Check, Eye, EyeOff, KeyRound, Languages, LoaderCircle, Moon, Palette, Sun } from "lucide-react";
+import toast from "react-hot-toast";
 import "../styles/settings.css";
 import { sectionCopy } from "../locales/copy";
+import { authService } from "../services/authService";
 
 interface SettingsPageProps {
   theme: "light" | "dark";
@@ -13,13 +16,36 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
   const { i18n, t } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const reducedMotion = useReducedMotion();
-  const copy = sectionCopy(t, "settings", ["title", "subtitle", "appearance", "appearanceSub", "light", "dark", "language", "languageSub", "ltr", "rtl"]);
+  const copy = sectionCopy(t, "settings", ["title", "subtitle", "appearance", "appearanceSub", "light", "dark", "language", "languageSub", "ltr", "rtl", "security", "securitySub", "currentPassword", "newPassword", "confirmPassword", "passwordHint", "showPasswords", "hidePasswords", "savePassword", "savingPassword", "passwordChanged", "passwordMismatch", "passwordTooShort", "passwordRequired", "currentPasswordIncorrect"]);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [passwordError, setPasswordError] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
 
   const changeLanguage = (language: "en" | "fa") => {
     void i18n.changeLanguage(language);
     localStorage.setItem("lang", language);
     document.documentElement.setAttribute("lang", language);
     document.documentElement.setAttribute("dir", language === "fa" ? "rtl" : "ltr");
+  };
+
+  const submitPassword = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!currentPassword) { setPasswordError(copy.passwordRequired); return; }
+    if (newPassword.length < 8) { setPasswordError(copy.passwordTooShort); return; }
+    if (newPassword !== confirmPassword) { setPasswordError(copy.passwordMismatch); return; }
+    setPasswordError("");
+    setSavingPassword(true);
+    try {
+      await authService.changePassword(currentPassword, newPassword);
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      toast.success(copy.passwordChanged);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      setPasswordError(message.toLowerCase().includes("current password is incorrect") ? copy.currentPasswordIncorrect : (message || (isFa ? "تغییر رمز عبور انجام نشد. دوباره تلاش کنید." : "Password could not be changed. Please try again.")));
+    } finally { setSavingPassword(false); }
   };
 
   return (
@@ -65,6 +91,22 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
               </label>;
             })}
           </div>
+        </section>
+        <section className="preferences-card" aria-labelledby="password-title">
+          <div className="preferences-section-heading">
+            <span className="preferences-icon"><KeyRound size={18} aria-hidden="true" /></span>
+            <div><h2 id="password-title">{copy.security}</h2><p>{copy.securitySub}</p></div>
+          </div>
+          <form className="preferences-password-form" onSubmit={(event) => void submitPassword(event)} noValidate>
+            <div className="preferences-password-fields">
+              <label><span>{copy.currentPassword}</span><input value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setPasswordError(""); }} type={showPasswords ? "text" : "password"} autoComplete="current-password" disabled={savingPassword} /></label>
+              <label><span>{copy.newPassword}</span><input value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setPasswordError(""); }} type={showPasswords ? "text" : "password"} autoComplete="new-password" disabled={savingPassword} /></label>
+              <label><span>{copy.confirmPassword}</span><input value={confirmPassword} onChange={(event) => { setConfirmPassword(event.target.value); setPasswordError(""); }} type={showPasswords ? "text" : "password"} autoComplete="new-password" disabled={savingPassword} /></label>
+            </div>
+            <div className="preferences-password-actions"><label className="preferences-password-toggle"><input type="checkbox" checked={showPasswords} onChange={(event) => setShowPasswords(event.target.checked)} disabled={savingPassword} /><span>{showPasswords ? <EyeOff size={15} aria-hidden="true" /> : <Eye size={15} aria-hidden="true" />}</span>{showPasswords ? copy.hidePasswords : copy.showPasswords}</label><span className="preferences-password-hint">{copy.passwordHint}</span></div>
+            {passwordError && <p className="preferences-password-error" role="alert">{passwordError}</p>}
+            <button className="preferences-password-submit" type="submit" disabled={savingPassword}>{savingPassword && <LoaderCircle className="animate-spin" size={15} aria-hidden="true" />}{savingPassword ? copy.savingPassword : copy.savePassword}</button>
+          </form>
         </section>
       </div>
     </motion.div>

@@ -46,4 +46,17 @@ describe("authService", () => {
     expect(authService.getSession()).toBeNull();
     expect(localStorage.getItem("knowledgeflow.auth")).toBeNull();
   });
+
+  it("changes a password through the cookie-backed authentication endpoint", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
+
+    await authService.changePassword("old-password", "new-password");
+
+    expect(fetchMock).toHaveBeenCalledWith("/api/v1/auth/change-password", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password: "old-password", new_password: "new-password" }),
+    });
+  });
 });

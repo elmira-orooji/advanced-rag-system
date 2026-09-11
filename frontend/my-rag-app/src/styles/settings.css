@@ -52,6 +52,22 @@ html:not(.dark) .preferences-page {
 .preferences-language-copy { min-width: 0; }
 .preferences-language-copy strong { display: block; font-size: 12px; font-weight: 600; }
 .preferences-language-copy > span { display: block; margin-top: 4px; font-size: var(--font-size-helper); color: var(--pref-muted); }
+.preferences-password-form { margin-top: 20px; }
+.preferences-password-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.preferences-password-fields label { min-width: 0; }
+.preferences-password-fields label > span { display: block; margin-bottom: 7px; color: var(--pref-text); font-size: 12px; font-weight: 500; }
+.preferences-page .preferences-password-fields input { width: 100%; min-height: 42px; border: 1px solid var(--pref-line); border-radius: 9px; padding: 9px 11px; background: transparent; color: var(--pref-text); font: inherit; font-size: 14px; outline: none; }
+.preferences-page .preferences-password-fields input:focus { border-color: var(--pref-accent); box-shadow: 0 0 0 3px var(--pref-tint); }
+.preferences-password-actions { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.preferences-password-toggle { display: inline-flex; align-items: center; gap: 7px; color: var(--pref-muted); font-size: 12px; cursor: pointer; }
+.preferences-password-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+.preferences-password-toggle > span { display: grid; place-items: center; width: 26px; height: 26px; border: 1px solid var(--pref-line); border-radius: 7px; color: var(--pref-accent); }
+.preferences-password-toggle:has(input:focus-visible) > span { outline: 2px solid var(--pref-accent); outline-offset: 2px; }
+.preferences-password-hint { color: var(--pref-muted); font-size: var(--font-size-helper); }
+.preferences-password-error { margin: 12px 0 0; color: #d05267; font-size: 12px; line-height: 1.6; }
+.preferences-password-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; margin-top: 16px; padding: 10px 14px; border-radius: 9px; background: var(--brand-action); color: var(--text-inverse); font-size: 12px; font-weight: 600; transition: background-color 140ms ease, opacity 140ms ease; }
+.preferences-password-submit:hover:not(:disabled) { background: var(--brand-action-hover); }
+.preferences-password-submit:disabled { cursor: not-allowed; opacity: .6; }
 @media (max-width: 540px) {
   .preferences-page { padding: 20px 16px; }
   .preferences-card { padding: 16px; }
@@ -59,5 +75,8 @@ html:not(.dark) .preferences-page {
   .preferences-language { gap: 8px; padding: 12px 8px; }
   .preferences-language-symbol { display: none; }
   .preferences-preview { height: 80px; }
+  .preferences-password-fields { grid-template-columns: 1fr; gap: 10px; }
+  .preferences-password-actions { align-items: flex-start; flex-direction: column; }
+  .preferences-password-submit { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .preferences-choice { transition: none; } }

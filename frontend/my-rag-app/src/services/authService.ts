@@ -87,4 +87,17 @@ export const authService = {
       this.clearLocalSession();
     }
   },
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    const response = await fetch(`${API_URL}/auth/change-password`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    });
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(parseError(payload, "Password could not be changed. Please try again."));
+    }
+  },
 };
