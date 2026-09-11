@@ -12,6 +12,7 @@ backend/ocr_lab/.tmp/
 backend/ocr_lab/models/
 backend/ocr_lab/output/
 .env
+.env.docker
 
 # OS
 .DS_Store

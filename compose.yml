@@ -1,0 +1,110 @@
+name: nexora
+
+services:
+  postgres:
+    image: postgres:16.6-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nexora}
+      POSTGRES_USER: ${POSTGRES_USER:-nexora}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  qdrant:
+    image: qdrant/qdrant:v1.13.4
+    volumes:
+      - qdrant_data:/qdrant/storage
+    restart: unless-stopped
+
+  migrate:
+    build:
+      context: ./backend
+    env_file: .env
+    command: ["alembic", "upgrade", "head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build:
+      context: ./backend
+    env_file: .env
+    environment:
+      DOCUMENT_STORAGE_DIR: /data/documents
+    volumes:
+      - document_data:/data/documents
+      - model_cache:/home/nexora/.cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      qdrant:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      start_period: 20s
+      retries: 5
+    restart: unless-stopped
+    cpus: 1.0
+    mem_limit: 1g
+
+  document-worker:
+    build:
+      context: ./backend
+    env_file: .env
+    environment:
+      DOCUMENT_STORAGE_DIR: /data/documents
+    command: ["python", "-m", "app.workers.document_worker"]
+    volumes:
+      - document_data:/data/documents
+      - model_cache:/home/nexora/.cache
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      qdrant:
+        condition: service_started
+    restart: unless-stopped
+    cpus: 0.75
+    mem_limit: 2g
+
+  connector-scheduler:
+    build:
+      context: ./backend
+    env_file: .env
+    environment:
+      DOCUMENT_STORAGE_DIR: /data/documents
+    command: ["python", "-m", "app.workers.connector_scheduler_worker"]
+    volumes:
+      - document_data:/data/documents
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 512m
+
+  frontend:
+    build:
+      context: ./frontend/my-rag-app
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "${NEXORA_PORT:-5173}:8080"
+    restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 256m
+
+volumes:
+  postgres_data:
+  qdrant_data:
+  document_data:
+  model_cache:
