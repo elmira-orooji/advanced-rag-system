@@ -1,42 +1,87 @@
 # Nexora
 
-Nexora یک سامانهٔ چندسازمانی برای تبدیل اسناد و منابع سازمانی به پایگاه دانش قابل پرسش است. کاربر مجموعهٔ دانش مجاز را انتخاب می‌کند، سؤال می‌پرسد و پاسخ را همراه با وضعیت اعتماد و منابع قابل بررسی می‌بیند.
+Nexora is a document-grounded AI workspace for teams. It turns approved documents and connected sources into knowledge collections that people can search, discuss, and verify through cited answers.
 
-## قابلیت‌ها
-
-- مدیریت سازمان، نقش کاربر و نشست مبتنی بر کوکی امن
-- مجموعه‌های دانش، بارگذاری سند، مشاهدهٔ وضعیت پردازش و تلاش مجدد
-- استخراج متن PDF و فایل متنی، OCR اختیاری برای اسناد اسکن‌شده و ایندکس‌کردن در Qdrant
-- گفت‌وگوی RAG، منابع پاسخ، برچسب اعتماد، بازخورد و اشتراک‌گذاری کنترل‌شده
-- Assistantهای متصل به مجموعه‌های دانش
-- Connector وب، GitHub و Webhook با همگام‌سازی زمان‌بندی‌شده
-- Worker جداگانه برای پردازش سند و Scheduler جداگانه برای Connectorها
-- رابط فارسی و انگلیسی، Light و Dark mode و طراحی واکنش‌گرا
-
-## ساختار مخزن
+The project follows a clear path from knowledge to answer:
 
 ```text
-backend/                 FastAPI، مدل‌ها، migrationها، Workerها و تست‌ها
-frontend/my-rag-app/     React، Vite و رابط کاربری
-documents/               مستندات رسمی پروژه
-DESIGN.md                قواعد طراحی رابط
+Create a knowledge set → add documents or sources → process and index content → ask a question → inspect sources and answer confidence
 ```
 
-## پیش‌نیازها
+## What Nexora includes
 
-- Python 3.11 یا جدیدتر
-- Node.js 20 یا جدیدتر و npm
-- PostgreSQL
-- یک نمونهٔ Qdrant قابل دسترس از Backend
-- کلید OpenRouter یا ارائه‌دهندهٔ سازگار برای تولید پاسخ
+- **Grounded conversations** — retrieve relevant document chunks and present answer sources alongside a confidence state.
+- **Knowledge sets** — organize documents into focused collections with per-user access levels.
+- **Document ingestion** — upload PDF, TXT, JPEG, PNG, and TIFF files; track queue, extraction, OCR, chunking, and indexing progress.
+- **Optional OCR** — extract content from scanned documents with MinerU, Google Vision, or Azure Document Intelligence.
+- **Assistants** — connect assistant behavior to one or more permitted knowledge sets.
+- **Controlled sharing and feedback** — publish revocable read-only conversation snapshots and collect answer feedback.
+- **Connectors** — synchronize supported website, GitHub, Google Drive, S3, SharePoint, and webhook sources through a background scheduler.
+- **Team boundaries** — separate organizations, roles, document-set permissions, and user sessions.
+- **Bilingual interface** — Persian and English UI, light and dark themes, and responsive layouts.
 
-برای پردازش PDFهای اسکن‌شده، یکی از ارائه‌دهندگان OCR باید جداگانه پیکربندی شود. OCR به‌صورت پیش‌فرض غیرفعال است؛ در این حالت فایل از سرور برای سرویس OCR خارجی ارسال نمی‌شود.
+## Architecture at a glance
 
-## راه‌اندازی محلی
+Nexora uses a React/Vite frontend, a FastAPI backend, PostgreSQL for application data, and Qdrant for vector retrieval. The API, document worker, and connector scheduler are separate processes that share the same database, document storage, and Qdrant configuration.
 
-### ۱. تنظیم Backend
+```text
+Browser → React UI → FastAPI API → PostgreSQL
+                              ↘ → Qdrant
+                              ↘ → OpenRouter-compatible LLM
 
-در PowerShell از ریشهٔ مخزن:
+Document worker → storage → extraction/OCR → chunking and indexing → Qdrant
+Connector scheduler → permitted remote sources → document processing queue
+```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for component boundaries, data flow, worker behavior, and RAG retrieval details.
+
+## Quick start with Docker
+
+Docker Compose is the recommended way to run the full local stack. It starts PostgreSQL, Qdrant, the API, document worker, connector scheduler, and frontend together.
+
+### Requirements
+
+- Docker Desktop or Docker Engine with Docker Compose v2
+- At least 4 GB of free memory for a comfortable local stack
+
+### Configure the environment
+
+From the repository root:
+
+```powershell
+Copy-Item .env.docker.example .env
+```
+
+Open `.env` and replace the database password in both `POSTGRES_PASSWORD` and `DATABASE_URL`. Also set a random `AUTH_SECRET_KEY` of at least 32 characters. Keep the included development cookie settings for local HTTP only.
+
+### Start the stack
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Open [http://localhost:5173](http://localhost:5173). The first start applies Alembic migrations before the API and workers begin.
+
+To confirm that PostgreSQL, Qdrant, document storage, and both workers are ready:
+
+```powershell
+Invoke-WebRequest http://localhost:5173/api/ready | Select-Object -ExpandProperty Content
+```
+
+For logs from a single service:
+
+```powershell
+docker compose logs -f document-worker
+```
+
+The Compose setup limits the document worker to 0.75 CPU cores and 2 GB of memory by default. This limits local resource contention, but it can make indexing slower. Adjust those limits in `compose.yml` only after considering the capacity of the host.
+
+## Run without Docker
+
+Use this option when PostgreSQL and Qdrant are already available elsewhere.
+
+### Backend
 
 ```powershell
 cd backend
@@ -46,58 +91,41 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 ```
 
-فایل `backend/.env` را با مقادیر محیط خود کامل کنید. حداقل مقادیر لازم:
+Set, at minimum, the following values in `backend/.env`:
 
 ```dotenv
 DATABASE_URL=postgresql+psycopg2://USER:PASSWORD@HOST:5432/DATABASE
-AUTH_SECRET_KEY=یک_رشته_تصادفی_حداقل_۳۲_کاراکتری
+AUTH_SECRET_KEY=replace-with-a-random-value-of-at-least-32-characters
 APP_ENV=development
 AUTH_COOKIE_SECURE=false
 FRONTEND_ORIGINS=http://localhost:5173,http://127.0.0.1:5173
 
-QDRANT_URL=https://YOUR-QDRANT-ENDPOINT
-QDRANT_API_KEY=YOUR-QDRANT-API-KEY
+QDRANT_URL=http://YOUR-QDRANT-HOST:6333
+QDRANT_API_KEY=
 QDRANT_COLLECTION=rag_chunks
 
-OPENROUTER_API_KEY=YOUR-OPENROUTER-API-KEY
+OPENROUTER_API_KEY=
 OPENROUTER_MODEL=openrouter/free
 ```
 
-سپس migrationها را اجرا کنید:
+Apply migrations and start the three backend processes in separate terminals:
 
 ```powershell
-alembic upgrade head
-```
-
-### ۲. اجرای سرویس‌ها
-
-سه فرایند Backend باید هم‌زمان اجرا شوند و به یک پایگاه داده، فضای ذخیره‌سازی و Qdrant مشترک وصل باشند:
-
-```powershell
-# ترمینال اول
 cd backend
 .\.venv\Scripts\Activate.ps1
+alembic upgrade head
+
+# Terminal 1
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-# ترمینال دوم
-cd backend
-.\.venv\Scripts\Activate.ps1
+# Terminal 2
 python -m app.workers.document_worker
 
-# ترمینال سوم
-cd backend
-.\.venv\Scripts\Activate.ps1
+# Terminal 3
 python -m app.workers.connector_scheduler_worker
 ```
 
-API در `http://localhost:8000` در دسترس است. endpointهای نظارتی:
-
-- `GET /health`: liveness سبک و بدون تغییر وضعیت
-- `GET /ready`: readiness شامل PostgreSQL، Qdrant، فضای ذخیره‌سازی و Workerهای ضروری
-
-`/ready` تا زمانی که Document Worker و Connector Scheduler فعال نباشند، وضعیت `503` برمی‌گرداند. این رفتار برای استقرار Production عمدی است.
-
-### ۳. اجرای Frontend
+### Frontend
 
 ```powershell
 cd frontend/my-rag-app
@@ -105,89 +133,92 @@ npm install
 npm run dev
 ```
 
-رابط در `http://localhost:5173` اجرا می‌شود. Vite درخواست‌های `/api` را در محیط توسعه به `http://127.0.0.1:8000` پروکسی می‌کند.
+The development server runs on [http://localhost:5173](http://localhost:5173) and proxies `/api` calls to `http://127.0.0.1:8000`.
 
-## پیکربندی OCR
+## Document processing and OCR
 
-متن PDFهای دارای لایهٔ متنی به‌صورت محلی استخراج می‌شود. برای فایل‌های اسکن‌شده، یکی از تنظیمات زیر را در `backend/.env` فعال کنید.
+PDF files with a text layer and TXT files are extracted locally. OCR is disabled by default, so scanned documents are not sent to an external provider until one is configured.
 
-### MinerU
+To enable MinerU for Persian scanned documents:
 
 ```dotenv
 OCR_PROVIDER=mineru
-MINERU_API_TOKEN=YOUR-MINERU-TOKEN
+MINERU_API_TOKEN=your-token
 MINERU_LANGUAGE=fa
 MINERU_MODEL_VERSION=vlm
 ```
 
-MinerU فایل اصلی را از طریق URL امضاشده دریافت و نتیجه را به‌صورت غیرهم‌زمان برمی‌گرداند. پیش از فعال‌سازی، سیاست محرمانگی سازمان دربارهٔ ارسال سند به سرویس خارجی را بررسی کنید.
+Set `OCR_PROVIDER=auto` to try configured providers in this order: MinerU, Google Vision, and Azure Document Intelligence. Before enabling a cloud OCR provider, confirm that sending the original document to that provider is permitted by the organization’s data policy.
 
-### انتخاب خودکار بین ارائه‌دهندگان
+The application does not currently include malware scanning. Do not treat MIME checks and file-size limits as an antivirus control. [SECURITY.md](SECURITY.md) describes the required quarantine-and-scan flow before production use with untrusted files.
 
-```dotenv
-OCR_PROVIDER=auto
-MINERU_API_TOKEN=
-GOOGLE_VISION_API_KEY=
-AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=
-AZURE_DOCUMENT_INTELLIGENCE_KEY=
-```
+## Operations
 
-در حالت `auto`، سامانه به‌ترتیب MinerU، Google Vision و Azure Document Intelligence را فقط در صورت وجود اعتبارنامه امتحان می‌کند. برای غیرفعال نگه‌داشتن OCR از `OCR_PROVIDER=disabled` استفاده کنید.
+| Endpoint | Purpose |
+| --- | --- |
+| `GET /health` | Lightweight API liveness check. |
+| `GET /ready` | Readiness check for PostgreSQL, Qdrant, writable document storage, document worker, and connector scheduler. |
 
-## اجرای آزمون‌ها
+`/ready` returns `503` until all required dependencies and worker heartbeats are available. This is intentional and makes it suitable for deployment readiness probes.
 
-### Backend
+For production, use HTTPS, set `APP_ENV=production`, set `AUTH_COOKIE_SECURE=true`, restrict `FRONTEND_ORIGINS` to the real frontend origin, and keep PostgreSQL and Qdrant off the public network. Full deployment guidance is available in [DEPLOYMENT.md](DEPLOYMENT.md).
+
+## Quality checks
+
+The repository has separate backend and frontend checks:
 
 ```powershell
+# Backend
 cd backend
 .\.venv\Scripts\Activate.ps1
 python -m pytest
-```
 
-آزمون OCR واقعی به‌صورت پیش‌فرض اجرا نمی‌شود. برای تست یک تصویر مصنوعی با Google Vision یا Azure، اعتبارنامه و متغیر فعال‌ساز مربوط را تنظیم کنید:
-
-```powershell
-$env:RUN_GOOGLE_VISION_OCR_INTEGRATION=1
-python -m pytest -m integration
-```
-
-### Frontend
-
-```powershell
+# Frontend unit tests and production build
 cd frontend/my-rag-app
 npm run test
 npm run build
+
+# Frontend end-to-end tests
 npm run test:e2e
 ```
 
-## استقرار
+GitHub Actions runs backend tests on pushes and pull requests to `dev` and `main`. A separate frontend workflow runs unit tests, a production build, and Playwright end-to-end tests on GitHub-hosted runners, so those checks do not consume local CPU while working on the project.
 
-در Production، API، Document Worker و Connector Scheduler را به‌عنوان فرایندهای مستقل اجرا کنید. همهٔ آن‌ها باید به PostgreSQL، Qdrant و `DOCUMENT_STORAGE_DIR` مشترک متصل باشند. پیش از شروع سرویس‌ها migrationها را اجرا کنید و موارد زیر را رعایت کنید:
+## Repository layout
 
-- `APP_ENV=production` و `AUTH_COOKIE_SECURE=true`
-- `FRONTEND_ORIGINS` فقط شامل دامنه‌های مجاز باشد
-- `AUTH_SECRET_KEY` تصادفی و حداقل ۳۲ کاراکتر باشد
-- کلیدهای OCR، Qdrant، OpenRouter و Connectorها در Secret Manager نگهداری شوند، نه در مخزن یا log
-- سلامت سرویس را از `/health` و آماده‌بودن برای ترافیک را از `/ready` کنترل کنید
-- حجم فایل مجاز به‌صورت پیش‌فرض ۱۰ مگابایت است؛ در صورت تغییر، ظرفیت ذخیره‌سازی و timeoutهای پردازش نیز بررسی شوند
+```text
+backend/                    FastAPI routes, models, migrations, workers, and tests
+frontend/my-rag-app/        React application, component tests, and Playwright tests
+documents/                  Product and requirements documents
+compose.yml                 Full local Docker Compose stack
+ARCHITECTURE.md             System design and data flows
+DEPLOYMENT.md               Docker and production deployment guide
+SECURITY.md                 Security posture and operational requirements
+BACKUP_AND_RECOVERY.md      Backup and recovery procedures
+DESIGN.md                   UI design system rules
+```
 
-## عیب‌یابی
+## Documentation
 
-| نشانه | بررسی پیشنهادی |
+- [Architecture](ARCHITECTURE.md)
+- [Deployment](DEPLOYMENT.md)
+- [Security](SECURITY.md)
+- [Backup and recovery](BACKUP_AND_RECOVERY.md)
+- [Design system](DESIGN.md)
+- [Software requirements specification](documents/SRS-Nexora.docx)
+- [Backend workers and OCR](backend/README.md)
+- [Connector scheduler](backend/CONNECTOR_SCHEDULER.md)
+
+## Troubleshooting
+
+| Symptom | First checks |
 | --- | --- |
-| فایل روی ۰٪ یا ۱۰٪ می‌ماند | اجرای `document_worker`، اتصال پایگاه داده، وضعیت `/ready` و خطای ثبت‌شده برای سند را بررسی کنید. |
-| سند اسکن‌شده failed می‌شود | `OCR_PROVIDER`، اعتبارنامهٔ سرویس انتخاب‌شده، timeout و محدودیت صفحه را بررسی کنید. |
-| Frontend خطای `ECONNREFUSED 127.0.0.1:8000` نشان می‌دهد | API با `uvicorn app.main:app --host 0.0.0.0 --port 8000` اجرا نشده یا روی پورت دیگری است. |
-| `/ready` برابر 503 است | وضعیت PostgreSQL، Qdrant، مسیر ذخیره‌سازی و هر دو Worker را بررسی کنید. |
-| Connector همگام‌سازی نمی‌شود | اجرای Scheduler، تنظیمات Connector، وضعیت lease و خطای آخر همگام‌سازی را بررسی کنید. |
+| A document remains at 0% or 10% | Confirm `document-worker` is running, then inspect `/ready` and the document processing error. |
+| A scanned document fails | Check `OCR_PROVIDER`, provider credentials, page limits, and OCR timeout settings. |
+| The frontend reports `ECONNREFUSED 127.0.0.1:8000` | Start the FastAPI API on port 8000 or correct the development proxy target. |
+| `/ready` returns 503 | Check PostgreSQL, Qdrant, writable storage, document worker, and connector scheduler. |
+| A connector does not synchronize | Check the scheduler, connector configuration, lease state, and the last synchronization error. |
 
-## مستندات
+## Security note
 
-- [قواعد طراحی](DESIGN.md)
-- [مشخصات نیازمندی‌های نرم‌افزار](documents/SRS-Nexora.docx)
-- [راهنمای Workerها و OCR](backend/README.md)
-- [راهنمای بازیابی Connector](backend/CONNECTOR_SCHEDULER.md)
-
-## ملاحظات امنیتی
-
-فایل `.env` حاوی راز است و نباید commit شود. نشست‌ها، دسترسی سازمانی، فایل‌های اصلی و منابع پاسخ باید تنها در محدودهٔ مجاز کاربر استفاده شوند. پیش از اتصال OCR یا Connector ابری، دربارهٔ انتقال داده و نگهداری آن با سیاست سازمان هماهنگ شوید.
+Do not commit `.env` files, passwords, API keys, OAuth refresh tokens, Qdrant keys, or OCR credentials. Review [SECURITY.md](SECURITY.md) before exposing the application to users or connecting it to organization data.
