@@ -91,6 +91,15 @@ services:
     cpus: 0.25
     mem_limit: 512m
 
+  clamav:
+    image: clamav/clamav:stable_base
+    profiles: ["security"]
+    volumes:
+      - clamav_database:/var/lib/clamav
+    restart: unless-stopped
+    cpus: 0.25
+    mem_limit: 768m
+
   frontend:
     build:
       context: ./frontend/my-rag-app
@@ -108,3 +117,4 @@ volumes:
   qdrant_data:
   document_data:
   model_cache:
+  clamav_database:

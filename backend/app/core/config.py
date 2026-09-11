@@ -92,6 +92,19 @@ def resolve_document_path(stored: str) -> Path:
         pass
     return (BASE_DIR / candidate).resolve()
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024
+APP_ENV = os.getenv("APP_ENV", "production").strip().lower()
+MALWARE_SCAN_MODE = os.getenv("MALWARE_SCAN_MODE", "required" if APP_ENV not in _NON_PRODUCTION_ENVIRONMENTS else "disabled").strip().lower()
+if MALWARE_SCAN_MODE not in {"disabled", "required"}:
+    raise RuntimeError("MALWARE_SCAN_MODE must be disabled or required")
+if MALWARE_SCAN_MODE == "disabled" and APP_ENV not in _NON_PRODUCTION_ENVIRONMENTS:
+    raise RuntimeError("MALWARE_SCAN_MODE may only be disabled when APP_ENV is development or test")
+CLAMD_HOST = os.getenv("CLAMD_HOST", "clamav")
+CLAMD_PORT = int(os.getenv("CLAMD_PORT", "3310"))
+CLAMD_TIMEOUT_SECONDS = float(os.getenv("CLAMD_TIMEOUT_SECONDS", "15"))
+MALWARE_RETAIN_DETECTED = _boolean_setting("MALWARE_RETAIN_DETECTED", default=False)
+MALWARE_QUARANTINE_DIR = UPLOAD_DIR / ".quarantine"
+if CLAMD_PORT < 1 or CLAMD_PORT > 65535 or CLAMD_TIMEOUT_SECONDS <= 0:
+    raise RuntimeError("CLAMD_PORT must be valid and CLAMD_TIMEOUT_SECONDS must be positive")
 # OCR is deliberately opt-in: documents stay local unless a provider is
 # configured.  "auto" tries MinerU, Google Vision, then Azure.
 OCR_PROVIDER = os.getenv("OCR_PROVIDER", "disabled").strip().lower()
@@ -120,7 +133,6 @@ AZURE_DOCUMENT_INTELLIGENCE_KEY = os.getenv("AZURE_DOCUMENT_INTELLIGENCE_KEY", "
 AUTH_SECRET_KEY = os.getenv("AUTH_SECRET_KEY", "")
 if len(AUTH_SECRET_KEY) < 32:
     raise RuntimeError("AUTH_SECRET_KEY must be set to at least 32 characters")
-APP_ENV = os.getenv("APP_ENV", "production").strip().lower()
 AUTH_COOKIE_NAME = os.getenv("AUTH_COOKIE_NAME", "nexora_session")
 AUTH_COOKIE_SECURE = _boolean_setting("AUTH_COOKIE_SECURE", default=True)
 _validate_cookie_security(APP_ENV, AUTH_COOKIE_SECURE)

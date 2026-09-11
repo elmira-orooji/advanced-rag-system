@@ -27,6 +27,26 @@ Copy-Item .env.docker.example .env
 
 فایل `.env` در Git نادیده گرفته می‌شود و نباید در مخزن ثبت شود.
 
+## اسکن بدافزار هنگام بارگذاری
+
+ClamAV در Compose داخل profile اختیاری `security` قرار دارد تا اجرای عادی توسعه منابع اضافه مصرف نکند. برای محیط محافظت‌شده، این مقادیر را در `.env` قرار دهید:
+
+```dotenv
+MALWARE_SCAN_MODE=required
+CLAMD_HOST=clamav
+CLAMD_PORT=3310
+CLAMD_TIMEOUT_SECONDS=15
+MALWARE_RETAIN_DETECTED=false
+```
+
+سپس Compose را با profile امنیتی اجرا کنید:
+
+```powershell
+docker compose --profile security up --build -d
+```
+
+API در صورت دردسترس‌نبودن اسکنر یا تشخیص بدافزار، فایل را برای پردازش قبول نمی‌کند. مسیر قرنطینه نباید در اختیار frontend یا یک volume عمومی قرار گیرد.
+
 ## اجرای محلی یا سرور
 
 از ریشهٔ پروژه اجرا کنید:

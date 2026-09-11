@@ -34,6 +34,7 @@ from app.services.document_extractor import ExtractionError, extract_text
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
 from app.services.chunk_enrichment import enrich_chunk
+from app.services.upload_security import stage_and_scan_upload
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 ALLOWED_FILE_TYPES = {
@@ -169,16 +170,11 @@ def upload_document(
     if not safe_filename:
         raise HTTPException(status_code=400, detail="A filename is required")
 
-    document_id = uuid.uuid4()
-    document_dir = UPLOAD_DIR / str(document_id)
-    original_path = document_dir / f"original{suffix}"
-    extracted_path = document_dir / "extracted.txt"
+    document_dir: Path | None = None
 
     try:
-        document_dir.mkdir(parents=True, exist_ok=False)
-        size = _save_upload(file, original_path)
-        if size == 0:
-            raise HTTPException(status_code=400, detail="The uploaded file is empty")
+        document_id, document_dir, original_path, _ = stage_and_scan_upload(file, content_type=content_type, suffix=suffix, filename=safe_filename, user_id=user.id, organization_id=user.organization_id, save_upload=_save_upload)
+        extracted_path = document_dir / "extracted.txt"
 
         extracted_text = extract_text(original_path, content_type)
         extracted_path.write_text(extracted_text, encoding="utf-8")
@@ -198,15 +194,15 @@ def upload_document(
         return document
     except ExtractionError as exc:
         db.rollback()
-        shutil.rmtree(document_dir, ignore_errors=True)
+        if document_dir is not None: shutil.rmtree(document_dir, ignore_errors=True)
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except HTTPException:
         db.rollback()
-        shutil.rmtree(document_dir, ignore_errors=True)
+        if document_dir is not None: shutil.rmtree(document_dir, ignore_errors=True)
         raise
     except SQLAlchemyError as exc:
         db.rollback()
-        shutil.rmtree(document_dir, ignore_errors=True)
+        if document_dir is not None: shutil.rmtree(document_dir, ignore_errors=True)
         raise HTTPException(status_code=500, detail="Could not save document") from exc
     finally:
         file.file.close()
@@ -248,13 +244,9 @@ def ingest_document(
         suffix = Path(safe_filename).suffix.lower()
         if expected_suffixes is None or suffix not in expected_suffixes:
             raise HTTPException(status_code=415, detail="Only PDF, UTF-8 TXT, JPEG, PNG, and TIFF files are supported")
-        document_id = uuid.uuid4()
-        document_dir = UPLOAD_DIR / str(document_id)
-        document_dir.mkdir(parents=True, exist_ok=False)
-        original_path = document_dir / f"original{suffix}"
-        size = _save_upload(file, original_path)
-        if size == 0:
-            raise HTTPException(status_code=400, detail="The uploaded file is empty")
+        if not safe_filename:
+            raise HTTPException(status_code=400, detail="A filename is required")
+        document_id, document_dir, original_path, _ = stage_and_scan_upload(file, content_type=content_type, suffix=suffix, filename=safe_filename, user_id=user.id, organization_id=user.organization_id, save_upload=_save_upload)
         document = Document(
             id=document_id, organization_id=user.organization_id, filename=safe_filename,
             content_type=content_type, storage_path=document_storage_relative(original_path),
