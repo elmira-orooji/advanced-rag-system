@@ -1,6 +1,8 @@
 import NexoraAvatar from "./NexoraAvatar";
-export default function AnswerLoading({ isFa, assistantName }: { isFa: boolean; assistantName?: string }) {
-  const label = isFa ? "در حال آماده‌سازی پاسخ" : "Preparing your answer";
+export default function AnswerLoading({ isFa, assistantName, slow = false }: { isFa: boolean; assistantName?: string; slow?: boolean }) {
+  const label = slow
+    ? (isFa ? "دریافت پاسخ بیش از حد معمول طول کشیده است. می‌توانید آن را متوقف کنید." : "This is taking longer than usual. You can stop the request.")
+    : (isFa ? "در حال آماده‌سازی پاسخ" : "Preparing your answer");
   const liveLabel = isFa ? "در حال فکر کردن" : "Thinking";
   return <article className="chat-answer chat-loading" dir={isFa ? "rtl" : "ltr"}>
     <div className="chat-answer-body" role="status" aria-live="polite">

@@ -12,7 +12,7 @@ import AnswerLoading from "./AnswerLoading";
 import NexoraAvatar from "./NexoraAvatar";
 import "../styles/chat-answer.css";
 
-interface ChatWindowProps { messages: ChatMessage[]; isThinking: boolean; }
+interface ChatWindowProps { messages: ChatMessage[]; isThinking: boolean; isSlow?: boolean; }
 
 const focusableSelector = [
   "button:not([disabled])",
@@ -71,7 +71,7 @@ async function copyToClipboard(value: string, success: string, failure: string) 
   }
 }
 
-export default function ChatWindow({ messages, isThinking }: ChatWindowProps) {
+export default function ChatWindow({ messages, isThinking, isSlow = false }: ChatWindowProps) {
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const [evidence, setEvidence] = useState<Source | null>(null);
@@ -93,7 +93,7 @@ export default function ChatWindow({ messages, isThinking }: ChatWindowProps) {
             <div className="chat-answer-actions"><button aria-label="Copy response" onClick={() => void copyToClipboard(message.content, isFa ? "پاسخ کپی شد" : "Response copied", isFa ? "کپی پاسخ ناموفق بود" : "Could not copy response")} className="chat-answer-action"><Copy size={13} /></button>{message.responseId && <MessageFeedback responseId={message.responseId} isFa={isFa} />}<button onClick={() => setShareOpen(true)} aria-label="Share conversation" className="chat-answer-action"><Share2 size={13} /></button></div>
           </div>
         </article>)}
-      {isThinking && <AnswerLoading isFa={isFa} />}
+      {isThinking && <AnswerLoading isFa={isFa} slow={isSlow} />}
       </div>
     </div>
     {evidence && <EvidenceDrawer source={evidence} isFa={isFa} onClose={() => setEvidence(null)} />}

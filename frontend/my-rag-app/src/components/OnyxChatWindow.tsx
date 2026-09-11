@@ -16,10 +16,11 @@ import type { ChatMessage, Source } from "../types/chat";
 interface Props {
   messages: ChatMessage[];
   isThinking: boolean;
+  isSlow?: boolean;
   assistantName?: string;
 }
 
-export default function OnyxChatWindow({ messages, isThinking, assistantName }: Props) {
+export default function OnyxChatWindow({ messages, isThinking, isSlow = false, assistantName }: Props) {
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
   const [evidence, setEvidence] = useState<Source | null>(null);
@@ -53,7 +54,7 @@ export default function OnyxChatWindow({ messages, isThinking, assistantName }: 
             </div>
           </div>
         </article>)}
-        {isThinking && <AnswerLoading isFa={isFa} assistantName={assistantName} />}
+        {isThinking && <AnswerLoading isFa={isFa} assistantName={assistantName} slow={isSlow} />}
       </div>
     </div>
     <ConversationScrollRail viewportRef={scrollRef} isFa={isFa} messages={messages} />

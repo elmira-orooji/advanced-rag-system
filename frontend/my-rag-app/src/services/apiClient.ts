@@ -2,6 +2,16 @@ import { authService } from "./authService";
 import { API_URL } from "../config/api";
 
 export const AUTH_EXPIRED_EVENT = "nexora:auth-expired";
+export const DEFAULT_REQUEST_TIMEOUT_MS = 30_000;
+
+export class ApiTimeoutError extends Error {
+  constructor(timeoutMs: number) {
+    super(`The request timed out after ${Math.ceil(timeoutMs / 1000)} seconds`);
+    this.name = "ApiTimeoutError";
+  }
+}
+
+export type ApiRequestInit = RequestInit & { timeoutMs?: number };
 
 type ErrorPayload = {
   detail?: string | { message?: string };
@@ -13,11 +23,31 @@ function errorMessage(payload: ErrorPayload | null, fallback: string) {
   return fallback;
 }
 
-export async function apiFetch(path: string, init: RequestInit = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...init,
-    credentials: init.credentials ?? "include",
-  });
+export async function apiFetch(path: string, init: ApiRequestInit = {}) {
+  const { timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS, signal: externalSignal, ...fetchInit } = init;
+  const controller = new AbortController();
+  let timedOut = false;
+  const abortFromCaller = () => controller.abort(externalSignal?.reason);
+  externalSignal?.addEventListener("abort", abortFromCaller, { once: true });
+  const timer = timeoutMs > 0 ? window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs) : undefined;
+
+  let response: Response;
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...fetchInit,
+      signal: controller.signal,
+      credentials: init.credentials ?? "include",
+    });
+  } catch (error) {
+    if (timedOut) throw new ApiTimeoutError(timeoutMs);
+    throw error;
+  } finally {
+    if (timer !== undefined) window.clearTimeout(timer);
+    externalSignal?.removeEventListener("abort", abortFromCaller);
+  }
 
   if (response.status === 401) {
     authService.clearLocalSession();
@@ -27,7 +57,7 @@ export async function apiFetch(path: string, init: RequestInit = {}) {
   return response;
 }
 
-export async function apiRequest<T>(path: string, init?: RequestInit, fallback = "Request failed"): Promise<T> {
+export async function apiRequest<T>(path: string, init?: ApiRequestInit, fallback = "Request failed"): Promise<T> {
   const response = await apiFetch(path, init);
   if (response.status === 204) return undefined as T;
 

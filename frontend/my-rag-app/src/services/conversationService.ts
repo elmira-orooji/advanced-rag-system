@@ -1,4 +1,4 @@
-import { apiRequest } from "./apiClient";
+import { apiRequest, type ApiRequestInit } from "./apiClient";
 import type { AnswerBasis } from "../types/chat";
 
 export interface ConversationSummary {
@@ -39,7 +39,7 @@ function headers() {
   return { "Content-Type": "application/json" };
 }
 
-const request = <T,>(path: string, init?: RequestInit) => apiRequest<T>(path, init, "Conversation request failed");
+const request = <T,>(path: string, init?: ApiRequestInit) => apiRequest<T>(path, init, "Conversation request failed");
 
 export const conversationService = {
   list: () => request<ConversationSummary[]>("/conversations?limit=100", { headers: headers() }),
@@ -54,7 +54,7 @@ export const conversationService = {
     method: "POST", headers: headers(), body: JSON.stringify({ assistant_id: assistantId, title: title || undefined }),
   }),
   send: (id: string, content: string, signal?: AbortSignal) => request<PersistedMessage>(`/conversations/${id}/messages`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ content, limit: 5 }), signal,
+    method: "POST", headers: headers(), body: JSON.stringify({ content, limit: 5 }), signal, timeoutMs: 90_000,
   }),
   rename: (id: string, title: string) => request<ConversationSummary>(`/conversations/${id}`, {
     method: "PATCH", headers: headers(), body: JSON.stringify({ title }),

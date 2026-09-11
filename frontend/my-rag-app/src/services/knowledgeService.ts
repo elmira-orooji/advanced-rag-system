@@ -1,4 +1,4 @@
-import { apiFetch, apiRequest, apiUpload } from "./apiClient";
+import { apiFetch, apiRequest, apiUpload, type ApiRequestInit } from "./apiClient";
 
 export interface KnowledgeDocument {
   id: string;
@@ -107,7 +107,7 @@ function headers(json = false) {
   };
 }
 
-const request = <T,>(path: string, init?: RequestInit) => apiRequest<T>(path, init);
+const request = <T,>(path: string, init?: ApiRequestInit) => apiRequest<T>(path, init);
 
 export const knowledgeService = {
   listSets: () => request<DocumentSet[]>("/document-sets", { headers: headers() }),
@@ -148,10 +148,12 @@ export const knowledgeService = {
   listEvaluationCases: (setId: string) => request<EvaluationCase[]>(`/document-sets/${setId}/evaluation-cases`, { headers: headers() }),
   createEvaluationCase: (setId: string, data: { question: string; expected_answer?: string | null; expected_keywords: string[]; relevant_chunk_ids: string[] }) => request<EvaluationCase>(`/document-sets/${setId}/evaluation-cases`, { method: "POST", headers: headers(true), body: JSON.stringify(data) }),
   deleteEvaluationCase: (setId: string, caseId: string) => request<void>(`/document-sets/${setId}/evaluation-cases/${caseId}`, { method: "DELETE", headers: headers() }),
-  ask: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters) =>
+  ask: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters, signal?: AbortSignal) =>
     request<RagResponse>("/rag/answer", {
       method: "POST",
       headers: headers(true),
+      signal,
+      timeoutMs: 90_000,
       body: JSON.stringify({
         question,
         document_set_id: documentSetId,
@@ -160,10 +162,12 @@ export const knowledgeService = {
         filters: filters && Object.keys(filters).length ? filters : null,
       }),
     }),
-  research: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters) =>
+  research: (question: string, documentSetId: string, documentIds?: string[], filters?: MetadataFilters, signal?: AbortSignal) =>
     request<ResearchResponse>("/research/run", {
       method: "POST",
       headers: headers(true),
+      signal,
+      timeoutMs: 90_000,
       body: JSON.stringify({ question, document_set_id: documentSetId, document_ids: documentIds?.length ? documentIds : null, filters: filters && Object.keys(filters).length ? filters : null, max_steps: 4 }),
     }),
 };

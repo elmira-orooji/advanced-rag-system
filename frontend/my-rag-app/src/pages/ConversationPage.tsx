@@ -53,10 +53,12 @@ export default function ConversationPage({ conversationId, onConversationChange,
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadRevision, setLoadRevision] = useState(0);
   const [sending, setSending] = useState(false);
+  const [sendSlow, setSendSlow] = useState(false);
   const [pendingPrompt, setPendingPrompt] = useState("");
   const [suggestedPrompt, setSuggestedPrompt] = useState({ value: "", revision: 0 });
   const createdConversationId = useRef<string | null>(null);
   const sendAbortController = useRef<AbortController | null>(null);
+  const sendSlowTimer = useRef<number | null>(null);
   const { i18n } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
 
@@ -115,11 +117,17 @@ export default function ConversationPage({ conversationId, onConversationChange,
     ? detail?.id === conversationId
     : detail === null;
 
-  useEffect(() => () => sendAbortController.current?.abort(), []);
+  useEffect(() => () => {
+    sendAbortController.current?.abort();
+    if (sendSlowTimer.current !== null) window.clearTimeout(sendSlowTimer.current);
+  }, []);
 
   const cancelSend = () => {
     sendAbortController.current?.abort();
     sendAbortController.current = null;
+    if (sendSlowTimer.current !== null) window.clearTimeout(sendSlowTimer.current);
+    sendSlowTimer.current = null;
+    setSendSlow(false);
     setPendingPrompt("");
     setSending(false);
   };
@@ -127,6 +135,8 @@ export default function ConversationPage({ conversationId, onConversationChange,
   const send = async (content: string) => {
     setPendingPrompt(content);
     setSending(true);
+    setSendSlow(false);
+    sendSlowTimer.current = window.setTimeout(() => setSendSlow(true), 8_000);
     const controller = new AbortController();
     sendAbortController.current = controller;
     try {
@@ -154,6 +164,9 @@ export default function ConversationPage({ conversationId, onConversationChange,
     } finally {
       if (sendAbortController.current === controller) {
         sendAbortController.current = null;
+        if (sendSlowTimer.current !== null) window.clearTimeout(sendSlowTimer.current);
+        sendSlowTimer.current = null;
+        setSendSlow(false);
         setPendingPrompt("");
         setSending(false);
       }
@@ -250,7 +263,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
     </header>
 
     <section className="relative z-10 min-h-0 flex-1 overflow-hidden px-0 sm:px-3">
-      {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} assistantName={assistantName} /> : <div className="flex h-full flex-col items-center justify-center text-center">
+      {messages.length ? <OnyxChatWindow messages={messages} isThinking={sending} isSlow={sendSlow} assistantName={assistantName} /> : <div className="flex h-full flex-col items-center justify-center text-center">
         <span className="grid size-14 place-items-center rounded-2xl border border-[#18c7f4]/25 bg-[#7c27ff]/25 text-[#d9a6ff]"><MessageSquareText size={23} /></span>
         <h2 className="mt-5 text-xl font-semibold">{assistantName ? (isFa ? `گفتگو با ${assistantName} را آغاز کنید` : `Start a conversation with ${assistantName}`) : (isFa ? "گفتگوی مستند را آغاز کنید" : "Start a source-grounded conversation")}</h2>
         <p className="mt-2 max-w-md text-sm leading-6 conversation-muted">{assistantName ? (assistantSources.length ? (isFa ? `این دستیار از ${assistantSources.join("، ")} استفاده می‌کند. پاسخ‌ها و منابع در گفت‌وگوهای اخیر ذخیره می‌شوند.` : `This assistant uses ${assistantSources.join(", ")}. Answers and sources are saved in Recent chats.`) : (isFa ? "این دستیار منبع اختصاصی ندارد. پاسخ‌ها و منابع در گفت‌وگوهای اخیر ذخیره می‌شوند." : "This assistant has no dedicated knowledge base. Answers and sources are saved in Recent chats.")) : (isFa ? "پایگاه دانشی را انتخاب کنید. پیام‌ها، پاسخ‌ها و منابع شما در گفت‌وگوهای اخیر باقی می‌مانند." : "Choose the knowledge base this conversation should use. Your messages, answers, and sources remain available in Recent chats.")}</p>

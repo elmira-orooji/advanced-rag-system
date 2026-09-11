@@ -52,6 +52,7 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
   const [chatOpen, setChatOpen] = useState(() => window.matchMedia("(min-width: 1280px)").matches);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [isThinking, setIsThinking] = useState(false);
+  const [isChatSlow, setIsChatSlow] = useState(false);
   const [dialog, setDialog] = useState<"create" | "edit" | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
@@ -64,6 +65,8 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
   const [playgroundOpen, setPlaygroundOpen] = useState(false);
   const [chunkingOpen, setChunkingOpen] = useState(false);
   const selectedSetIdRef = useRef(selectedSetId);
+  const chatAbortController = useRef<AbortController | null>(null);
+  const chatSlowTimer = useRef<number | null>(null);
   const uploading = uploadTasks.some((task) => task.status === "queued" || task.status === "uploading");
 
   const applyDocuments = useCallback((items: KnowledgeDocument[]) => {
@@ -101,6 +104,10 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
   }, [applyDocuments]);
 
   useEffect(() => { selectedSetIdRef.current = selectedSetId; }, [selectedSetId]);
+  useEffect(() => () => {
+    chatAbortController.current?.abort();
+    if (chatSlowTimer.current !== null) window.clearTimeout(chatSlowTimer.current);
+  }, []);
   useEffect(() => {
     if (initialAction === "create" && isAdmin) setDialog("create");
     if (initialAction === "upload" && selectedSetId) window.setTimeout(() => document.getElementById("knowledge-upload-dropzone")?.focus(), 0);
@@ -198,6 +205,15 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
     item.filename.toLowerCase().includes(query.toLowerCase()) && (statusFilter === "all" || item.status === statusFilter)
   ), [documents, query, statusFilter]);
 
+  const cancelChatMessage = () => {
+    chatAbortController.current?.abort();
+    chatAbortController.current = null;
+    if (chatSlowTimer.current !== null) window.clearTimeout(chatSlowTimer.current);
+    chatSlowTimer.current = null;
+    setIsChatSlow(false);
+    setIsThinking(false);
+  };
+
   const handleChatMessage = async (content: string) => {
     if (!selectedSetId) {
       toast.error(isFa ? "ابتدا یک مجموعه انتخاب کنید" : "Select a knowledge set first");
@@ -205,9 +221,15 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
     }
     setChatMessages((current) => [...current, { id: crypto.randomUUID(), role: "user", content, createdAt: new Date().toISOString() }]);
     setIsThinking(true);
+    setIsChatSlow(false);
+    const controller = new AbortController();
+    chatAbortController.current = controller;
+    chatSlowTimer.current = window.setTimeout(() => setIsChatSlow(true), 8_000);
     try {
       const isResearch = answerMode === "research";
-      const result = isResearch ? await knowledgeService.research(content, selectedSetId, selectedDocumentIds, metadataFilters) : await knowledgeService.ask(content, selectedSetId, selectedDocumentIds, metadataFilters);
+      const result = isResearch
+        ? await knowledgeService.research(content, selectedSetId, selectedDocumentIds, metadataFilters, controller.signal)
+        : await knowledgeService.ask(content, selectedSetId, selectedDocumentIds, metadataFilters, controller.signal);
       setChatMessages((current) => [...current, {
         id: crypto.randomUUID(), role: "assistant", content: result.answer, responseId: result.response_id, createdAt: new Date().toISOString(),
         grounded: result.grounded,
@@ -225,8 +247,19 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
         })),
       }]);
       return true;
-    } catch (error) { toast.error(operationError(error, "answer", isFa)); return false; }
-    finally { setIsThinking(false); }
+    } catch (error) {
+      if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) return false;
+      toast.error(operationError(error, "answer", isFa));
+      return false;
+    } finally {
+      if (chatAbortController.current === controller) {
+        chatAbortController.current = null;
+        if (chatSlowTimer.current !== null) window.clearTimeout(chatSlowTimer.current);
+        chatSlowTimer.current = null;
+        setIsChatSlow(false);
+        setIsThinking(false);
+      }
+    }
   };
 
   const deleteSet = async (set: DocumentSet = selectedSet!) => {
@@ -291,7 +324,7 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
           </div>
           <button aria-label={isFa ? "بستن دستیار" : "Close assistant"} onClick={() => setChatOpen(false)} className="knowledge-assistant-close app-icon-button grid size-9 shrink-0 place-items-center rounded-xl"><PanelRightClose size={17} className="hidden xl:block" /><X size={17} className="xl:hidden" /></button>
         </header>
-        <div className="relative min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} /> : <div className="knowledge-assistant-empty flex h-full flex-col items-center justify-center px-7 text-center"><span className="knowledge-assistant-empty-icon grid size-14 place-items-center rounded-2xl"><Sparkles size={22} /></span><h3 className="mt-5 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-[255px] text-xs leading-5">{copy.chatHint}</p><span className="knowledge-assistant-context mt-5 max-w-[250px] truncate rounded-full px-3 py-1.5 text-xs font-medium">{selectedSet?.name || (isFa ? "مجموعه‌ای انتخاب نشده" : "No set selected")}</span></div>}</div>
+        <div className="relative min-h-0 flex-1 p-4">{chatMessages.length ? <ChatWindow messages={chatMessages} isThinking={isThinking} isSlow={isChatSlow} /> : <div className="knowledge-assistant-empty flex h-full flex-col items-center justify-center px-7 text-center"><span className="knowledge-assistant-empty-icon grid size-14 place-items-center rounded-2xl"><Sparkles size={22} /></span><h3 className="mt-5 text-sm font-semibold">{copy.chatEmpty}</h3><p className="mt-2 max-w-[255px] text-xs leading-5">{copy.chatHint}</p><span className="knowledge-assistant-context mt-5 max-w-[250px] truncate rounded-full px-3 py-1.5 text-xs font-medium">{selectedSet?.name || (isFa ? "مجموعه‌ای انتخاب نشده" : "No set selected")}</span></div>}</div>
         <div className="knowledge-assistant-dock relative shrink-0 p-3.5">
           <div className="knowledge-assistant-tools mb-3 grid grid-cols-2 gap-2">
             <MetadataFilterBar documents={documents} filters={metadataFilters} onChange={setMetadataFilters} isFa={isFa} />
@@ -301,7 +334,7 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
             <button onClick={() => setAnswerMode("quick")} aria-pressed={answerMode === "quick"} className={answerMode === "quick" ? "is-active" : ""}><Zap size={13} /><span>{isFa ? "پاسخ سریع" : "Quick answer"}</span></button>
             <button onClick={() => setAnswerMode("research")} aria-pressed={answerMode === "research"} className={answerMode === "research" ? "is-active" : ""}><Telescope size={13} /><span>{isFa ? "پژوهش عمیق" : "Deep research"}</span></button>
           </div>
-          <ChatInput disabled={isThinking || !selectedSetId} onSend={handleChatMessage} />
+          <ChatInput disabled={isThinking || !selectedSetId} isSending={isThinking} onSend={handleChatMessage} onCancel={cancelChatMessage} />
         </div>
       </div>
     </aside>

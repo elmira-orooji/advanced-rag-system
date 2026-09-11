@@ -3,6 +3,7 @@ export type OperationKind = "load" | "members" | "upload" | "processing" | "sync
 export function operationError(error: unknown, operation: OperationKind, isFa: boolean): string {
   const raw = error instanceof Error ? error.message.trim() : "";
   const normalized = raw.toLowerCase();
+  const timedOut = error instanceof Error && error.name === "ApiTimeoutError";
   const genericNetworkError = !raw || normalized.includes("failed to fetch") || normalized.includes("network error") || normalized === "request failed";
   const ocrProviderError = operation === "processing" && /mineru|google vision|azure document intelligence/.test(normalized);
   const copy = isFa
@@ -26,6 +27,11 @@ export function operationError(error: unknown, operation: OperationKind, isFa: b
     return isFa
       ? `OCR با سرویس خارجی انجام نشد. ${raw}`
       : `OCR could not be completed by the external service. ${raw}`;
+  }
+  if (timedOut) {
+    return isFa
+      ? "پاسخ سرویس بیش از حد معمول طول کشید. اتصال را بررسی کنید و دوباره تلاش کنید."
+      : "The service took longer than usual to respond. Check your connection and try again.";
   }
   return genericNetworkError ? copy[operation] : raw;
 }
