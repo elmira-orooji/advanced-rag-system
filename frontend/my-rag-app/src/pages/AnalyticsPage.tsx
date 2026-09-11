@@ -62,7 +62,7 @@ export default function AnalyticsPage() {
 
   const exportCsv = () => {
     if (!data) return;
-    const rows = [[c.date, c.queries, c.grounded, c.negativeFeedback], ...data.daily.map((item) => [item.date, item.queries, item.grounded, item.negative_feedback])];
+    const rows = [[c.date, c.queries, c.grounded, c.negativeFeedback], ...data.daily.map((item) => [formatAnalyticsDate(item.date, fa), item.queries, item.grounded, item.negative_feedback])];
     const csv = rows.map((row) => row.map((value) => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
     download(`\ufeff${csv}`, "text/csv;charset=utf-8", "csv");
   };
@@ -71,7 +71,7 @@ export default function AnalyticsPage() {
     if (!data) return;
     try {
       const reportRows = [[c.reportTitle], [c.period, `${loadedDays} ${fa ? "روز" : "days"}`], [c.generatedAt, new Date().toLocaleString(fa ? "fa-IR" : "en")], [], [c.queries, data.total_queries], [c.users, data.active_users], [c.grounded, `${data.grounded_rate}%`], [c.satisfaction, data.positive_feedback_rate == null ? c.noFeedback : `${data.positive_feedback_rate}%`], [c.health, `${data.indexed_documents} ${c.indexed}`]];
-      const dailyRows = [[c.date, c.queries, c.grounded, c.negativeFeedback], ...data.daily.map((item) => [item.date, item.queries, item.grounded, item.negative_feedback])];
+      const dailyRows = [[c.date, c.queries, c.grounded, c.negativeFeedback], ...data.daily.map((item) => [formatAnalyticsDate(item.date, fa), item.queries, item.grounded, item.negative_feedback])];
       download(createXlsxWorkbook([{ name: fa ? "خلاصه" : "Overview", rows: reportRows }, { name: fa ? "داده روزانه" : "Daily data", rows: dailyRows }]), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "xlsx");
     } catch { toast.error(c.exportFailed); }
   };
@@ -82,7 +82,7 @@ export default function AnalyticsPage() {
     if (!report) { toast.error(c.exportFailed); return; }
     report.opener = null;
     const escape = (value: string | number) => String(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;");
-    const rows = data.daily.map((item) => `<tr><td>${escape(item.date)}</td><td>${item.queries}</td><td>${item.grounded}</td><td>${item.negative_feedback}</td></tr>`).join("");
+    const rows = data.daily.map((item) => `<tr><td>${escape(formatAnalyticsDate(item.date, fa))}</td><td>${item.queries}</td><td>${item.grounded}</td><td>${item.negative_feedback}</td></tr>`).join("");
     report.document.write(`<!doctype html><html dir="${fa ? "rtl" : "ltr"}" lang="${fa ? "fa" : "en"}"><head><title>${escape(c.reportTitle)}</title><style>body{font-family:${fa ? "Vazirmatn, Tahoma, sans-serif" : "Inter, Arial, sans-serif"};color:#15203a;padding:32px}h1{font-size:20px}p{color:#52617a}table{width:100%;border-collapse:collapse;margin-top:24px;font-size:12px}th,td{border:1px solid #dce2eb;padding:9px;text-align:start}th{background:#f4f1ff;color:#5520bd}@media print{body{padding:0}}</style></head><body><h1>${escape(c.reportTitle)}</h1><p>${escape(c.period)}: ${loadedDays} ${fa ? "روز" : "days"} · ${escape(c.generatedAt)}: ${escape(new Date().toLocaleString(fa ? "fa-IR" : "en"))}</p><table><thead><tr><th>${escape(c.date)}</th><th>${escape(c.queries)}</th><th>${escape(c.grounded)}</th><th>${escape(c.negativeFeedback)}</th></tr></thead><tbody>${rows}</tbody></table><script>window.onload=()=>window.print()</script></body></html>`);
     report.document.close();
   };
@@ -170,6 +170,12 @@ function TrendChart({ daily, fa }: { daily: DailyMetric[]; fa: boolean }) {
 }
 
 function path(values: number[], max: number) { return values.map((value, index) => { const x = values.length === 1 ? CW / 2 : index / (values.length - 1) * CW; const y = TOP + (1 - value / max) * (CH - TOP - BOTTOM); return `${index ? "L" : "M"} ${x.toFixed(1)},${y.toFixed(1)}`; }).join(" "); }
+function formatAnalyticsDate(value: string, fa: boolean) {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  const date = match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12) : new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(fa ? "fa-IR-u-ca-persian" : "en-CA", { year: "numeric", month: "2-digit", day: "2-digit" }).format(date);
+}
 function labels(length: number) { if (length <= 5) return Array.from({ length }, (_, index) => index); return [...new Set([0, Math.floor((length - 1) / 4), Math.floor((length - 1) / 2), Math.floor((length - 1) * .75), length - 1])]; }
 function Legend({ color, label, dashed = false }: { color: string; label: string; dashed?: boolean }) { return <span className="flex items-center gap-1.5"><span className="w-4 border-t-2" style={{ borderColor: color, borderStyle: dashed ? "dashed" : "solid" }} />{label}</span>; }
 function Ranking({ title, icon: Icon, items, empty }: { title: string; icon: LucideIcon; items: RankedMetric[]; empty: string }) { const max = Math.max(1, ...items.map((item) => item.queries)); return <Card className="p-5"><div className="flex items-center justify-between"><h2 className="text-xs font-semibold">{title}</h2><Icon size={15} className="an-muted" /></div><div className="mt-4 space-y-4">{items.length ? items.slice(0, 5).map((item, index) => <div key={item.id || item.name}><div className="mb-2 flex items-center gap-2"><span className="grid size-5 place-items-center rounded an-surface text-xs an-muted">{index + 1}</span><span className="min-w-0 flex-1 truncate text-xs an-muted">{item.name}</span><span className="text-xs an-muted">{item.queries}</span><span className="rounded an-surface px-1.5 py-0.5 text-xs an-muted">{item.grounded_rate}%</span></div><div className="analytics-track ms-7 h-1 overflow-hidden rounded-full"><div className="h-full rounded-full analytics-bar" style={{ width: `${item.queries / max * 100}%` }} /></div></div>) : <Empty text={empty} />}</div></Card>; }
