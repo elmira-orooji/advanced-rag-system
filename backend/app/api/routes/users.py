@@ -1,7 +1,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
-from sqlalchemy import delete, select
+from sqlalchemy import case, delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,12 @@ def admin_only(user: User = Depends(get_current_user)) -> User:
 
 @router.get("", response_model=list[UserAdminResponse])
 def list_users(db: Session = Depends(get_db), admin: User = Depends(admin_only)):
-    return db.scalars(select(User).where(User.organization_id == admin.organization_id).order_by(User.created_at.desc())).all()
+    role_rank = case((User.role == "admin", 0), else_=1)
+    return db.scalars(
+        select(User)
+        .where(User.organization_id == admin.organization_id)
+        .order_by(role_rank, User.created_at.asc(), User.id.asc())
+    ).all()
 
 
 @router.post("", response_model=UserAdminResponse, status_code=status.HTTP_201_CREATED)

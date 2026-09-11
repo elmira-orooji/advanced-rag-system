@@ -45,4 +45,20 @@ describe("UsersPage", () => {
     expect(screen.getByText("Technical details")).toBeInTheDocument();
     expect(mocks.toastError).toHaveBeenCalledWith("We couldn't load team members. Check the service connection and try again.");
   });
+
+  it("lists admins first and orders each role by creation time", async () => {
+    mocks.list.mockResolvedValueOnce([
+      { id: "user-new", username: "new user", role: "user", is_active: true, job_title: null, created_at: "2026-09-03T00:00:00Z" },
+      { id: "admin-new", username: "new admin", role: "admin", is_active: true, job_title: null, created_at: "2026-09-02T00:00:00Z" },
+      { id: "user-old", username: "old user", role: "user", is_active: true, job_title: null, created_at: "2026-09-01T00:00:00Z" },
+      { id: "admin-old", username: "old admin", role: "admin", is_active: true, job_title: null, created_at: "2026-08-31T00:00:00Z" },
+    ]);
+
+    const { container } = render(<UsersPage />);
+
+    await screen.findByText("old admin");
+    expect(Array.from(container.querySelectorAll(".team-member-row .tm-text")).map((node) => node.textContent)).toEqual([
+      "old admin", "new admin", "old user", "new user",
+    ]);
+  });
 });

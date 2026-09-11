@@ -1,4 +1,5 @@
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -7,7 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.api.routes.users import admin_only, delete_user, update_user
+from app.api.routes.users import admin_only, delete_user, list_users, update_user
 from app.models.user import User
 from app.schemas.user_management import UserAdminUpdate
 
@@ -56,6 +57,22 @@ class DeleteMemberTests(unittest.TestCase):
                 delete_user(member_id, self.db, self.admin)
         self.assertEqual(error.exception.status_code, 409)
         self.assertIsNotNone(self.db.get(User, member_id))
+
+    def test_directory_lists_admins_first_then_members_by_creation_time(self):
+        created = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        first_admin = User(id=uuid4(), organization_id=self.admin.organization_id, username="first-admin", password_hash="unused", role="admin", created_at=created)
+        later_admin = User(id=uuid4(), organization_id=self.admin.organization_id, username="later-admin", password_hash="unused", role="admin", created_at=created + timedelta(days=2))
+        first_member = User(id=uuid4(), organization_id=self.admin.organization_id, username="first-member", password_hash="unused", role="user", created_at=created + timedelta(days=1))
+        later_member = User(id=uuid4(), organization_id=self.admin.organization_id, username="later-member", password_hash="unused", role="user", created_at=created + timedelta(days=3))
+        self.db.add_all([first_member, later_member, later_admin, first_admin])
+        self.db.commit()
+
+        directory = list_users(self.db, self.admin)
+
+        self.assertEqual(
+            [item.username for item in directory],
+            ["first-admin", "later-admin", "admin", "first-member", "later-member", "member"],
+        )
 
 
 
