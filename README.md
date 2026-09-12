@@ -2,6 +2,8 @@
 
 Nexora is a document-grounded AI workspace for teams. It turns approved documents and connected sources into knowledge collections that people can search, discuss, and verify through cited answers.
 
+![Nexora product demo](documents/media/nexora-product-demo.gif)
+
 The project follows a clear path from knowledge to answer:
 
 ```text
