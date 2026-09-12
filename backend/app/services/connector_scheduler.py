@@ -11,11 +11,13 @@ from app.core.config import (
 )
 from app.db.database import SessionLocal
 from app.models.connector import Connector
+from app.models.user import User
 from app.services.connector_sync import ConnectorSyncError, sync_connector
 from app.services.connector_lock import connector_sync_lock
 from app.services.qdrant import QdrantError
 from app.services.operational_alerts import send_operational_alert
 from app.services.operational_metrics import increment
+from app.services.notifications import create_notification
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,9 @@ def run_due_connector_syncs() -> int:
                     item.dead_lettered_at = None
                     item.next_attempt_at = None
                     item.next_sync_at = scheduled_next
+                    creator = db.get(User, item.created_by_id)
+                    if creator is not None:
+                        create_notification(db, user_id=creator.id, organization_id=creator.organization_id, kind="connector_synced", severity="success", title="Connector sync completed", body=f"{item.name} was synchronized successfully.")
                 except Exception as exc:
                     logger.exception("Scheduled connector sync failed", extra={"connector_id": str(connector_id)})
                     increment("connector_sync_failures_total", connector_type=item.connector_type)
@@ -107,6 +112,9 @@ def run_due_connector_syncs() -> int:
                     item.dead_lettered_at = failure["dead_lettered_at"]
                     if failure["status"] == "dead_letter":
                         item.next_sync_at = None
+                        creator = db.get(User, item.created_by_id)
+                        if creator is not None:
+                            create_notification(db, user_id=creator.id, organization_id=creator.organization_id, kind="connector_failed", severity="error", title="Connector sync failed", body=f"{item.name} could not be synchronized after multiple attempts. Review its configuration and retry it.")
                         send_operational_alert(
                             "connector-dead-letter",
                             "Connector sync reached its retry limit",

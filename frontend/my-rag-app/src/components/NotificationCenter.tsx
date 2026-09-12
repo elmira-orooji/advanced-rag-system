@@ -1,0 +1,69 @@
+import { useEffect, useRef, useState } from "react";
+import { Bell, CheckCheck, CircleAlert, CircleCheck, X } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { notificationService, type AppNotification } from "../services/notificationService";
+
+interface NotificationCenterProps {
+  onNavigate: (path: string) => void;
+}
+
+export default function NotificationCenter({ onNavigate }: NotificationCenterProps) {
+  const { i18n } = useTranslation();
+  const isFa = i18n.language.startsWith("fa");
+  const [items, setItems] = useState<AppNotification[]>([]);
+  const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const unread = items.filter((item) => !item.read_at).length;
+  const load = () => notificationService.list().then(setItems).catch(() => undefined);
+
+  useEffect(() => {
+    load();
+    const tick = () => load();
+    const interval = window.setInterval(tick, document.hidden ? 300_000 : 60_000);
+    const visibility = () => { if (!document.hidden) load(); };
+    document.addEventListener("visibilitychange", visibility);
+    return () => { window.clearInterval(interval); document.removeEventListener("visibilitychange", visibility); };
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const close = (event: MouseEvent) => { if (!panelRef.current?.contains(event.target as Node)) setOpen(false); };
+    const escape = (event: KeyboardEvent) => { if (event.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", close); document.addEventListener("keydown", escape);
+    return () => { document.removeEventListener("mousedown", close); document.removeEventListener("keydown", escape); };
+  }, [open]);
+
+  const openNotification = async (item: AppNotification) => {
+    if (!item.read_at) {
+      const updated = await notificationService.markRead(item.id).catch(() => null);
+      if (updated) setItems((current) => current.map((value) => value.id === item.id ? updated : value));
+    }
+    setOpen(false);
+    if (item.target_path) onNavigate(item.target_path);
+  };
+
+  const markAllRead = async () => {
+    await notificationService.markAllRead().catch(() => undefined);
+    setItems((current) => current.map((item) => ({ ...item, read_at: item.read_at ?? new Date().toISOString() })));
+  };
+
+  return <div ref={panelRef} className="relative" dir={isFa ? "rtl" : "ltr"}>
+    <button type="button" onClick={() => setOpen((value) => !value)} aria-label={isFa ? "اعلان‌ها" : "Notifications"} aria-expanded={open} className="app-icon-button relative grid size-10 place-items-center rounded-xl">
+      <Bell size={18} aria-hidden="true" />
+      {unread > 0 && <span className="absolute end-1 top-1 grid min-w-4 h-4 place-items-center rounded-full bg-[#c43cff] px-1 text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}
+    </button>
+    {open && <section role="dialog" aria-label={isFa ? "اعلان‌ها" : "Notifications"} className="absolute end-0 top-12 z-[70] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-[#0b1630]/95 shadow-2xl backdrop-blur-xl">
+      <header className="flex items-center justify-between border-b border-white/[.08] px-4 py-3">
+        <h2 className="text-sm font-semibold">{isFa ? "اعلان‌ها" : "Notifications"}</h2>
+        <div className="flex items-center gap-1"><button type="button" onClick={() => void markAllRead()} disabled={!unread} aria-label={isFa ? "خواندن همه" : "Mark all as read"} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/55 hover:text-white disabled:opacity-30"><CheckCheck size={15} /></button><button type="button" onClick={() => setOpen(false)} aria-label={isFa ? "بستن" : "Close"} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/55 hover:text-white"><X size={15} /></button></div>
+      </header>
+      <div className="max-h-[min(26rem,calc(100vh-7rem))] overflow-y-auto p-2">
+        {items.map((item) => <button key={item.id} type="button" onClick={() => void openNotification(item)} className={`flex w-full items-start gap-3 rounded-xl p-3 text-start transition hover:bg-white/[.055] ${item.read_at ? "opacity-60" : "bg-white/[.035]"}`}>
+          <span className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg ${item.severity === "error" ? "bg-rose-400/10 text-rose-300" : "bg-emerald-400/10 text-emerald-300"}`}>{item.severity === "error" ? <CircleAlert size={16} /> : <CircleCheck size={16} />}</span>
+          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-white/90">{item.title}</span><span className="mt-1 block text-xs leading-5 text-white/55">{item.body}</span><span className="mt-1.5 block text-[11px] text-white/35">{new Intl.DateTimeFormat(isFa ? "fa-IR" : "en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</span></span>
+        </button>)}
+        {!items.length && <p className="px-3 py-8 text-center text-xs text-white/45">{isFa ? "اعلان جدیدی وجود ندارد." : "No notifications yet."}</p>}
+      </div>
+    </section>}
+  </div>;
+}

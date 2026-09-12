@@ -18,6 +18,7 @@ from app.services.text_chunker import hierarchical_chunks
 from app.services.semantic_chunker import semantic_chunks
 from app.services.operational_alerts import send_operational_alert
 from app.services.operational_metrics import increment
+from app.services.notifications import create_notification
 from app.services.incremental_index import checksum, incremental_chunks
 from app.core.config import CHUNKING_STRATEGY, SEMANTIC_CHUNK_MIN_SIZE, SEMANTIC_CHUNK_MAX_SIZE, SEMANTIC_SIMILARITY_THRESHOLD
 
@@ -227,6 +228,8 @@ def process_document_job(
             if document.content_checksum == text_checksum and document.chunks and chunking_is_unchanged:
                 document.processing_error = None
                 _progress(db, document, job, worker_id, 100, "unchanged", completed=True)
+                create_notification(db, user_id=job.requested_by_id, organization_id=job.organization_id, kind="document_processed", severity="success", title="Document is ready", body=f"{document.filename} is already indexed and ready to use.")
+                db.commit()
                 return
             extracted_path = source_path.parent / "extracted.txt"
             extracted_path.write_text(text, encoding="utf-8")
@@ -276,6 +279,8 @@ def process_document_job(
                 status="pending",
             ))
             _progress(db, document, job, worker_id, 100, "ready", completed=True)
+            create_notification(db, user_id=job.requested_by_id, organization_id=job.organization_id, kind="document_processed", severity="success", title="Document is ready", body=f"{document.filename} has been indexed and is ready to use.")
+            db.commit()
         except Exception as exc:
             db.rollback()
             if isinstance(exc, DocumentJobOwnershipLost):
@@ -303,6 +308,9 @@ def process_document_job(
                 document.status = "queued" if retrying else "failed"; document.processing_error = message
                 document.processing_stage = "retry_wait" if retrying else "dead_letter"; document.processing_progress = job.progress
                 db.commit()
+                if not retrying:
+                    create_notification(db, user_id=job.requested_by_id, organization_id=job.organization_id, kind="document_failed", severity="error", title="Document processing failed", body=f"{document.filename} could not be processed. Review the document and retry it from Knowledge base.")
+                    db.commit()
                 increment("document_processing_failures_total", error_type=type(exc).__name__)
                 if not retrying:
                     category = "OCR" if "ocr" in message.lower() else "document processing"

@@ -258,6 +258,7 @@ def ingest_document(
             document.document_sets.append(target_set)
         job = ProcessingJob(
             organization_id=user.organization_id,
+            requested_by_id=user.id,
             document_id=document.id,
             chunk_size=target_set.child_chunk_size if target_set is not None else chunking.chunk_size,
             chunk_overlap=target_set.chunk_overlap if target_set is not None else chunking.overlap,
@@ -291,11 +292,12 @@ def retry_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: 
     require_document_access(db, user, document_id, "edit")
     job = db.scalar(select(ProcessingJob).where(ProcessingJob.document_id == document_id))
     if job is None:
-        job = ProcessingJob(organization_id=user.organization_id, document_id=document.id)
+        job = ProcessingJob(organization_id=user.organization_id, requested_by_id=user.id, document_id=document.id)
         db.add(job)
     elif job.status in {"queued", "running", "retrying"}:
         raise HTTPException(status_code=409, detail="Document processing is already active")
     job.status = "retrying"; job.progress = 0; job.stage = "queued"; job.error = None; job.error_type = None; job.completed_at = None
+    job.requested_by_id = user.id
     job.next_attempt_at = None; job.dead_lettered_at = None
     job.worker_id = None; job.locked_at = None
     document.status = "queued"; document.processing_progress = 0; document.processing_stage = "queued"; document.processing_error = None

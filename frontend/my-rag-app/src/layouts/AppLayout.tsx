@@ -4,6 +4,7 @@ import { Menu } from "lucide-react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 
 import SidebarV2 from "../components/SidebarV2";
+import NotificationCenter from "../components/NotificationCenter";
 import RenameConversationDialog from "../components/RenameConversationDialog";
 import { authService } from "../services/authService";
 import { conversationService, type ConversationSummary } from "../services/conversationService";
@@ -183,10 +184,10 @@ export default function AppLayout() {
             </span>
             Nexora
           </div>
-          <span className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[.06] text-xs font-bold uppercase">
-            {currentUser?.username.slice(0, 2) ?? "U"}
-          </span>
+          <div className="flex items-center gap-2"><NotificationCenter onNavigate={navigate} /><span className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[.06] text-xs font-bold uppercase">{currentUser?.username.slice(0, 2) ?? "U"}</span></div>
         </header>
+
+        <div className="absolute end-5 top-4 z-20 hidden md:block"><NotificationCenter onNavigate={navigate} /></div>
 
         <main className="nexora-app-content relative z-10 min-h-0 flex-1 overflow-hidden"><Suspense fallback={<PageFallback />}>
           {!validRoute && <Navigate to="/home" replace />}

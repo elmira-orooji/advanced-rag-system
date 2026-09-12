@@ -6,6 +6,7 @@ from app.api.routes.connectors import router as connectors_router
 from app.api.routes.chat_shares import router as chat_shares_router
 from app.api.routes.document_sets import router as document_sets_router
 from app.api.routes.feedback import router as feedback_router
+from app.api.routes.notifications import router as notifications_router
 from app.api.routes.evaluations import router as evaluations_router
 from app.api.routes.documents import router as documents_router
 from app.api.routes.rag import router as rag_router
@@ -22,6 +23,7 @@ __all__ = [
     "chat_shares_router",
     "document_sets_router",
     "feedback_router",
+    "notifications_router",
     "evaluations_router",
     "documents_router",
     "rag_router",
