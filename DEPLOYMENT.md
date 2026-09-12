@@ -80,6 +80,31 @@ Compose چهار volume نام‌دار دارد: `postgres_data` برای دا�
 
 Qdrant و PostgreSQL تنها در شبکهٔ داخلی Compose هستند و پورتشان به میزبان publish نشده است. این تنظیم برای استقرار تک‌سرور مناسب است. اگر از Qdrant یا PostgreSQL مدیریت‌شده استفاده می‌شود، نشانی‌های `DATABASE_URL` و `QDRANT_URL` را تغییر دهید و سرویس داخلی متناظر را از Compose حذف کنید.
 
+## پایش و هشدار ایمیلی
+
+Nexora یک endpoint کم‌هزینهٔ سازگار با قالب Prometheus در `/metrics` دارد. این endpoint تا زمانی که `METRICS_BEARER_TOKEN` تنظیم نشده باشد، عمداً پاسخ `404` می‌دهد. توکن را یک مقدار تصادفی و بلند قرار دهید و آن را فقط در سامانهٔ پایش یا reverse proxy نگه دارید. نمونهٔ دریافت متریک:
+
+```powershell
+Invoke-WebRequest http://localhost:5173/api/metrics -Headers @{ Authorization = "Bearer YOUR_METRICS_TOKEN" }
+```
+
+این خروجی تعداد خطاهای HTTP، خطاهای مدل و Qdrant، طول صف، jobهای در حال اجرا، Connectorهای متوقف‌شده و مجموع هزینهٔ تخمینی مدل را گزارش می‌کند. جمع‌آوری متریک در حافظهٔ فرایند API انجام می‌شود و جایگزین سرویس لاگ مرکزی نیست؛ برای نگه‌داری تاریخچه باید Prometheus یا ابزار هم‌ارز آن endpoint را scrape کند. خطاهای OCR و پردازش worker در لاگ ثبت و با ایمیل اعلام می‌شوند.
+
+برای هشدار ایمیلی، اطلاعات SMTP را در `.env` قرار دهید:
+
+```dotenv
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USERNAME=alerts@example.com
+SMTP_PASSWORD=CHANGE_ME
+SMTP_FROM_EMAIL=alerts@example.com
+ALERT_RECIPIENTS=ops@example.com,admin@example.com
+SMTP_USE_TLS=true
+OPERATIONAL_ALERT_COOLDOWN_SECONDS=900
+```
+
+ارسال ایمیل در یک نخ پس‌زمینه با timeout ده‌ثانیه‌ای انجام می‌شود و پردازش سند یا پاسخ‌گویی را متوقف نمی‌کند. برای جلوگیری از سیل ایمیل، هر نوع هشدار تا پایان `OPERATIONAL_ALERT_COOLDOWN_SECONDS` دوباره ارسال نمی‌شود. هشدارها برای اختلال Qdrant یا مدل و همچنین رسیدن پردازش سند یا Connector به سقف تلاش مجدد ارسال می‌شوند. رمز SMTP فقط در متغیر محیطی یا secret manager قرار می‌گیرد، نه در فایل‌های version control.
+
 ## استقرار پشت HTTPS
 
 Compose حاضر عمداً TLS را مدیریت نمی‌کند. در سرور عمومی، یک reverse proxy مانند Nginx، Caddy یا سرویس ingress باید در جلوی پورت فرانت‌اند قرار گیرد و گواهی TLS را خاتمه دهد. پس از فعال‌کردن HTTPS، `AUTH_COOKIE_SECURE=true` و `FRONTEND_ORIGINS` باید با دامنهٔ واقعی برنامه تنظیم شوند. پورت‌های PostgreSQL و Qdrant نباید مستقیماً روی اینترنت باز شوند.

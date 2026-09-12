@@ -1,16 +1,23 @@
 import logging
 import os
+import hmac
+import time
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from fastapi.responses import PlainTextResponse
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.api.routes import analytics_router, assistants_router, auth_router, chat_shares_router, connectors_router, conversations_router, document_sets_router, documents_router, evaluations_router, feedback_router, rag_router, research_router, search_router, users_router
-from app.core.config import FRONTEND_ORIGINS, READINESS_PROBE_TIMEOUT_SECONDS, UPLOAD_DIR, WORKER_STALE_THRESHOLD_SECONDS
+from app.core.config import FRONTEND_ORIGINS, METRICS_BEARER_TOKEN, READINESS_PROBE_TIMEOUT_SECONDS, UPLOAD_DIR, WORKER_STALE_THRESHOLD_SECONDS
 from app.db.database import get_db
+from app.models.connector import Connector
+from app.models.llm_usage import LLMUsage
+from app.models.processing_job import ProcessingJob
+from app.services.operational_metrics import increment, render
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.worker_heartbeat import get_available_worker_types
 from app.core.rate_limit import RateLimitMiddleware
@@ -26,6 +33,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def collect_request_metrics(request, call_next):
+    started = time.perf_counter()
+    try:
+        response = await call_next(request)
+    except Exception:
+        increment("http_errors_total", path=request.url.path, status="500")
+        raise
+    finally:
+        increment("http_requests_total", path=request.url.path, method=request.method)
+        increment("http_request_duration_seconds_total", time.perf_counter() - started, path=request.url.path)
+    if response.status_code >= 500:
+        increment("http_errors_total", path=request.url.path, status=str(response.status_code))
+    return response
 
 
 @app.on_event("startup")
@@ -65,6 +88,31 @@ def root():
 def health():
     """Lightweight, side-effect-free process liveness probe."""
     return {"status": "alive"}
+
+
+@app.get("/api/metrics", include_in_schema=False)
+@app.get("/metrics", include_in_schema=False)
+def metrics(authorization: str | None = Header(default=None), db: Session = Depends(get_db)):
+    """Expose minimal operational metrics only with an explicitly configured token."""
+    expected = f"Bearer {METRICS_BEARER_TOKEN}" if METRICS_BEARER_TOKEN else ""
+    if not expected or not authorization or not hmac.compare_digest(authorization, expected):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found")
+    try:
+        queue_depth = db.scalar(select(func.count()).select_from(ProcessingJob).where(ProcessingJob.status.in_(["queued", "retrying"]))) or 0
+        active_jobs = db.scalar(select(func.count()).select_from(ProcessingJob).where(ProcessingJob.status == "running")) or 0
+        failed_jobs = db.scalar(select(func.count()).select_from(ProcessingJob).where(ProcessingJob.status == "dead_letter")) or 0
+        failed_connectors = db.scalar(select(func.count()).select_from(Connector).where(Connector.status == "dead_letter")) or 0
+        total_cost = db.scalar(select(func.coalesce(func.sum(LLMUsage.estimated_cost_usd), 0))) or 0
+    except SQLAlchemyError:
+        logger.exception("Could not build operational metrics snapshot")
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Metrics snapshot unavailable")
+    return PlainTextResponse(render({
+        "document_queue_depth": queue_depth,
+        "document_jobs_running": active_jobs,
+        "document_jobs_dead_letter": failed_jobs,
+        "connectors_dead_letter": failed_connectors,
+        "llm_estimated_cost_usd_total": total_cost,
+    }), media_type="text/plain; version=0.0.4; charset=utf-8")
 
 
 @app.get("/ready")

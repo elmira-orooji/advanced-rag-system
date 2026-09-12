@@ -14,6 +14,8 @@ from app.models.connector import Connector
 from app.services.connector_sync import ConnectorSyncError, sync_connector
 from app.services.connector_lock import connector_sync_lock
 from app.services.qdrant import QdrantError
+from app.services.operational_alerts import send_operational_alert
+from app.services.operational_metrics import increment
 
 logger = logging.getLogger(__name__)
 
@@ -94,6 +96,7 @@ def run_due_connector_syncs() -> int:
                     item.next_sync_at = scheduled_next
                 except Exception as exc:
                     logger.exception("Scheduled connector sync failed", extra={"connector_id": str(connector_id)})
+                    increment("connector_sync_failures_total", connector_type=item.connector_type)
                     db.rollback()
                     item = db.get(Connector, connector_id)
                     failure = _connector_failure_values(exc, item.attempts, datetime.now(timezone.utc))
@@ -104,6 +107,11 @@ def run_due_connector_syncs() -> int:
                     item.dead_lettered_at = failure["dead_lettered_at"]
                     if failure["status"] == "dead_letter":
                         item.next_sync_at = None
+                        send_operational_alert(
+                            "connector-dead-letter",
+                            "Connector sync reached its retry limit",
+                            f"Connector {connector_id} could not be synchronized after {item.attempts} attempts. Review its configuration and the service logs.",
+                        )
                     elif item.schedule_enabled:
                         item.next_sync_at = scheduled_next
                     else:

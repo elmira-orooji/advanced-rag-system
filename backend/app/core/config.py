@@ -177,6 +177,27 @@ CONNECTOR_SECRET_MANAGER_TIMEOUT_SECONDS = float(
     os.getenv("CONNECTOR_SECRET_MANAGER_TIMEOUT_SECONDS", "3")
 )
 
+# Operational monitoring stays opt-in: no monitoring endpoint is exposed until
+# an explicit bearer token is configured, and email delivery is asynchronous.
+METRICS_BEARER_TOKEN = os.getenv("METRICS_BEARER_TOKEN", "")
+SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_USERNAME = os.getenv("SMTP_USERNAME", "")
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
+SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "").strip()
+ALERT_RECIPIENTS = tuple(
+    address.strip()
+    for address in os.getenv("ALERT_RECIPIENTS", "").split(",")
+    if address.strip()
+)
+SMTP_USE_TLS = _boolean_setting("SMTP_USE_TLS", default=True)
+SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "10"))
+OPERATIONAL_ALERT_COOLDOWN_SECONDS = int(os.getenv("OPERATIONAL_ALERT_COOLDOWN_SECONDS", "900"))
+if SMTP_PORT < 1 or SMTP_PORT > 65535 or SMTP_TIMEOUT_SECONDS <= 0:
+    raise RuntimeError("SMTP_PORT must be valid and SMTP_TIMEOUT_SECONDS must be positive")
+if OPERATIONAL_ALERT_COOLDOWN_SECONDS < 60:
+    raise RuntimeError("OPERATIONAL_ALERT_COOLDOWN_SECONDS must be at least 60")
+
 
 # --- Chunking Strategy ---
 CHUNKING_STRATEGY = os.getenv("CHUNKING_STRATEGY", "hierarchical").strip().lower()

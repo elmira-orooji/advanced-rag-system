@@ -16,6 +16,8 @@ from app.schemas.rag import Citation, RagRequest, RagResponse
 from app.schemas.search import SearchHit
 from app.core.rate_limit import rag_limiter, rate_limit
 from app.services.openrouter import OpenRouterClient, OpenRouterError
+from app.services.operational_alerts import send_operational_alert
+from app.services.operational_metrics import increment
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.retrieval import hybrid_search
 from app.services.usage_tracking import record_usage
@@ -89,6 +91,8 @@ def answer_question(
             document_ids=document_ids,
         )
     except QdrantError as exc:
+        increment("rag_failures_total", dependency="qdrant")
+        send_operational_alert("qdrant-failure", "Vector store is unavailable", "A RAG request could not reach Qdrant. Check the Qdrant service and its network connection.")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
@@ -117,6 +121,8 @@ def answer_question(
         answer = llm_result.content
         record_usage(db, user.id, payload.document_set_id, "rag_answer", llm_result)
     except OpenRouterError as exc:
+        increment("model_failures_total", provider="openrouter")
+        send_operational_alert("model-failure", "Model request failed", "A RAG request could not be completed by the configured model provider. Check provider status, credentials, quota, and request logs.")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=str(exc),
