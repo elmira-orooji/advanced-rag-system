@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import { canManageKnowledge, canManageUsers } from "../lib/permissions";
 import { useTranslation } from "react-i18next";
 import { getPreferredTheme, saveTheme, type Theme } from "../utils/theme";
+import { useEntranceMotion } from "../lib/entranceMotion";
 
 const AnalyticsPage = lazy(() => import("../pages/AnalyticsPage"));
 const AssistantsPage = lazy(() => import("../pages/AssistantsPage"));
@@ -63,6 +64,7 @@ export default function AppLayout() {
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [conversationToRename, setConversationToRename] = useState<ConversationSummary | null>(null);
   const contentRef = useRef<HTMLElement>(null);
+  useEntranceMotion(contentRef);
 
   const loadConversations = () => {
     conversationService.list().then(setConversations).catch((error) => toast.error((error as Error).message));
@@ -184,14 +186,12 @@ export default function AppLayout() {
             </span>
             Nexora
           </div>
-          <div className="flex items-center gap-2"><NotificationCenter onNavigate={navigate} /><span className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[.06] text-xs font-bold uppercase">{currentUser?.username.slice(0, 2) ?? "U"}</span></div>
+          <div className="flex items-center gap-2"><span className="grid size-10 place-items-center rounded-full border border-white/10 bg-white/[.06] text-xs font-bold uppercase">{currentUser?.username.slice(0, 2) ?? "U"}</span></div>
         </header>
-
-        <div className="absolute end-5 top-4 z-20 hidden md:block"><NotificationCenter onNavigate={navigate} /></div>
 
         <main className="nexora-app-content relative z-10 min-h-0 flex-1 overflow-hidden"><Suspense fallback={<PageFallback />}>
           {!validRoute && <Navigate to="/home" replace />}
-          {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage /> : <WorkspacePage currentUser={currentUser} conversations={conversations} onNewConversation={newConversation} onOpenConversation={selectConversation} onOpenKnowledge={() => selectPage("upload")} />)}
+          {activePage === "home" && validRoute && (canManageUsers(currentUser) ? <AnalyticsPage notificationCenter={<NotificationCenter onNavigate={navigate} />} /> : <WorkspacePage currentUser={currentUser} conversations={conversations} onNewConversation={newConversation} onOpenConversation={selectConversation} onOpenKnowledge={() => selectPage("upload")} />)}
           {activePage === "chat" && validRoute && <ConversationPage key={activeConversationId ?? "new-conversation"} conversationId={activeConversationId} onConversationChange={(id) => navigate(`${PAGE_PATHS.chat}/${encodeURIComponent(id)}`, { replace: true })} onConversationsUpdated={loadConversations} onOpenKnowledge={(intent) => navigate(PAGE_PATHS.upload, { state: { knowledgeIntent: intent } })} />}
           {activePage === "upload" && (canManageKnowledgeSets ? <UploadFilesPage initialAction={location.state?.knowledgeIntent === "create" || location.state?.knowledgeIntent === "upload" ? location.state.knowledgeIntent : undefined} /> : <Navigate to="/home" replace />)}
           {activePage === "assistants" && <AssistantsPage onStartConversation={startAssistantConversation} />}

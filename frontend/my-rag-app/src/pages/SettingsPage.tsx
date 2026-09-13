@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
 import { useTranslation } from "react-i18next";
 import { Check, Eye, EyeOff, KeyRound, Languages, LoaderCircle, Moon, Palette, Sun } from "lucide-react";
 import toast from "react-hot-toast";
@@ -15,7 +14,6 @@ interface SettingsPageProps {
 export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
   const { i18n, t } = useTranslation();
   const isFa = i18n.language.startsWith("fa");
-  const reducedMotion = useReducedMotion();
   const copy = sectionCopy(t, "settings", ["title", "subtitle", "appearance", "appearanceSub", "light", "dark", "language", "languageSub", "ltr", "rtl", "security", "securitySub", "currentPassword", "newPassword", "confirmPassword", "passwordHint", "showPasswords", "hidePasswords", "savePassword", "savingPassword", "passwordChanged", "passwordMismatch", "passwordTooShort", "passwordRequired", "currentPasswordIncorrect"]);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -49,8 +47,7 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
   };
 
   return (
-    <motion.div className="preferences-page" dir={isFa ? "rtl" : "ltr"}
-      initial={{ opacity: reducedMotion ? 1 : 0 }} animate={{ opacity: 1 }} transition={{ duration: .18 }}>
+    <div className="preferences-page" dir={isFa ? "rtl" : "ltr"}>
       <div className="preferences-content">
         <header className="preferences-header">
           <h1>{copy.title}</h1>
@@ -109,6 +106,6 @@ export default function SettingsPage({ theme, setTheme }: SettingsPageProps) {
           </form>
         </section>
       </div>
-    </motion.div>
+    </div>
   );
 }

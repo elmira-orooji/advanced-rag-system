@@ -48,6 +48,39 @@ button {
   cursor: pointer;
 }
 
+/* Shared entrance contract: short, transform/opacity only, and opt-out for
+   people who request reduced motion. Initial content stays visible until JS
+   explicitly prepares the next routed page. */
+:root {
+  --entrance-duration: 100ms;
+  --entrance-easing: cubic-bezier(.16, 1, .3, 1);
+}
+
+[data-entrance-motion="enabled"] .entrance-motion-pending {
+  opacity: 0;
+  transform: translate3d(0, 20px, 0);
+  transition:
+    opacity var(--entrance-duration) var(--entrance-easing),
+    transform var(--entrance-duration) var(--entrance-easing);
+  will-change: opacity, transform;
+}
+
+[data-entrance-motion="enabled"] .entrance-motion-pending.entrance-motion-visible {
+  opacity: 1;
+  transform: translate3d(0, 0, 0);
+  will-change: auto;
+}
+
+.entrance-motion-surface {
+  transform-origin: top right;
+  animation: entrance-surface-open var(--entrance-duration) var(--entrance-easing) both;
+}
+
+@keyframes entrance-surface-open {
+  from { opacity: 0; transform: translate3d(0, 20px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
 /* One backdrop treatment for every modal and full-screen inspector. */
 .nexora-modal-backdrop,
 .fixed.inset-0.backdrop-blur-sm,
@@ -184,6 +217,11 @@ input[aria-invalid="true"] {
   backdrop-filter: blur(14px);
 }
 .app-icon-button:hover { border-color: rgba(24,199,244,.38); background: rgba(24,199,244,.07); }
+.notification-center-panel { color: #f7f9ff; }
+.notification-center-panel h2 { color: #f7f9ff; }
+.notification-center-panel .app-icon-button { color: rgba(232,237,255,.72); border-color: rgba(255,255,255,.11); background: rgba(255,255,255,.07); }
+.notification-center-panel .app-icon-button:hover { color: #fff; border-color: rgba(196,60,255,.6); background: rgba(196,60,255,.15); }
+.notification-center-empty { color: rgba(214,223,247,.62); }
 .sidebar-primary-action {
   border: 1px solid rgba(196,60,255,.3);
   background: linear-gradient(105deg, rgba(196,60,255,.18), rgba(124,39,255,.2));
@@ -272,6 +310,16 @@ html:not(.dark) .app-icon-button:hover {
   border-color: rgba(124,39,255,.25);
   background: #fff;
 }
+html:not(.dark) .notification-center-panel { color: #172033 !important; border-color: #dbe1eb !important; background: #fff !important; box-shadow: 0 18px 44px rgba(22, 34, 56, .18) !important; }
+html:not(.dark) .notification-center-header { border-color: #e5eaf1 !important; }
+html:not(.dark) .notification-center-panel h2,
+html:not(.dark) .notification-center-title { color: #172033 !important; }
+html:not(.dark) .notification-center-body { color: #52617a !important; }
+html:not(.dark) .notification-center-time,
+html:not(.dark) .notification-center-empty { color: #71809a !important; }
+html:not(.dark) .notification-center-item:hover { background: #f5f2ff !important; }
+html:not(.dark) .notification-center-panel .app-icon-button { color: #60708a !important; border-color: #e1e6ee !important; background: #f8faff !important; }
+html:not(.dark) .notification-center-panel .app-icon-button:hover { color: #5520bd !important; border-color: rgba(124,39,255,.35) !important; background: #f2edff !important; }
 html:not(.dark) .sidebar-primary-action {
   color: #4d267f;
   border-color: rgba(124,39,255,.14);
@@ -722,6 +770,7 @@ html[dir="rtl"] .nexora-login__submit {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .entrance-motion-surface { animation: none !important; }
   .app-orb { animation: none !important; }
   .knowledge-motion *, .knowledge-motion *::before, .knowledge-motion *::after { animation: none !important; }
 }

@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { motion, useReducedMotion } from "framer-motion";
 import { Activity, ArrowDownToLine, Bot, ChevronDown, CircleAlert, Database, FileSpreadsheet, FileText, FileCheck2, MessageSquareText, Printer, UsersRound, type LucideIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -12,11 +11,10 @@ import { sectionCopy } from "../locales/copy";
 
 const CW = 760, CH = 250, TOP = 18, BOTTOM = 34;
 
-export default function AnalyticsPage() {
+export default function AnalyticsPage({ notificationCenter }: { notificationCenter?: ReactNode }) {
   const { i18n, t } = useTranslation();
   const fa = i18n.language.startsWith("fa");
   const user = authService.getUser();
-  const reducedMotion = useReducedMotion();
   const detailsRef = useRef<HTMLDialogElement>(null);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState<{ days: 7 | 30 | 90; revision: number }>({ days: 30, revision: 0 });
@@ -89,11 +87,11 @@ export default function AnalyticsPage() {
 
   if (loading && !data) return <div className="analytics-dashboard grid h-full place-items-center an-surface"><span role="status" aria-label={fa ? "در حال بارگذاری" : "Loading"} className="analytics-spinner" /></div>;
 
-  return <motion.div initial={{ opacity: reducedMotion ? 1 : 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.18 }} dir={fa ? "rtl" : "ltr"} className="analytics-dashboard analytics-viewport">
+  return <div dir={fa ? "rtl" : "ltr"} className="analytics-dashboard analytics-viewport">
     <div className="analytics-content">
       <header className="analytics-header flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div><h1 className="mt-2 text-xl font-semibold tracking-[-.025em] sm:text-[25px]">{c.welcome}, <span className="an-text">{user?.username ?? (fa ? "کاربر" : "User")}</span></h1><p className="mt-1.5 text-xs an-muted">{c.subtitle}</p></div>
-        <div className="flex flex-wrap items-center gap-2"><div className="analytics-period" role="group" aria-label={fa ? "بازه زمانی" : "Date range"}>{([7, 30, 90] as const).map((value) => <button key={value} onClick={() => selectPeriod(value)} disabled={loading} aria-pressed={loadedDays === value} className={loadedDays === value ? "is-active" : ""}>{fa ? `${value} روز` : `${value} days`}</button>)}</div><div className="analytics-export-menu" ref={exportMenuRef}><button type="button" onClick={() => setExportMenuOpen((value) => !value)} disabled={!data || loading} className="analytics-export" aria-haspopup="menu" aria-expanded={exportMenuOpen}><ArrowDownToLine size={13} />{c.export}<ChevronDown size={13} aria-hidden="true" /></button>{exportMenuOpen && <div className="analytics-export-options" role="menu"><button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); exportExcel(); }}><FileSpreadsheet size={15} aria-hidden="true" /><span>{c.exportExcel}</span></button><button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); exportCsv(); }}><FileText size={15} aria-hidden="true" /><span>{c.exportCsv}</span></button><button type="button" role="menuitem" title={c.exportPdfHint} onClick={() => { setExportMenuOpen(false); exportPdf(); }}><Printer size={15} aria-hidden="true" /><span>{c.exportPdf}</span></button></div>}</div></div>
+        <div className="flex flex-wrap items-center gap-2"><div className="analytics-period" role="group" aria-label={fa ? "بازه زمانی" : "Date range"}>{([7, 30, 90] as const).map((value) => <button key={value} onClick={() => selectPeriod(value)} disabled={loading} aria-pressed={loadedDays === value} className={loadedDays === value ? "is-active" : ""}>{fa ? `${value} روز` : `${value} days`}</button>)}</div>{notificationCenter && <div className="analytics-notification-control">{notificationCenter}</div>}<div className="analytics-export-menu" ref={exportMenuRef}><button type="button" onClick={() => setExportMenuOpen((value) => !value)} disabled={!data || loading} className="analytics-export" aria-haspopup="menu" aria-expanded={exportMenuOpen}><ArrowDownToLine size={13} />{c.export}<ChevronDown size={13} aria-hidden="true" /></button>{exportMenuOpen && <div className="analytics-export-options" role="menu"><button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); exportExcel(); }}><FileSpreadsheet size={15} aria-hidden="true" /><span>{c.exportExcel}</span></button><button type="button" role="menuitem" onClick={() => { setExportMenuOpen(false); exportCsv(); }}><FileText size={15} aria-hidden="true" /><span>{c.exportCsv}</span></button><button type="button" role="menuitem" title={c.exportPdfHint} onClick={() => { setExportMenuOpen(false); exportPdf(); }}><Printer size={15} aria-hidden="true" /><span>{c.exportPdf}</span></button></div>}</div></div>
       </header>
 
       {data && <>
@@ -148,7 +146,7 @@ export default function AnalyticsPage() {
         </dialog>
       </>}
     </div>
-  </motion.div>;
+  </div>;
 }
 
 function Card({ children, className = "" }: { children: ReactNode; className?: string }) {

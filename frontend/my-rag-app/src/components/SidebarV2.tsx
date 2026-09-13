@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import {
   Bot,
   FileUp,
@@ -74,7 +74,7 @@ export default function SidebarV2({
   const closeLabel = isFa ? "بستن منو" : "Close navigation";
   const expandLabel = isFa ? "بازکردن منو" : "Expand sidebar";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!mobileOpen) {
       const element = restoreFocusRef.current;
       restoreFocusRef.current = null;
@@ -82,7 +82,7 @@ export default function SidebarV2({
       return;
     }
     restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    mobileCloseRef.current?.focus();
+    const focusTimer = window.setTimeout(() => mobileCloseRef.current?.focus(), 0);
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
@@ -104,7 +104,10 @@ export default function SidebarV2({
       }
     };
     document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
   }, [mobileOpen, onCloseMobile]);
 
   return (
@@ -120,6 +123,7 @@ export default function SidebarV2({
       <aside
         ref={asideRef}
         dir={isFa ? "rtl" : "ltr"}
+        role={mobileOpen ? "dialog" : undefined}
         aria-label={isFa ? "منوی اصلی" : "Main sidebar"}
         aria-modal={mobileOpen ? "true" : undefined}
         className={`nexora-sidebar ${collapsed ? "is-collapsed" : ""} ${mobileOpen ? "is-open" : ""}`}

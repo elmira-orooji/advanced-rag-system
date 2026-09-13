@@ -175,9 +175,9 @@ export default function LoginPage() {
           </div>
 
           <motion.div
-            initial={reduceMotion ? false : { opacity: 0, y: 4 }}
+            initial={reduceMotion ? false : { opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: reduceMotion ? 0 : 0.24, ease: [0.2, 0, 0, 1] }}
+            transition={{ duration: reduceMotion ? 0 : 0.1, ease: [0.16, 1, 0.3, 1] }}
             className="nexora-login__form-wrap"
           >
             <div className="nexora-login__brand" dir="ltr">

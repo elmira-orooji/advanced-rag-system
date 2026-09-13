@@ -1,7 +1,7 @@
 import { createPortal } from "react-dom";
 import { confirmAction } from "../services/confirmation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion } from "framer-motion";
 import { useDropzone } from "react-dropzone";
 import { useTranslation } from "react-i18next";
 import toast from "react-hot-toast";
@@ -39,7 +39,6 @@ interface UploadFilesPageProps {
 
 export default function UploadFilesPage({ initialAction }: UploadFilesPageProps) {
   const { i18n, t } = useTranslation();
-  const reducedMotion = useReducedMotion();
   const isFa = i18n.language.startsWith("fa");
   const isAdmin = authService.getUser()?.role === "admin";
   const [sets, setSets] = useState<DocumentSet[]>([]);
@@ -268,7 +267,7 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
     catch (error) { toast.error((error as Error).message); }
   };
 
-  return <motion.div initial={{ opacity: reducedMotion ? 1 : 0 }} animate={{ opacity: 1 }} transition={{ duration: .18 }} dir={isFa ? "rtl" : "ltr"} className="kb-page relative flex h-full overflow-hidden">
+  return <div dir={isFa ? "rtl" : "ltr"} className="kb-page relative flex h-full overflow-hidden">
     <main className="kb-main min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-8">
       <div className="kb-content mx-auto flex w-full max-w-[980px] flex-col gap-5">
         <header className="kb-header flex shrink-0 items-end justify-between gap-4">
@@ -342,7 +341,7 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
     {connectorDialog && selectedSetId && <CloudConnectorDialog setId={selectedSetId} isFa={isFa} onClose={() => setConnectorDialog(false)} onSaved={async () => { const setId = selectedSetId; setConnectorDialog(false); await refreshSetData(setId); await loadSets(); }} />}
     {playgroundOpen && selectedSetId && <RetrievalPlayground setId={selectedSetId} documentIds={selectedDocumentIds} filters={metadataFilters} isFa={isFa} canManage={Boolean(selectedSet && (isAdmin || selectedSet.access_level === "manage"))} onClose={() => setPlaygroundOpen(false)} />}
     {chunkingOpen && selectedSet && <ChunkingSettingsDialog item={selectedSet} isFa={isFa} onClose={() => setChunkingOpen(false)} onSaved={async () => { setChunkingOpen(false); await loadSets(); }} />}
-  </motion.div>;
+  </div>;
 }
 
 function MetadataFilterBar({ documents, filters, onChange, isFa }: { documents: KnowledgeDocument[]; filters: MetadataFilters; onChange: (value: MetadataFilters) => void; isFa: boolean }) {

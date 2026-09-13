@@ -52,17 +52,17 @@ export default function NotificationCenter({ onNavigate }: NotificationCenterPro
       <Bell size={18} aria-hidden="true" />
       {unread > 0 && <span className="absolute end-1 top-1 grid min-w-4 h-4 place-items-center rounded-full bg-[#c43cff] px-1 text-[10px] font-bold text-white">{unread > 9 ? "9+" : unread}</span>}
     </button>
-    {open && <section role="dialog" aria-label={isFa ? "اعلان‌ها" : "Notifications"} className="absolute end-0 top-12 z-[70] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-[#0b1630]/95 shadow-2xl backdrop-blur-xl">
-      <header className="flex items-center justify-between border-b border-white/[.08] px-4 py-3">
+    {open && <section role="dialog" aria-label={isFa ? "اعلان‌ها" : "Notifications"} className="notification-center-panel entrance-motion-surface absolute end-0 top-12 z-[70] w-[min(22rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-white/10 bg-[#0b1630]/95 shadow-2xl backdrop-blur-xl">
+      <header className="notification-center-header flex items-center justify-between border-b border-white/[.08] px-4 py-3">
         <h2 className="text-sm font-semibold">{isFa ? "اعلان‌ها" : "Notifications"}</h2>
         <div className="flex items-center gap-1"><button type="button" onClick={() => void markAllRead()} disabled={!unread} aria-label={isFa ? "خواندن همه" : "Mark all as read"} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/55 hover:text-white disabled:opacity-30"><CheckCheck size={15} /></button><button type="button" onClick={() => setOpen(false)} aria-label={isFa ? "بستن" : "Close"} className="app-icon-button grid size-8 place-items-center rounded-lg text-white/55 hover:text-white"><X size={15} /></button></div>
       </header>
       <div className="max-h-[min(26rem,calc(100vh-7rem))] overflow-y-auto p-2">
-        {items.map((item) => <button key={item.id} type="button" onClick={() => void openNotification(item)} className={`flex w-full items-start gap-3 rounded-xl p-3 text-start transition hover:bg-white/[.055] ${item.read_at ? "opacity-60" : "bg-white/[.035]"}`}>
+        {items.map((item) => <button key={item.id} type="button" onClick={() => void openNotification(item)} className={`notification-center-item flex w-full items-start gap-3 rounded-xl p-3 text-start transition hover:bg-white/[.055] ${item.read_at ? "opacity-60" : "bg-white/[.035]"}`}>
           <span className={`mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg ${item.severity === "error" ? "bg-rose-400/10 text-rose-300" : "bg-emerald-400/10 text-emerald-300"}`}>{item.severity === "error" ? <CircleAlert size={16} /> : <CircleCheck size={16} />}</span>
-          <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-white/90">{item.title}</span><span className="mt-1 block text-xs leading-5 text-white/55">{item.body}</span><span className="mt-1.5 block text-[11px] text-white/35">{new Intl.DateTimeFormat(isFa ? "fa-IR" : "en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</span></span>
+          <span className="min-w-0 flex-1"><span className="notification-center-title block text-xs font-semibold text-white/90">{item.title}</span><span className="notification-center-body mt-1 block text-xs leading-5 text-white/55">{item.body}</span><span className="notification-center-time mt-1.5 block text-[11px] text-white/35">{new Intl.DateTimeFormat(isFa ? "fa-IR" : "en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(item.created_at))}</span></span>
         </button>)}
-        {!items.length && <p className="px-3 py-8 text-center text-xs text-white/45">{isFa ? "اعلان جدیدی وجود ندارد." : "No notifications yet."}</p>}
+        {!items.length && <p className="notification-center-empty px-3 py-8 text-center text-xs text-white/45">{isFa ? "اعلان جدیدی وجود ندارد." : "No notifications yet."}</p>}
       </div>
     </section>}
   </div>;
