@@ -3,7 +3,7 @@
 Nexora is a document-grounded AI workspace for teams. It turns approved documents and connected sources into knowledge collections that people can search, discuss, and verify through cited answers.
 
 > [!CAUTION]
-> This is proprietary, source-available software. Public access does not grant permission to use, copy, modify, distribute, deploy, or contribute to Nexora. See [LICENSE](LICENSE) and [CONTRIBUTING.md](CONTRIBUTING.md).
+> This is proprietary, source-available software. Public access does not grant permission to use, copy, modify, distribute, deploy, or contribute to Nexora. See [LICENSE](LICENSE), [CONTRIBUTING.md](CONTRIBUTING.md), and [SECURITY.md](SECURITY.md).
 
 ![Nexora product tour](documents/media/nexora-product-promo.gif)
 
@@ -155,7 +155,7 @@ MINERU_MODEL_VERSION=vlm
 
 Set `OCR_PROVIDER=auto` to try configured providers in this order: MinerU, Google Vision, and Azure Document Intelligence. Before enabling a cloud OCR provider, confirm that sending the original document to that provider is permitted by the organization’s data policy.
 
-The application does not currently include malware scanning. Do not treat MIME checks and file-size limits as an antivirus control. [SECURITY.md](SECURITY.md) describes the required quarantine-and-scan flow before production use with untrusted files.
+The application does not currently include malware scanning. Do not treat MIME checks and file-size limits as an antivirus control. Before processing untrusted files in production, deploy a quarantine-and-scan workflow that blocks files when the scanner is unavailable. [SECURITY.md](SECURITY.md) defines the required controls.
 
 ## Operations
 
@@ -208,6 +208,7 @@ DESIGN.md                   UI design system rules
 - [Architecture](ARCHITECTURE.md)
 - [Deployment](DEPLOYMENT.md)
 - [Security](SECURITY.md)
+- [Contribution policy](CONTRIBUTING.md)
 - [Backup and recovery](BACKUP_AND_RECOVERY.md)
 - [Design system](DESIGN.md)
 - [Software requirements specification](documents/Nexora-SRS.pdf)
@@ -226,4 +227,4 @@ DESIGN.md                   UI design system rules
 
 ## Security note
 
-Do not commit `.env` files, passwords, API keys, OAuth refresh tokens, Qdrant keys, or OCR credentials. Review [SECURITY.md](SECURITY.md) before exposing the application to users or connecting it to organization data.
+Do not commit `.env` files, passwords, API keys, OAuth refresh tokens, Qdrant keys, OCR credentials, uploaded data, or backups. Review [SECURITY.md](SECURITY.md) before exposing the application to users or connecting it to organization data. Report vulnerabilities privately; do not use public GitHub issues for sensitive security details.

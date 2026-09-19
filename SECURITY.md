@@ -1,119 +1,75 @@
-# امنیت Nexora
+# Security policy
 
-این سند وضعیت امنیتی فعلی Nexora، مسئولیت‌های استقرار و مواردی را که هنوز باید تکمیل شوند توضیح می‌دهد. Nexora اسناد، پیام‌های گفتگو و داده‌های اتصال‌دهنده‌ها را پردازش می‌کند؛ بنابراین تنظیم درست محیط استقرار بخشی از امنیت سامانه است، نه یک گزینهٔ جانبی.
+Nexora processes organization-scoped documents, conversations, retrieval data, and optional connector credentials. A secure deployment therefore depends on both the application and its operating environment.
 
-## امنیت بارگذاری فایل
+## Reporting a vulnerability
 
-فایل پیش از ورود به فضای اصلی اسناد و پیش از شروع OCR یا استخراج متن، در مسیر قرنطینه ذخیره می‌شود. مسیر بارگذاری پسوند و MIME مجاز، سقف ۱۰ مگابایت، امضای پایهٔ فرمت فایل و UTF-8 بودن فایل متنی را بررسی می‌کند.
+Do not disclose vulnerabilities, proof-of-concept exploits, credentials, or sensitive data in public GitHub issues, pull requests, discussions, or commits.
 
-در production، مقدار پیش‌فرض `MALWARE_SCAN_MODE=required` است. API فایل قرنطینه‌شده را به سرویس جداگانهٔ `clamd` می‌فرستد و فقط پس از پاسخ پاک، آن را به فضای اصلی اسناد منتقل می‌کند. اگر اسکنر در دسترس نباشد، فایل پذیرفته نمی‌شود. تشخیص بدافزار نیز پیام امنی به کاربر می‌دهد و دلیل، SHA-256، کاربر، سازمان و امضای اسکنر را به‌صورت structured log ثبت می‌کند.
+Report a suspected vulnerability through a private channel agreed with the Nexora project owner. Include the affected component, the relevant version or commit, reproduction steps, the expected and observed behavior, likely impact, and any evidence needed to validate the report. Share only the minimum sensitive information necessary.
 
-فایل شناسایی‌شده به‌طور پیش‌فرض حذف می‌شود. `MALWARE_RETAIN_DETECTED=true` فقط زمانی مجاز است که مسیر قرنطینهٔ ایزوله و فرایند نگه‌داری و حذف دوره‌ایِ مستند وجود داشته باشد.
+The project owner will assess the report, coordinate remediation, and determine whether a public advisory is appropriate after a fix is available.
 
-## محدودهٔ داده
+## Supported versions
 
-داده‌های زیر در سامانه نگه‌داری یا پردازش می‌شوند:
+Security fixes are applied to the current development branch and released versions when the affected code is still maintained. This repository does not currently publish a separate long-term-support release line.
 
-- حساب کاربری، نقش و sessionهای فعال؛
-- فایل اصلی و متن استخراج‌شدهٔ سند؛
-- chunkها و بردارهای بازیابی در Qdrant؛
-- پیام‌های گفتگو، پاسخ‌ها، منبع‌های پاسخ و بازخورد؛
-- پیکربندی اتصال‌دهنده‌ها و، در صورت فعال‌بودن، اعتبارنامهٔ سرویس‌های بیرونی؛
-- snapshot گفتگویی که کاربر برای اشتراک‌گذاری انتخاب می‌کند.
+## Deployment baseline
 
-هر document set به یک سازمان تعلق دارد. درخواست‌های سند، جست‌وجو، گفتگو، assistant و بازخورد باید به زمینهٔ سازمان و سطح دسترسی کاربر محدود بمانند.
+Production deployments must use HTTPS, set `APP_ENV=production`, set `AUTH_COOKIE_SECURE=true`, and provide a unique `AUTH_SECRET_KEY` with at least 32 random characters. `FRONTEND_ORIGINS` must contain only the deployed frontend origins. PostgreSQL, Qdrant, document storage, and internal worker endpoints must not be exposed directly to the public internet.
 
-## احراز هویت و session
+Store secrets in a deployment secret manager or protected environment variables. Do not place passwords, API keys, OAuth tokens, connector credentials, JWTs, private keys, or production configuration in the repository, Docker image, logs, tickets, or screenshots. Rotate any credential that may have been exposed.
 
-ورود با نام کاربری، رمز عبور و شناسهٔ سازمان انجام می‌شود. رمزها با `PBKDF2-HMAC-SHA256`، salt تصادفی ۱۶ بایتی و ۶۰۰٬۰۰۰ تکرار hash می‌شوند. مقادیر hash و salt در پایگاه داده نگه‌داری می‌شوند؛ رمز خام نباید در log، پاسخ API یا فایل پیکربندی ثبت شود.
+The API should run behind a trusted reverse proxy or ingress that terminates TLS and supplies compatible security headers. Trust `X-Forwarded-For` only when it is set by that controlled proxy.
 
-پس از ورود، یک JWT امضاشده با HMAC-SHA256 در cookie با ویژگی‌های `HttpOnly` و `SameSite=Lax` قرار می‌گیرد. session متناظر نیز در پایگاه داده ثبت می‌شود. اعتبار token علاوه بر امضا و زمان انقضا، با session فعال در پایگاه داده بررسی می‌شود؛ logout session را revoke می‌کند و تغییر رمز، sessionهای دیگر کاربر را باطل می‌کند.
+## Authentication and authorization
 
-در محیط production، این تنظیم‌ها الزامی هستند:
+Nexora stores password hashes rather than plaintext passwords. Sessions are issued through signed, `HttpOnly`, `SameSite=Lax` cookies and are checked against the active server-side session record. Logout revokes the current session; a password change invalidates the user’s other sessions.
 
-```env
-APP_ENV=production
-AUTH_COOKIE_SECURE=true
-AUTH_SECRET_KEY=<random-value-with-at-least-32-characters>
-```
+Authorization is enforced by the API. Interface visibility is not an access-control mechanism. Administrative operations require the `admin` role. Access to document sets, conversations, assistants, and connector data must remain constrained by organization context and the user’s assigned permissions.
 
-`AUTH_COOKIE_SECURE=false` فقط در `development` یا `test` پذیرفته می‌شود. `AUTH_SECRET_KEY` باید در سامانهٔ مدیریت اسرار یا متغیر محیطی امن نگه‌داری شود؛ تغییر آن sessionهای جاری را نامعتبر می‌کند.
+Login throttling is configurable through the `AUTH_*` environment variables. Application-level rate limiting is process-local; multi-replica deployments should additionally enforce limits in a shared layer such as a reverse proxy, WAF, or Redis-backed limiter.
 
-## نقش‌ها و دسترسی
+## File handling and malware scanning
 
-دو نقش اصلی وجود دارد: `admin` و `user`. عملیات مدیریتی مانند ساخت کاربر، مدیریت knowledge set، ویرایش chunk و بعضی عملیات اسناد به admin محدود است. برای user، دسترسی به document set با permissionهای `view`، `edit` و `manage` بررسی می‌شود.
+The application accepts PDF, TXT, JPEG, PNG, and TIFF documents subject to file-name normalization, extension/MIME validation, file-signature checks where applicable, UTF-8 validation for text files, and a 10 MB per-file limit. Files are stored under generated identifiers and storage paths are resolved to prevent path traversal.
 
-کنترل دسترسی باید در API اعمال شود؛ مخفی‌کردن گزینه‌ها در رابط کاربری، مجوز محسوب نمی‌شود. آزمون‌های API باید دسترسی کاربر به دادهٔ سازمان دیگر، document set بدون مجوز و عملیات admin را پوشش دهند.
+These controls do not detect malware. Before accepting untrusted files in production, deploy a quarantine-and-scan workflow:
 
-## محدودسازی تلاش ورود و درخواست‌ها
+1. Place each upload in isolated quarantine storage.
+2. Scan it before text extraction, OCR, indexing, download, or connector processing.
+3. Promote only files with a recorded clean result.
+4. Block processing if the scanner is unavailable in production.
+5. Log the scan result, timestamp, file hash, and rejection reason without recording document contents or secrets.
 
-تلاش ورود ناموفق براساس حساب و IP ثبت می‌شود و با افزایش تعداد خطا، زمان انتظار افزایش می‌یابد. محدودیت‌های آن از متغیرهای `AUTH_FAILURE_WINDOW_SECONDS`، `AUTH_ACCOUNT_FAILURE_LIMIT`، `AUTH_IP_FAILURE_LIMIT`، `AUTH_LOCK_BASE_SECONDS` و `AUTH_LOCK_MAX_SECONDS` تنظیم می‌شوند.
+When cloud OCR is enabled, the original document may be sent to the selected provider. Enable it only when the organization’s data classification, processing agreement, and retention policy permit that transfer.
 
-مسیر پاسخ RAG نیز در هر IP به ۲۰ درخواست در دقیقه محدود شده است. محدودیت عمومی و احراز هویت به‌ترتیب ۶۰ و ۱۰ درخواست در دقیقه تعریف شده‌اند. limiter فعلی در حافظهٔ هر process است؛ در استقرار چند replica یا پشت چند instance باید این کنترل در reverse proxy/WAF یا یک store اشتراکی مانند Redis نیز اعمال شود. reverse proxy باید هدر `X-Forwarded-For` را فقط از پراکسی مورد اعتماد بپذیرد.
+## Connectors and sharing
 
-## بارگذاری و پردازش فایل
+Configure connectors with least-privilege service accounts, narrowly scoped permissions, domain allowlists, and short-lived credentials where available. Do not permit web connectors to reach private networks, metadata services, or unapproved destinations.
 
-فایل‌های قابل‌قبول در کد فعلی PDF، TXT، JPEG، PNG و TIFF هستند. پسوند فایل با MIME type ارسالی تطبیق داده می‌شود، نام فایل با `Path(...).name` به نام پایه محدود می‌شود و حجم هر فایل حداکثر ۱۰ مگابایت است. فایل‌ها با UUID در فضای ذخیره‌سازی نگه‌داری می‌شوند و مسیر ذخیره‌سازی برای جلوگیری از خروج از ریشهٔ storage resolve می‌شود.
+Shared conversation links are read-only snapshots. Anyone with a public link token can access its content until the link expires or is revoked. Do not create public links for conversations containing sensitive information. Owners and organization administrators should be able to revoke links promptly.
 
-این کنترل‌ها جایگزین اسکن ضدبدافزار نیستند. در نسخهٔ فعلی ClamAV یا سرویس مشابه فعال نیست. پیش از استفادهٔ production با فایل‌های خارج از سازمان، باید جریان زیر اضافه شود:
+## Logging, retention, and recovery
 
-1. نگه‌داری اولیهٔ فایل در quarantine؛
-2. اسکن پیش از استخراج متن، OCR، index و دانلود فایل؛
-3. اجازهٔ پردازش فقط برای فایل با نتیجهٔ `clean`؛
-4. ثبت نتیجه و زمان اسکن و حذف یا قرنطینهٔ فایل آلوده؛
-5. توقف پردازش در صورت در دسترس‌نبودن اسکنر در محیط production.
+Logs must not contain passwords, session tokens, cookies, authorization headers, API keys, full document text, or full conversation content. Security-relevant events should include failed sign-ins, account lockouts, password changes, access denials, connector failures, and shared-link revocations, with an event identifier and timestamp.
 
-OCR محلی فقط فایل داخل محیط را پردازش می‌کند. اگر `OCR_PROVIDER` روی MinerU، Google Vision یا Azure Document Intelligence باشد، فایل اسکن‌شده به آن سرویس ارسال می‌شود. فعال‌سازی OCR ابری باید با طبقه‌بندی داده، قرارداد پردازش داده و سیاست سازمان سازگار باشد.
+Retention and deletion procedures must cover original documents, extracted text, vectors, conversations, backups, and logs. Deleting a document must remove its associated stored content and retrieval vectors according to the organization’s retention policy. See [DATA_RETENTION_AND_PRIVACY.md](DATA_RETENTION_AND_PRIVACY.md) and [BACKUP_AND_RECOVERY.md](BACKUP_AND_RECOVERY.md).
 
-## اتصال‌دهنده‌ها و اعتبارنامه‌ها
+## Security verification
 
-کلیدهای OpenRouter، OCR، Google Drive، S3 و SharePoint نباید در مخزن، image Docker، log یا ticket قرار بگیرند. فایل‌های `.env` در Git نادیده گرفته می‌شوند. برای connectorها می‌توان `CONNECTOR_SECRET_MANAGER_URL` و `CONNECTOR_SECRET_MANAGER_TOKEN` را تعریف کرد؛ کد فقط URLهای HTTPS را برای secret manager می‌پذیرد.
+Before a release or production deployment, verify the following:
 
-دریافت محتوای وب توسط connector محدودیت‌هایی برای URL دارد و credentialها یا body OAuth را هنگام redirect منتقل نمی‌کند. با این حال، connectorهای دارای دسترسی به شبکه باید با allowlist دامنه، حساب سرویس کم‌اختیار و اعتبارنامه‌های کوتاه‌عمر پیکربندی شوند. endpointهای داخلی، شبکهٔ metadata و مقصدهای خصوصی نباید برای connectorهای وب قابل دسترس باشند.
+- tests and CI checks pass;
+- dependency updates and known vulnerabilities are reviewed;
+- organization isolation and role-based access are tested at the API boundary;
+- TLS, CORS, secure cookies, reverse-proxy headers, and rate limits are validated in staging;
+- uploaded-file limits and the malware quarantine workflow are tested with safe test fixtures, including EICAR only after an antivirus service is configured;
+- connector scopes, secret storage, and outbound network restrictions are reviewed;
+- backup restoration is tested using the documented recovery procedure.
 
-## اشتراک‌گذاری گفتگو
+## Public repository notice
 
-لینک اشتراک‌گذاری، یک snapshot فقط‌خواندنی از پیام‌های انتخاب‌شده است. token با `secrets.token_urlsafe(32)` ساخته می‌شود و فقط SHA-256 آن در پایگاه داده ذخیره می‌شود. مالک لینک یا admin همان سازمان می‌تواند آن را revoke کند.
+Nexora is proprietary, source-available software. Public access to this repository does not grant permission to use, copy, modify, distribute, deploy, or contribute to the software. See [LICENSE](LICENSE) and [CONTRIBUTING.md](CONTRIBUTING.md).
 
-گزینهٔ `team` به ورود کاربر همان سازمان نیاز دارد. گزینهٔ `link` عمومی است؛ هر فردی که token را داشته باشد تا پایان اعتبار یا revoke بتواند محتوا را ببیند. برای گفتگوهایی که شامل دادهٔ حساس هستند، استفاده از لینک عمومی نباید مجاز باشد. پیش از ایجاد لینک، رابط کاربری باید نوع دسترسی و تاریخ انقضا را روشن نشان دهد.
-
-## استقرار و شبکه
-
-API فقط باید پشت HTTPS و reverse proxy قابل اعتماد منتشر شود. `FRONTEND_ORIGINS` باید فهرست دقیق originهای رابط کاربری باشد و نباید برای endpointهای credentialدار wildcard داشته باشد. PostgreSQL و Qdrant نباید مستقیم روی اینترنت publish شوند.
-
-راهنمای Docker در [DEPLOYMENT.md](DEPLOYMENT.md) شبکهٔ داخلی Compose و volumeهای داده را توضیح می‌دهد. volumeهای PostgreSQL، Qdrant، اسناد و cache مدل باید backup داشته باشند. دسترسی سیستم‌عامل به volumeها باید فقط به حساب‌های سرویس محدود شود.
-
-Nexora در لایهٔ برنامه headerهای امنیتی کامل مانند CSP، HSTS، `X-Content-Type-Options` و `Referrer-Policy` تنظیم نمی‌کند. reverse proxy یا ingress باید این headerها را پس از بررسی سازگاری رابط کاربری اضافه کند. HSTS فقط بعد از اطمینان از در دسترس‌بودن پایدار HTTPS فعال شود.
-
-## log، رخداد و حریم خصوصی
-
-در logها نباید رمز، JWT، cookie، کلید API، header احراز هویت، متن کامل سند یا متن کامل گفتگو ثبت شود. برای رخدادهای امنیتی، حداقل login ناموفق، قفل‌شدن حساب، تغییر رمز، revoke لینک اشتراک‌گذاری، خطای دسترسی و خطای connector باید با شناسهٔ رویداد و زمان ثبت شوند، بدون درج دادهٔ حساس.
-
-سیاست نگه‌داری و حذف داده باید مشخص کند اسناد، متن استخراج‌شده، vectorها، گفتگوها، backupها و logها چه مدت نگه‌داری می‌شوند و چه کسی حق حذف دارد. حذف یک سند باید فایل اصلی، متن استخراج‌شده و بردارهای مربوط را نیز پوشش دهد.
-
-## آزمون و بازبینی امنیتی
-
-تست‌های بک‌اند برای cookie، login throttle، دسترسی‌ها، connector secretها و موارد امنیتی در `backend/tests` وجود دارند. پیش از هر انتشار باید این کنترل‌ها بررسی شوند:
-
-- اجرای آزمون‌های بک‌اند و pipeline CI؛
-- بررسی تغییرات dependency و آسیب‌پذیری‌های شناخته‌شده؛
-- بررسی دسترسی admin و جداسازی سازمان‌ها؛
-- آزمون فایل بزرگ، MIME/پسوند نامعتبر و فایل EICAR پس از اضافه‌شدن anti-malware؛
-- بررسی CORS، cookie امن، TLS و headerهای reverse proxy در staging؛
-- آزمون revoke session، logout و revoke لینک اشتراک‌گذاری؛
-- بازبینی مجوزها و کلیدهای connector قبل از فعال‌سازی آن‌ها.
-
-## گزارش آسیب‌پذیری
-
-جزئیات آسیب‌پذیری نباید در issue عمومی منتشر شود. گزارش باید از یک کانال خصوصی مورد توافق با مالک مخزن ارسال شود و شامل مسیر یا مؤلفهٔ درگیر، نسخه یا commit، مراحل بازتولید، اثر احتمالی و شواهد لازم باشد. پس از تأیید، دسترسی یا secret آسیب‌دیده باید فوراً محدود یا rotate شود و اصلاح در محیط staging اعتبارسنجی شود.
-
-## آماده‌سازی مخزن برای انتشار عمومی
-
-مخزن Nexora source-available و اختصاصی است. انتشار عمومی فقط امکان مشاهدهٔ کد را فراهم می‌کند و مجوز استفاده یا مشارکت ایجاد نمی‌کند. پیش از تغییر visibility، این موارد باید بررسی شوند:
-
-- کلیدهای واقعی OpenRouter، OCR، SMTP، Connector و پایگاه داده که در محیط‌های توسعه یا استقرار استفاده شده‌اند، در سرویس ارائه‌دهنده rotate شوند؛
-- GitHub Secret Scanning و Push Protection برای مخزن فعال باشند؛
-- `.env`، volumeهای storage، upload، backup، cache، فایل‌های کلید و خروجی‌های تست در Git نباشند؛
-- فایل‌های رسانه‌ای و PDFها از نظر متن سند، نام کاربر، metadata و دادهٔ سازمانی بازبینی شوند؛
-- تنظیمات production خارج از Git نگه‌داری شوند و `AUTH_COOKIE_SECURE=true`، HTTPS، محدودسازی شبکهٔ PostgreSQL/Qdrant و secret manager اعمال شوند؛
-- issue، discussion، wiki و project عمومی، در صورت نپذیرفتن مشارکت خارجی، در تنظیمات GitHub غیرفعال شوند.
+Before changing repository visibility, rotate real credentials used in development or deployment, review repository history and media for sensitive information, and confirm that `.env` files, uploaded data, backups, keys, and local storage are not tracked. Enable GitHub secret scanning and push protection when the repository and account plan support them.
