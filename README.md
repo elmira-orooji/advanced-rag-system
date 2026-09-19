@@ -2,6 +2,9 @@
 
 Nexora is a document-grounded AI workspace for teams. It turns approved documents and connected sources into knowledge collections that people can search, discuss, and verify through cited answers.
 
+> [!CAUTION]
+> This is proprietary, source-available software. Public access does not grant permission to use, copy, modify, distribute, deploy, or contribute to Nexora. See [LICENSE](LICENSE) and [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ![Nexora product tour](documents/media/nexora-product-promo.gif)
 
 The project follows a clear path from knowledge to answer:
@@ -207,7 +210,7 @@ DESIGN.md                   UI design system rules
 - [Security](SECURITY.md)
 - [Backup and recovery](BACKUP_AND_RECOVERY.md)
 - [Design system](DESIGN.md)
-- [Software requirements specification](documents/SRS-Nexora.docx)
+- [Software requirements specification](documents/Nexora-SRS.pdf)
 - [Backend workers and OCR](backend/README.md)
 - [Connector scheduler](backend/CONNECTOR_SCHEDULER.md)
 

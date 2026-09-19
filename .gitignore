@@ -13,6 +13,30 @@ backend/ocr_lab/models/
 backend/ocr_lab/output/
 .env
 .env.docker
+.env.*
+!.env.example
+!.env.docker.example
+*.pem
+*.key
+*.p12
+*.pfx
+backend/storage/
+backend/uploads/
+*.sqlite
+*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+coverage.xml
+*.log
+*.pid
+
+# Local AI-assistant instructions and generated tool state
+.agents/
+.claude/
+.windsurf/
 
 # OS
 .DS_Store
