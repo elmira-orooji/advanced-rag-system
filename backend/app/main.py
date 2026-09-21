@@ -21,6 +21,7 @@ from app.services.operational_metrics import increment, render
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.worker_heartbeat import get_available_worker_types
 from app.core.rate_limit import RateLimitMiddleware
+from app.core.logging import configure_logging
 
 logger = logging.getLogger(__name__)
 
@@ -58,6 +59,7 @@ async def startup_collection_setup():
     Collection creation belongs to the indexing worker or deployment setup.
     Readiness performs the bounded, read-only vector-store probe.
     """
+    configure_logging()
     logger.info("API started; Qdrant collection setup is deferred to indexing")
 
 

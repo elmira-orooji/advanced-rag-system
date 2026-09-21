@@ -6,6 +6,7 @@ import threading
 import uuid
 
 from app.core.config import CONNECTOR_SCHEDULER_POLL_SECONDS, WORKER_HEARTBEAT_SECONDS
+from app.core.logging import configure_logging
 from app.services.connector_scheduler import run_due_connector_syncs
 from app.services.worker_heartbeat import deregister_worker, maintain_worker_heartbeat, register_worker
 
@@ -53,5 +54,5 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    configure_logging()
     run()

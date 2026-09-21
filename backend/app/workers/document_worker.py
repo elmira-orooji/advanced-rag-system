@@ -6,6 +6,7 @@ import time
 import uuid
 
 from app.core.config import DOCUMENT_JOB_POLL_SECONDS, WORKER_HEARTBEAT_SECONDS
+from app.core.logging import configure_logging
 from app.services.document_jobs import claim_document_job, maintain_document_job_lease, process_document_job, recover_document_jobs
 from app.services.indexing_reconciler import reconcile_indexing_outbox
 from app.services.worker_heartbeat import deregister_worker, maintain_worker_heartbeat, register_worker
@@ -75,5 +76,5 @@ def run() -> None:
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
+    configure_logging()
     run()

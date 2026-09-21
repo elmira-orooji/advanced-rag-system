@@ -20,6 +20,7 @@ from app.services.operational_alerts import send_operational_alert
 from app.services.operational_metrics import increment
 from app.services.notifications import create_notification
 from app.services.incremental_index import checksum, incremental_chunks
+from app.services.file_storage import atomic_write_text
 from app.core.config import CHUNKING_STRATEGY, SEMANTIC_CHUNK_MIN_SIZE, SEMANTIC_CHUNK_MAX_SIZE, SEMANTIC_SIMILARITY_THRESHOLD
 
 logger = logging.getLogger(__name__)
@@ -244,7 +245,7 @@ def process_document_job(
                 db.commit()
                 return
             extracted_path = source_path.parent / "extracted.txt"
-            extracted_path.write_text(text, encoding="utf-8")
+            atomic_write_text(extracted_path, text)
             document.extracted_text_path = document_storage_relative(extracted_path)
             document.content_checksum = None
             _progress(db, document, job, worker_id, 35, "chunking")

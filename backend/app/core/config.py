@@ -53,6 +53,15 @@ if _DOCUMENT_STORAGE_ENV:
 else:
     UPLOAD_DIR = _DEFAULT_DOCUMENT_STORAGE
 
+_LOG_FILE_ENV = os.getenv("LOG_FILE", "").strip()
+LOG_FILE = Path(_LOG_FILE_ENV).expanduser().resolve() if _LOG_FILE_ENV else None
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(10 * 1024 * 1024)))
+LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
+RATE_LIMIT_REDIS_URL = os.getenv("RATE_LIMIT_REDIS_URL", "").strip()
+if LOG_MAX_BYTES <= 0 or LOG_BACKUP_COUNT < 1:
+    raise RuntimeError("LOG_MAX_BYTES must be positive and LOG_BACKUP_COUNT must be at least 1")
+
 
 def document_storage_relative(path: Path) -> str:
     """Return a storage-relative POSIX path that survives across replicas.

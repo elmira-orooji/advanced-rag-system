@@ -12,7 +12,6 @@ class RetrievalContextTests(unittest.TestCase):
     def setUp(self):
         self.document_id = uuid4()
         retrieval._lexical_cache.clear()
-        retrieval._version_cache.clear()
         retrieval._lexical_cache_total_weight = 0
 
     @staticmethod
@@ -95,14 +94,15 @@ class RetrievalContextTests(unittest.TestCase):
         client.assert_not_called()
         self.assertEqual(results[0]["payload"]["content"], "lexical match")
 
-    def test_unchanged_scope_reuses_cached_corpus_without_extra_db_queries(self):
+    def test_unchanged_scope_reuses_cached_corpus_after_version_check(self):
         chunk = self.chunk(0, "cached lexical text")
         version = datetime.now(timezone.utc)
         db = MagicMock()
-        # First call: version check + chunk fetch. Second call: version cache hit (no DB).
+        # The second call checks the current version but reuses the corpus.
         db.execute.side_effect = [
             self.result([(self.document_id, version)]),
             self.result([(chunk, "test.txt")]),
+            self.result([(self.document_id, version)]),
         ]
         with patch("app.services.retrieval.QdrantClient") as client, patch(
             "app.services.retrieval._tokens", wraps=retrieval._tokens
@@ -115,5 +115,23 @@ class RetrievalContextTests(unittest.TestCase):
             call for call in tokens.call_args_list if call.args[0] == "cached lexical text"
         ]
         self.assertEqual(len(corpus_tokenizations), 1)
-        # Only 2 DB calls now (version + chunks) instead of 3, thanks to version cache
-        self.assertEqual(db.execute.call_count, 2)
+        self.assertEqual(db.execute.call_count, 3)
+
+    def test_changed_document_version_rebuilds_cached_corpus(self):
+        original = self.chunk(0, "old text")
+        updated = self.chunk(0, "new text")
+        before = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        after = datetime(2026, 1, 2, tzinfo=timezone.utc)
+        db = MagicMock()
+        db.execute.side_effect = [
+            self.result([(self.document_id, before)]),
+            self.result([(original, "test.txt")]),
+            self.result([(self.document_id, after)]),
+            self.result([(updated, "test.txt")]),
+        ]
+
+        first = retrieval._lexical_corpus(db, [self.document_id])
+        second = retrieval._lexical_corpus(db, [self.document_id])
+
+        self.assertEqual(first.chunks[0].content, "old text")
+        self.assertEqual(second.chunks[0].content, "new text")

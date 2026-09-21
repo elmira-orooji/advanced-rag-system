@@ -10,6 +10,8 @@ from sqlalchemy.orm import sessionmaker
 
 from app.models.connector import Connector
 from app.models.sync_lease import SyncLease
+from app.models.user import User
+from app.models.notification import Notification
 from app.services import connector_scheduler as scheduler
 from app.workers import connector_scheduler_worker as scheduler_worker
 from app.services.connector_scheduler import run_due_connector_syncs
@@ -22,6 +24,8 @@ class ConnectorSchedulerTests(unittest.TestCase):
         self.addCleanup(self.engine.dispose)
         Connector.__table__.create(self.engine)
         SyncLease.__table__.create(self.engine)
+        User.__table__.create(self.engine)
+        Notification.__table__.create(self.engine)
         self.sessions = sessionmaker(bind=self.engine, expire_on_commit=True)
         self.enterContext(patch("app.services.connector_scheduler.SessionLocal", self.sessions))
         self.locked = set()
@@ -41,7 +45,9 @@ class ConnectorSchedulerTests(unittest.TestCase):
         ids = [uuid4() for _ in range(count)]
         with self.sessions() as db:
             for connector_id in ids:
-                db.add(Connector(id=connector_id, document_set_id=uuid4(), created_by_id=uuid4(),
+                creator_id = uuid4()
+                db.add(User(id=creator_id, organization_id=uuid4(), username=f"user-{creator_id.hex}", password_hash="test"))
+                db.add(Connector(id=connector_id, document_set_id=uuid4(), created_by_id=creator_id,
                                  connector_type="website", name="Test", source_url="https://example.com",
                                  status="ready", schedule_enabled=True, schedule_interval="daily",
                                  next_sync_at=datetime.now(timezone.utc) - timedelta(days=1)))

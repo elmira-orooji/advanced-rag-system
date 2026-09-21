@@ -110,26 +110,13 @@ def _bm25(query: str, chunks: list[_ChunkSnapshot], limit: int, corpus: _Lexical
     ]
 
 
-_version_cache: OrderedDict[tuple[str, ...], tuple[tuple[tuple[str, str], ...], float]] = OrderedDict()
-_VERSION_CACHE_MAX = 128
-
-
 def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
     global _lexical_cache_total_weight
     scope_key = tuple(sorted(str(value) for value in scoped_ids))
 
-    # Fast path: check version cache first to avoid DB query on repeated scopes
-    with _lexical_cache_lock:
-        cached_version = _version_cache.get(scope_key)
-        if cached_version is not None:
-            cached_signature, _ = cached_version
-            cached_corpus = _lexical_cache.get(scope_key)
-            if cached_corpus is not None and cached_corpus.signature == cached_signature:
-                _lexical_cache.move_to_end(scope_key)
-                _version_cache.move_to_end(scope_key)
-                return cached_corpus
-
-    # Slow path: fetch current versions from DB
+    # Always obtain the current version signature. The corpus cache avoids the
+    # expensive rebuild, while this lightweight query prevents stale answers
+    # after document or chunk changes in the same process.
     versions = db.execute(
         select(Document.id, Document.updated_at).where(Document.id.in_(scoped_ids))
     ).all()
@@ -143,8 +130,6 @@ def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
         cached_corpus = _lexical_cache.get(scope_key)
         if cached_corpus is not None and cached_corpus.signature == signature:
             _lexical_cache.move_to_end(scope_key)
-            _version_cache[scope_key] = (signature, perf_counter())
-            _version_cache.move_to_end(scope_key)
             return cached_corpus
 
     # Cache miss: build corpus from scratch with session-independent snapshots
@@ -184,12 +169,6 @@ def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
         while _lexical_cache_total_weight > _LEXICAL_CACHE_MAX_WEIGHT and len(_lexical_cache) > 1:
             _, evicted = _lexical_cache.popitem(last=False)
             _lexical_cache_total_weight -= evicted.total_weight
-
-        # Update version cache
-        _version_cache[scope_key] = (signature, perf_counter())
-        _version_cache.move_to_end(scope_key)
-        while len(_version_cache) > _VERSION_CACHE_MAX:
-            _version_cache.popitem(last=False)
 
     return corpus
 

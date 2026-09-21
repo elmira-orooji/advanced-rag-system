@@ -35,6 +35,7 @@ from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
 from app.services.chunk_enrichment import enrich_chunk
 from app.services.incremental_index import checksum, incremental_chunks
+from app.services.file_storage import atomic_write_text
 from app.services.connector_secrets import ConnectorSecretError, get_connector_credentials
 
 MAX_REMOTE_BYTES = 2 * 1024 * 1024
@@ -568,7 +569,7 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
                     document_id = str(document.id)
                     if document_id not in journal:
                         journal[document_id] = _capture_external_state(document, existed=item is not None)
-                    directory = UPLOAD_DIR / document_id; directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
+                    directory = UPLOAD_DIR / document_id; directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; atomic_write_text(extracted, text)
                     source_path = document_storage_relative(extracted)
                     document.storage_path = source_path; document.extracted_text_path = source_path; document.filename = title; document.processing_error = None
                     next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
@@ -707,7 +708,7 @@ def ingest_webhook_event(db: Session, connector: Connector, action: str, externa
             document = Document(organization_id=document_set.organization_id, filename=(title or external_id)[:255], content_type="text/plain", status="chunked", source_type="webhook", tags=[])
             db.add(document); db.flush(); document.document_sets.append(document_set)
         journal.append(_capture_external_state(document, existed=not created))
-        directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; extracted.write_text(text, encoding="utf-8")
+        directory = UPLOAD_DIR / str(document.id); directory.mkdir(parents=True, exist_ok=True); extracted = directory / "extracted.txt"; atomic_write_text(extracted, text)
         source_path = document_storage_relative(extracted)
         document.storage_path = source_path; document.extracted_text_path = source_path; document.filename = (title or external_id)[:255]; document.processing_error = None
         next_chunks, _, removed_ids = incremental_chunks(document, text, document_set.child_chunk_size, document_set.chunk_overlap, document_set.parent_chunk_size)
