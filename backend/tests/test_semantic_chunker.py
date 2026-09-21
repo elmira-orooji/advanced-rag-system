@@ -1,4 +1,5 @@
 import unittest
+from uuid import uuid4
 from unittest.mock import patch, MagicMock
 
 
@@ -63,3 +64,29 @@ class SemanticChunkerTests(unittest.TestCase):
 
         for chunk in result:
             self.assertLessEqual(len(chunk), 150)
+
+    def test_incremental_index_uses_supplied_semantic_chunks(self):
+        """Semantic output must be persisted instead of regenerated hierarchically."""
+        from app.models.document import Document
+        from app.services.incremental_index import incremental_chunks
+
+        document = Document(id=uuid4(), organization_id=uuid4(), filename="semantic.txt")
+        semantic_output = [
+            ("First semantic section.", 0, "First semantic section."),
+            ("Second semantic section.", 1, "Second semantic section."),
+        ]
+        with patch("app.services.incremental_index.hierarchical_chunks") as hierarchical, patch(
+            "app.services.incremental_index.enrich_chunk", return_value=([], [])
+        ):
+            chunks, _, _ = incremental_chunks(
+                document,
+                "Original document text",
+                child_size=800,
+                overlap=120,
+                parent_size=2400,
+                generated_chunks=semantic_output,
+            )
+
+        hierarchical.assert_not_called()
+        self.assertEqual([chunk.content for chunk in chunks], [item[0] for item in semantic_output])
+        self.assertEqual([chunk.parent_index for chunk in chunks], [0, 1])

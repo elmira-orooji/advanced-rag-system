@@ -196,8 +196,19 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
 
   const { getInputProps, getRootProps, isDragActive, open } = useDropzone({
     onDrop, noClick: true, disabled: !selectedSetId || uploading, maxSize: 10 * 1024 * 1024,
-    accept: { "application/pdf": [".pdf"], "text/plain": [".txt"] },
-    onDropRejected: () => toast(isFa ? "فایل PDF یا TXT با حجم حداکثر ۱۰ مگابایت انتخاب کنید." : "Choose a PDF or TXT file up to 10 MB.", { className: "nexora-toast--warning" }),
+    accept: {
+      "application/pdf": [".pdf"],
+      "text/plain": [".txt"],
+      "image/jpeg": [".jpg", ".jpeg"],
+      "image/png": [".png"],
+      "image/tiff": [".tif", ".tiff"],
+    },
+    onDropRejected: () => toast(
+      isFa
+        ? "فایل PDF، TXT یا تصویر JPG، PNG و TIFF با حجم حداکثر ۱۰ مگابایت انتخاب کنید."
+        : "Choose a PDF, TXT, JPG, PNG, or TIFF file up to 10 MB.",
+      { className: "nexora-toast--warning" },
+    ),
   });
 
   const filtered = useMemo(() => documents.filter((item) =>

@@ -578,6 +578,7 @@ def sync_connector(connector_id: UUID) -> dict[str, int]:
                     document.indexed_child_chunk_size = document_set.child_chunk_size
                     document.indexed_chunk_overlap = document_set.chunk_overlap
                     document.indexed_parent_chunk_size = document_set.parent_chunk_size
+                    document.indexed_chunking_config = "hierarchical"
                     db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
                     if item: item.content_hash = digest; item.source_url = src_url; item.title = title; b_updated += 1
                     else: db.add(ConnectorItem(connector_id=connector.id, document_id=document.id, external_id=external_id, content_hash=digest, source_url=src_url, title=title)); b_created += 1
@@ -716,6 +717,7 @@ def ingest_webhook_event(db: Session, connector: Connector, action: str, externa
         document.indexed_child_chunk_size = document_set.child_chunk_size
         document.indexed_chunk_overlap = document_set.chunk_overlap
         document.indexed_parent_chunk_size = document_set.parent_chunk_size
+        document.indexed_chunking_config = "hierarchical"
         db.flush(); _replace_document_vectors(qdrant, document); document.status = "indexed"
         resolved_source = source_url or f"webhook:{external_id}"
         if item: item.content_hash = digest; item.source_url = resolved_source; item.title = document.filename

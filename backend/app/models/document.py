@@ -25,6 +25,7 @@ class Document(Base):
     indexed_child_chunk_size: Mapped[int | None] = mapped_column(Integer)
     indexed_chunk_overlap: Mapped[int | None] = mapped_column(Integer)
     indexed_parent_chunk_size: Mapped[int | None] = mapped_column(Integer)
+    indexed_chunking_config: Mapped[str | None] = mapped_column(String(160))
     status: Mapped[str] = mapped_column(String(30), default="pending", nullable=False)
     processing_error: Mapped[str | None] = mapped_column(String(500))
     processing_progress: Mapped[int] = mapped_column(Integer, default=0, nullable=False)

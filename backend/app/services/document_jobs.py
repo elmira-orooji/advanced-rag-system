@@ -29,6 +29,16 @@ class DocumentJobOwnershipLost(RuntimeError):
     pass
 
 
+def _chunking_config() -> str:
+    """Return the settings that determine a document's persisted chunks."""
+    if CHUNKING_STRATEGY == "semantic":
+        return (
+            f"semantic:min={SEMANTIC_CHUNK_MIN_SIZE}:max={SEMANTIC_CHUNK_MAX_SIZE}:"
+            f"threshold={SEMANTIC_SIMILARITY_THRESHOLD}"
+        )
+    return "hierarchical"
+
+
 def _expired_document_job_ids(cutoff: datetime):
     return (
         select(ProcessingJob.id)
@@ -220,10 +230,12 @@ def process_document_job(
             source_path = resolve_document_path(stored_source)
             text = extract_text(source_path, document.content_type or "")
             text_checksum = checksum(text)
+            chunking_config = _chunking_config()
             chunking_is_unchanged = (
                 document.indexed_child_chunk_size == chunk_size
                 and document.indexed_chunk_overlap == overlap
                 and document.indexed_parent_chunk_size == parent_size
+                and document.indexed_chunking_config == chunking_config
             )
             if document.content_checksum == text_checksum and document.chunks and chunking_is_unchanged:
                 document.processing_error = None
@@ -237,21 +249,23 @@ def process_document_job(
             document.content_checksum = None
             _progress(db, document, job, worker_id, 35, "chunking")
             if CHUNKING_STRATEGY == "semantic":
-                # Semantic chunking produces flat chunks; wrap as (child, parent_idx=0, parent=child)
-                # to maintain compatibility with the hierarchical storage schema.
+                # Semantic chunking produces flat chunks; normalize them for the
+                # hierarchical storage schema while retaining each chunk as its parent.
                 raw_semantic = semantic_chunks(
                     text,
                     min_chunk_size=SEMANTIC_CHUNK_MIN_SIZE,
                     max_chunk_size=SEMANTIC_CHUNK_MAX_SIZE,
                     similarity_threshold=SEMANTIC_SIMILARITY_THRESHOLD,
                 )
-                contents = [(chunk, 0, chunk) for chunk in raw_semantic]
+                contents = [(chunk, index, chunk) for index, chunk in enumerate(raw_semantic)]
             else:
                 contents = hierarchical_chunks(text, child_size=chunk_size, child_overlap=overlap, parent_size=parent_size)
             if not contents:
                 raise RuntimeError("Document contains no text to index")
             _progress(db, document, job, worker_id, 65, "indexing")
-            next_chunks, _, removed_ids = incremental_chunks(document, text, chunk_size, overlap, parent_size)
+            next_chunks, _, removed_ids = incremental_chunks(
+                document, text, chunk_size, overlap, parent_size, generated_chunks=contents
+            )
             pending_chunks = [
                 {"id": str(chunk.id), "chunk_index": chunk.chunk_index, "content": chunk.content}
                 for chunk in next_chunks
@@ -264,6 +278,7 @@ def process_document_job(
             document.indexed_child_chunk_size = chunk_size
             document.indexed_chunk_overlap = overlap
             document.indexed_parent_chunk_size = parent_size
+            document.indexed_chunking_config = chunking_config
             document.processing_error = None
             # Durable outbox: record intended Qdrant state in the SAME transaction
             outbox_payload = {

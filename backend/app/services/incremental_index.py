@@ -7,14 +7,31 @@ from app.services.chunk_enrichment import enrich_chunk
 from app.services.qdrant import QdrantClient
 from app.services.text_chunker import hierarchical_chunks
 
+GeneratedChunk = tuple[str, int, str]
+
 
 def checksum(value: str | bytes) -> str:
     data = value if isinstance(value, bytes) else value.encode("utf-8")
     return hashlib.sha256(data).hexdigest()
 
 
-def incremental_chunks(document: Document, text: str, child_size: int, overlap: int, parent_size: int) -> tuple[list[Chunk], list[str], list[str]]:
-    generated = hierarchical_chunks(text, child_size=child_size, child_overlap=overlap, parent_size=parent_size)
+def incremental_chunks(
+    document: Document,
+    text: str,
+    child_size: int,
+    overlap: int,
+    parent_size: int,
+    generated_chunks: list[GeneratedChunk] | None = None,
+) -> tuple[list[Chunk], list[str], list[str]]:
+    """Merge supplied chunks into a document while preserving unchanged records.
+
+    Callers that use an alternative chunking strategy provide its normalized
+    ``(content, parent_index, parent_content)`` tuples. The hierarchical
+    strategy remains the default for connector and legacy callers.
+    """
+    generated = generated_chunks if generated_chunks is not None else hierarchical_chunks(
+        text, child_size=child_size, child_overlap=overlap, parent_size=parent_size
+    )
     existing = {(chunk.chunk_index, chunk.content_checksum or checksum(chunk.content)): chunk for chunk in document.chunks}
     retained_ids: set[str] = set(); changed: list[Chunk] = []; output: list[Chunk] = []
     for index, (content, parent_index, parent_content) in enumerate(generated):
