@@ -22,26 +22,61 @@ import {
 import { useLanguage } from "../hooks/useLanguage";
 import { loginSchema } from "../schemas/loginSchema";
 import type { LoginSchemaType } from "../schemas/loginSchema";
-import { authService } from "../services/authService";
+import { authService, LoginRequestError } from "../services/authService";
 import { getPostLoginDestination } from "../utils/authNavigation";
 import { getPreferredTheme, saveTheme, type Theme } from "../utils/theme";
 import "../styles/login.css";
 
 function loginErrorMessage(error: unknown, isRtl: boolean) {
-  const message = error instanceof Error ? error.message : "";
-  if (!isRtl) return message || "Unable to sign in. Please try again.";
+  const requestError = error instanceof LoginRequestError ? error : null;
+  const wait = requestError?.retryAfterSeconds;
 
-  const normalized = message.toLowerCase();
-  if (normalized.includes("incorrect username or password")) {
-    return "نام کاربری یا رمز عبور اشتباه است.";
+  if (requestError?.status === 0) {
+    return isRtl
+      ? "ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید."
+      : "We couldn't reach the server. Check your internet connection and try again.";
   }
-  if (normalized.includes("user is inactive")) {
-    return "حساب کاربری غیرفعال است.";
+  if (requestError?.status === 401) {
+    return isRtl
+      ? "نام کاربری یا رمز عبور صحیح نیست. املای نام کاربری و زبان صفحه‌کلید را بررسی کنید."
+      : "The username or password is incorrect. Check the username and your keyboard language, then try again.";
   }
-  if (normalized.includes("too many login attempts")) {
-    return "تعداد تلاش‌های ورود بیش از حد مجاز است. کمی بعد دوباره امتحان کنید.";
+  if (requestError?.status === 403) {
+    return isRtl
+      ? "این حساب غیرفعال است. برای فعال‌سازی با مدیر فضای کاری تماس بگیرید."
+      : "This account is inactive. Contact your workspace administrator to restore access.";
   }
-  return "ورود انجام نشد. دوباره تلاش کنید.";
+  if (requestError?.status === 429) {
+    const waitText = wait
+      ? isRtl
+        ? ` حدود ${wait} ثانیه`
+        : ` about ${wait} seconds`
+      : isRtl ? " چند دقیقه" : " a few minutes";
+    return isRtl
+      ? `برای حفاظت از حساب، ورود موقتاً محدود شده است.${waitText} صبر کنید و دوباره تلاش کنید.`
+      : `Sign-in is temporarily limited to protect your account. Wait${waitText} and try again.`;
+  }
+  if (requestError && requestError.status >= 500) {
+    return isRtl
+      ? "سرویس ورود موقتاً در دسترس نیست. چند دقیقه دیگر دوباره تلاش کنید."
+      : "The sign-in service is temporarily unavailable. Please try again in a few minutes.";
+  }
+  return isRtl
+    ? "ورود انجام نشد. چند لحظه دیگر دوباره تلاش کنید."
+    : "We couldn't sign you in. Please try again in a moment.";
+}
+
+function fieldErrorMessage(error: string | undefined, field: "username" | "password", isRtl: boolean) {
+  if (!error) return undefined;
+  const messages = {
+    username: isRtl
+      ? { required: "نام کاربری را وارد کنید.", short: "نام کاربری باید حداقل ۳ کاراکتر باشد." }
+      : { required: "Enter your username.", short: "Your username must be at least 3 characters." },
+    password: isRtl
+      ? { required: "رمز عبور را وارد کنید.", short: "رمز عبور باید حداقل ۸ کاراکتر باشد." }
+      : { required: "Enter your password.", short: "Your password must be at least 8 characters." },
+  };
+  return error.toLowerCase().includes("required") ? messages[field].required : messages[field].short;
 }
 
 export default function LoginPage() {
@@ -197,11 +232,7 @@ export default function LoginPage() {
                 id="username"
                 label={t.username}
                 error={
-                  errors.username
-                    ? isRtl
-                      ? "نام کاربری باید حداقل ۳ کاراکتر باشد."
-                      : errors.username.message
-                    : undefined
+                  fieldErrorMessage(errors.username?.message, "username", isRtl)
                 }
                 icon={<UserRound size={17} />}
                 isRtl={isRtl}
@@ -228,11 +259,7 @@ export default function LoginPage() {
                 id="password"
                 label={t.password}
                 error={
-                  errors.password
-                    ? isRtl
-                      ? "رمز عبور باید حداقل ۸ کاراکتر باشد."
-                      : errors.password.message
-                    : undefined
+                  fieldErrorMessage(errors.password?.message, "password", isRtl)
                 }
                 icon={<LockKeyhole size={17} />}
                 isRtl={isRtl}

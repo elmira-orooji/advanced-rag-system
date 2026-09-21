@@ -3,6 +3,22 @@ import type { AuthSession, AuthUser, LoginResponse } from "../types/auth";
 import { API_URL } from "../config/api";
 const SESSION_KEY = "knowledgeflow.auth";
 
+export class LoginRequestError extends Error {
+  readonly status: number;
+  readonly retryAfterSeconds: number | null;
+
+  constructor(
+    message: string,
+    status: number,
+    retryAfterSeconds: number | null = null,
+  ) {
+    super(message);
+    this.name = "LoginRequestError";
+    this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
 function parseError(payload: unknown, fallback: string) {
   if (payload && typeof payload === "object" && "detail" in payload) {
     const detail = (payload as { detail?: unknown }).detail;
@@ -20,20 +36,30 @@ function saveSession(session: AuthSession, rememberMe: boolean) {
 
 export const authService = {
   async login(data: LoginSchemaType): Promise<AuthSession> {
-    const response = await fetch(`${API_URL}/auth/login`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        username: data.username.trim(),
-        password: data.password,
-        remember_me: data.rememberMe,
-        organization: data.organization.trim(),
-      }),
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          username: data.username.trim(),
+          password: data.password,
+          remember_me: data.rememberMe,
+          organization: data.organization.trim().toLowerCase(),
+        }),
+      });
+    } catch {
+      throw new LoginRequestError("Network request failed", 0);
+    }
     const payload = (await response.json().catch(() => null)) as LoginResponse | null;
     if (!response.ok || payload === null) {
-      throw new Error(parseError(payload, "Unable to sign in. Please try again."));
+      const retryAfter = Number.parseInt(response.headers.get("Retry-After") ?? "", 10);
+      throw new LoginRequestError(
+        parseError(payload, "Unable to sign in. Please try again."),
+        response.status,
+        Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null,
+      );
     }
     const session: AuthSession = {
       expiresAt: Date.now() + payload.expires_in * 1000,

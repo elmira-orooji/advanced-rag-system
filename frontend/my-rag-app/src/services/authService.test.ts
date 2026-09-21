@@ -47,6 +47,34 @@ describe("authService", () => {
     expect(localStorage.getItem("knowledgeflow.auth")).toBeNull();
   });
 
+  it("preserves the login status and retry delay for actionable feedback", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      detail: "Too many login attempts. Try again later.",
+    }), { status: 429, headers: { "Content-Type": "application/json", "Retry-After": "45" } }));
+
+    await expect(authService.login({
+      username: "elmira",
+      password: "password123",
+      rememberMe: false,
+      organization: "nexora",
+    })).rejects.toMatchObject({
+      name: "LoginRequestError",
+      status: 429,
+      retryAfterSeconds: 45,
+    });
+  });
+
+  it("reports a connection failure separately from an invalid login", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Failed to fetch"));
+
+    await expect(authService.login({
+      username: "elmira",
+      password: "password123",
+      rememberMe: false,
+      organization: "nexora",
+    })).rejects.toMatchObject({ status: 0 });
+  });
+
   it("changes a password through the cookie-backed authentication endpoint", async () => {
     const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
 
