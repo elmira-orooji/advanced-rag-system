@@ -66,11 +66,12 @@ export async function apiRequest<T>(path: string, init?: ApiRequestInit, fallbac
   return payload as T;
 }
 
-export function apiUpload<T>(path: string, body: FormData, onProgress: (progress: number) => void): Promise<T> {
+export function apiUpload<T>(path: string, body: FormData, onProgress: (progress: number) => void, idempotencyKey?: string): Promise<T> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open("POST", `${API_URL}${path}`);
     request.withCredentials = true;
+    if (idempotencyKey) request.setRequestHeader("Idempotency-Key", idempotencyKey);
     request.upload.addEventListener("progress", (event) => {
       if (event.lengthComputable) onProgress(Math.round((event.loaded / event.total) * 100));
     });

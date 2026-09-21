@@ -181,7 +181,7 @@ export default function UploadFilesPage({ initialAction }: UploadFilesPageProps)
     const { succeeded, failed } = await runUploadQueue({
       items: batch,
       concurrency: MAX_CONCURRENT_UPLOADS,
-      upload: async (entry, onProgress) => { await knowledgeService.uploadDocument(entry.file, uploadSetId, onProgress); },
+      upload: async (entry, onProgress) => { await knowledgeService.uploadDocument(entry.file, uploadSetId, onProgress, entry.id); },
       onUpdate: (id, changes) => updateTask(id, changes),
     });
     if (succeeded > 0) {

@@ -128,10 +128,10 @@ export const knowledgeService = {
     request<DocumentChunk>(`/documents/${documentId}/chunks/${chunkId}`, { method: "PATCH", headers: headers(true), body: JSON.stringify(data) }),
   enrichChunk: (documentId: string, chunkId: string) =>
     request<DocumentChunk>(`/documents/${documentId}/chunks/${chunkId}/enrich`, { method: "POST", headers: headers() }),
-  uploadDocument: async (file: File, setId: string, onProgress: (progress: number) => void = () => undefined) => {
+  uploadDocument: async (file: File, setId: string, onProgress: (progress: number) => void = () => undefined, idempotencyKey?: string) => {
     const form = new FormData();
     form.append("file", file);
-    return apiUpload<KnowledgeDocument>(`/documents/ingest?document_set_id=${encodeURIComponent(setId)}`, form, onProgress);
+    return apiUpload<KnowledgeDocument>(`/documents/ingest?document_set_id=${encodeURIComponent(setId)}`, form, onProgress, idempotencyKey);
   },
   removeDocumentFromSet: (setId: string, documentId: string) =>
     request(`/document-sets/${setId}/documents/${documentId}`, { method: "DELETE", headers: headers() }),

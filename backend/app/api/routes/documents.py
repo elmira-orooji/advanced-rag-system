@@ -1,5 +1,6 @@
 import shutil
 import uuid
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, 
 from fastapi.responses import FileResponse
 from pypdf import PdfReader
 from sqlalchemy import select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import BASE_DIR, MAX_UPLOAD_SIZE, UPLOAD_DIR, document_storage_relative, resolve_document_path
@@ -35,6 +36,7 @@ from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
 from app.services.chunk_enrichment import enrich_chunk
 from app.services.upload_security import stage_and_scan_upload
+from app.services.file_storage import atomic_write_text
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 ALLOWED_FILE_TYPES = {
@@ -44,6 +46,24 @@ ALLOWED_FILE_TYPES = {
     "image/png": (".png",),
     "image/tiff": (".tif", ".tiff"),
 }
+
+
+def _idempotency_key(request: Request) -> str | None:
+    value = request.headers.get("Idempotency-Key", "").strip()
+    if not value:
+        return None
+    if len(value) > 128:
+        raise HTTPException(status_code=422, detail="Idempotency-Key must be at most 128 characters")
+    return value
+
+
+def _upload_fingerprint(path: Path, document_set_id: uuid.UUID | None, chunk_size: int, overlap: int) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        while block := source.read(1024 * 1024):
+            digest.update(block)
+    digest.update(f"|{document_set_id or ''}|{chunk_size}|{overlap}".encode())
+    return digest.hexdigest()
 
 
 def _sync_active_chunks(document: Document) -> None:
@@ -177,7 +197,7 @@ def upload_document(
         extracted_path = document_dir / "extracted.txt"
 
         extracted_text = extract_text(original_path, content_type)
-        extracted_path.write_text(extracted_text, encoding="utf-8")
+        atomic_write_text(extracted_path, extracted_text)
 
         document = Document(
             id=document_id,
@@ -214,6 +234,7 @@ def upload_document(
     status_code=status.HTTP_201_CREATED,
 )
 def ingest_document(
+    request: Request,
     file: UploadFile = File(...),
     chunk_size: int = Query(default=1000, ge=200, le=4000),
     overlap: int = Query(default=200, ge=0, le=1000),
@@ -237,6 +258,7 @@ def ingest_document(
 
     document: Document | None = None
     document_dir: Path | None = None
+    idempotency_key = _idempotency_key(request)
     try:
         content_type = file.content_type or ""
         expected_suffixes = ALLOWED_FILE_TYPES.get(content_type)
@@ -247,10 +269,13 @@ def ingest_document(
         if not safe_filename:
             raise HTTPException(status_code=400, detail="A filename is required")
         document_id, document_dir, original_path, _ = stage_and_scan_upload(file, content_type=content_type, suffix=suffix, filename=safe_filename, user_id=user.id, organization_id=user.organization_id, save_upload=_save_upload)
+        fingerprint = _upload_fingerprint(original_path, document_set_id, chunk_size, overlap)
         document = Document(
             id=document_id, organization_id=user.organization_id, filename=safe_filename,
             content_type=content_type, storage_path=document_storage_relative(original_path),
             status="queued", processing_progress=0, processing_stage="queued", source_type="upload", tags=[],
+            idempotency_key=idempotency_key,
+            idempotency_fingerprint=fingerprint,
         )
         db.add(document)
         db.flush()
@@ -265,7 +290,19 @@ def ingest_document(
             parent_chunk_size=target_set.parent_chunk_size if target_set is not None else None,
         )
         db.add(job)
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            if document_dir is not None:
+                shutil.rmtree(document_dir, ignore_errors=True)
+            existing = db.scalar(select(Document).where(Document.organization_id == user.organization_id, Document.idempotency_key == idempotency_key))
+            if existing is None or existing.idempotency_fingerprint != fingerprint:
+                raise HTTPException(status_code=409, detail="Idempotency-Key was already used for a different upload")
+            existing_job = db.scalar(select(ProcessingJob).where(ProcessingJob.document_id == existing.id))
+            if existing_job is None:
+                raise HTTPException(status_code=409, detail="The original upload is still being finalized; retry shortly")
+            return IngestResponse(**DocumentResponse.model_validate(existing).model_dump(), job_id=existing_job.id)
         db.refresh(document)
         db.refresh(job)
         return IngestResponse(

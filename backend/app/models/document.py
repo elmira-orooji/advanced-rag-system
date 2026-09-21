@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, JSON, String, func
+from sqlalchemy import Date, DateTime, ForeignKey, Integer, JSON, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.database import Base
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
 class Document(Base):
     __tablename__ = "documents"
+    __table_args__ = (UniqueConstraint("organization_id", "idempotency_key", name="uq_documents_org_idempotency_key"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     organization_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("organizations.id", ondelete="RESTRICT"), index=True, nullable=False)
@@ -22,6 +23,8 @@ class Document(Base):
     storage_path: Mapped[str | None] = mapped_column(String(500))
     extracted_text_path: Mapped[str | None] = mapped_column(String(500))
     content_checksum: Mapped[str | None] = mapped_column(String(64), index=True)
+    idempotency_key: Mapped[str | None] = mapped_column(String(128))
+    idempotency_fingerprint: Mapped[str | None] = mapped_column(String(64))
     indexed_child_chunk_size: Mapped[int | None] = mapped_column(Integer)
     indexed_chunk_overlap: Mapped[int | None] = mapped_column(Integer)
     indexed_parent_chunk_size: Mapped[int | None] = mapped_column(Integer)
