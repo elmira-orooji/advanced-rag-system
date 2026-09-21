@@ -22,6 +22,13 @@ services:
       - qdrant_data:/qdrant/storage
     restart: unless-stopped
 
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    restart: unless-stopped
+    cpus: 0.10
+    mem_limit: 128m
+
   migrate:
     build:
       context: ./backend
@@ -38,6 +45,7 @@ services:
     env_file: .env
     environment:
       DOCUMENT_STORAGE_DIR: /data/documents
+      RATE_LIMIT_REDIS_URL: redis://redis:6379/0
     volumes:
       - document_data:/data/documents
       - model_cache:/home/nexora/.cache
@@ -45,6 +53,8 @@ services:
       migrate:
         condition: service_completed_successfully
       qdrant:
+        condition: service_started
+      redis:
         condition: service_started
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]

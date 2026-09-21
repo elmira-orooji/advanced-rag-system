@@ -6,12 +6,14 @@ stale entries to prevent unbounded memory growth.
 
 import time
 import threading
+import hashlib
 from collections import OrderedDict
 from functools import wraps
 from typing import Callable
 
 from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
+from app.core.config import RATE_LIMIT_REDIS_URL
 
 
 class RateLimiter:
@@ -66,10 +68,39 @@ class RateLimiter:
             }
 
 
+class RedisRateLimiter(RateLimiter):
+    """Shared fixed-window limiter for multi-replica deployments."""
+    def __init__(self, namespace: str, max_requests: int, window_seconds: int):
+        super().__init__(max_requests, window_seconds)
+        try:
+            import redis
+        except ImportError as exc:
+            raise RuntimeError("redis is required when RATE_LIMIT_REDIS_URL is configured") from exc
+        self.namespace = namespace
+        self.client = redis.Redis.from_url(RATE_LIMIT_REDIS_URL, decode_responses=True)
+
+    def check(self, key: str) -> tuple[bool, dict[str, str]]:
+        digest = hashlib.sha256(key.encode()).hexdigest()
+        bucket = f"nexora:rate-limit:{self.namespace}:{digest}:{int(time.time() // self.window_seconds)}"
+        count = self.client.incr(bucket)
+        if count == 1:
+            self.client.expire(bucket, self.window_seconds)
+        remaining = max(0, self.max_requests - count)
+        headers = {"X-RateLimit-Limit": str(self.max_requests), "X-RateLimit-Remaining": str(remaining)}
+        if count > self.max_requests:
+            headers["Retry-After"] = str(self.window_seconds)
+            return False, headers
+        return True, headers
+
+
+def _limiter(namespace: str, max_requests: int) -> RateLimiter:
+    return RedisRateLimiter(namespace, max_requests, 60) if RATE_LIMIT_REDIS_URL else RateLimiter(max_requests=max_requests, window_seconds=60)
+
+
 # Default limiters for different endpoint categories
-rag_limiter = RateLimiter(max_requests=20, window_seconds=60)
-auth_limiter = RateLimiter(max_requests=10, window_seconds=60)
-general_limiter = RateLimiter(max_requests=60, window_seconds=60)
+rag_limiter = _limiter("rag", 20)
+auth_limiter = _limiter("auth", 10)
+general_limiter = _limiter("general", 60)
 
 
 def _get_client_ip(request: Request) -> str:
