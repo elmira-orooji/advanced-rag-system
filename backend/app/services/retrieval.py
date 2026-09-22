@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.services.ports import VectorSearchPort
-from app.services.qdrant import QdrantClient
+from app.services.provider_factory import get_vector_store
 from app.services.retrieval_fusion import fuse_results
 from app.services.retrieval_ranking import rerank
 
@@ -243,7 +243,7 @@ def hybrid_search(
     candidate_limit = min(max(limit * 4, 20), 80)
     started = perf_counter()
     vector_results = (
-        (vector_store or QdrantClient()).search(
+        (vector_store or get_vector_store()).search(
             query=query,
             limit=candidate_limit,
             document_id=document_id,

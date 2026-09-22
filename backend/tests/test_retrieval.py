@@ -70,7 +70,7 @@ class RetrievalContextTests(unittest.TestCase):
         stale_point = {"id": str(uuid4()), "score": 0.9, "payload": {
             "chunk_id": str(uuid4()), "document_id": str(self.document_id),
             "chunk_index": 1, "filename": "test.txt", "content": "stale disabled"}}
-        with patch("app.services.retrieval.QdrantClient") as client, \
+        with patch("app.services.retrieval.get_vector_store") as client, \
              patch("app.services.retrieval._rerank", side_effect=lambda q, c, l: c) as rerank:
             client.return_value.search.return_value = [stale_point, self.point(edited_snap)]
             results = hybrid_search(db, "edited", 5, document_id=str(self.document_id))
@@ -86,7 +86,7 @@ class RetrievalContextTests(unittest.TestCase):
             self.result([(self.document_id, datetime.now(timezone.utc))]),
             self.result([(chunk, "test.txt")]),
         ]
-        with patch("app.services.retrieval.QdrantClient") as client:
+        with patch("app.services.retrieval.get_vector_store") as client:
             results = hybrid_search(
                 db, "lexical", 5, document_id=str(self.document_id),
                 vector_weight=0, bm25_weight=1, use_reranker=False,
@@ -118,7 +118,7 @@ class RetrievalContextTests(unittest.TestCase):
             self.result([(chunk, "test.txt")]),
             self.result([(self.document_id, version)]),
         ]
-        with patch("app.services.retrieval.QdrantClient") as client, patch(
+        with patch("app.services.retrieval.get_vector_store") as client, patch(
             "app.services.retrieval._tokens", wraps=retrieval._tokens
         ) as tokens:
             client.return_value.search.return_value = []
