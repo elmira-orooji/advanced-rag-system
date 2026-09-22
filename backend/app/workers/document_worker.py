@@ -20,59 +20,71 @@ def _stop(_signum, _frame) -> None:
     _stopping = True
 
 
+class DocumentWorker:
+    """Small orchestration loop; job state transitions belong to document_jobs."""
+
+    def __init__(self, worker_id: str):
+        self.worker_id = worker_id
+        self.metadata = {"hostname": socket.gethostname(), "pid": os.getpid()}
+        self.next_recovery = 0.0
+        self.next_reconcile = 0.0
+
+    def run(self) -> None:
+        register_worker(worker_id=self.worker_id, worker_type="document_worker", metadata=self.metadata)
+        try:
+            with maintain_worker_heartbeat(self.worker_id, "document_worker", self.metadata, WORKER_HEARTBEAT_SECONDS):
+                self._recover_jobs()
+                started_at = time.monotonic()
+                self.next_recovery = started_at + 60
+                self.next_reconcile = started_at + 10
+                logger.info("Document worker started", extra={"worker_id": self.worker_id})
+                while not _stopping:
+                    self._run_due_maintenance()
+                    if not self._process_next_job():
+                        time.sleep(DOCUMENT_JOB_POLL_SECONDS)
+        finally:
+            deregister_worker(self.worker_id)
+            logger.info("Document worker stopped", extra={"worker_id": self.worker_id})
+
+    def _run_due_maintenance(self) -> None:
+        now = time.monotonic()
+        if now >= self.next_recovery:
+            self._recover_jobs()
+            self.next_recovery = now + 60
+        if now >= self.next_reconcile:
+            self._reconcile_outbox()
+            self.next_reconcile = now + 30
+
+    def _recover_jobs(self) -> None:
+        recovered = recover_document_jobs()
+        if recovered:
+            logger.warning("Recovered abandoned document jobs", extra={"recovered_jobs": recovered})
+
+    def _reconcile_outbox(self) -> None:
+        try:
+            reconciled = reconcile_indexing_outbox()
+            if reconciled:
+                logger.info("Reconciled pending indexing outbox entries", extra={"reconciled": reconciled})
+        except Exception:
+            logger.exception("Indexing outbox reconciliation failed")
+
+    def _process_next_job(self) -> bool:
+        job_id = claim_document_job(self.worker_id)
+        if job_id is None:
+            return False
+        try:
+            with maintain_document_job_lease(job_id, self.worker_id):
+                process_document_job(job_id, self.worker_id)
+        except Exception:
+            logger.exception("Unhandled document job failure", extra={"job_id": str(job_id)})
+        return True
+
+
 def run() -> None:
     worker_id = f"{socket.gethostname()}:{os.getpid()}:{uuid.uuid4().hex[:8]}"
     signal.signal(signal.SIGINT, _stop)
     signal.signal(signal.SIGTERM, _stop)
-
-    # Register this worker in the persistent registry
-    register_worker(
-        worker_id=worker_id,
-        worker_type="document_worker",
-        metadata={"hostname": socket.gethostname(), "pid": os.getpid()},
-    )
-
-    try:
-        metadata = {"hostname": socket.gethostname(), "pid": os.getpid()}
-        with maintain_worker_heartbeat(
-            worker_id,
-            "document_worker",
-            metadata,
-            WORKER_HEARTBEAT_SECONDS,
-        ):
-            recovered = recover_document_jobs()
-            logger.info("Document worker started", extra={"worker_id": worker_id, "recovered_jobs": recovered})
-            next_recovery = time.monotonic() + 60
-            next_reconcile = time.monotonic() + 10
-
-            while not _stopping:
-                now_mono = time.monotonic()
-                if now_mono >= next_recovery:
-                    recovered = recover_document_jobs()
-                    if recovered:
-                        logger.warning("Recovered abandoned document jobs", extra={"recovered_jobs": recovered})
-                    next_recovery = now_mono + 60
-                if now_mono >= next_reconcile:
-                    try:
-                        reconciled = reconcile_indexing_outbox()
-                        if reconciled:
-                            logger.info("Reconciled pending indexing outbox entries", extra={"reconciled": reconciled})
-                    except Exception:
-                        logger.exception("Indexing outbox reconciliation failed")
-                    next_reconcile = now_mono + 30
-
-                job_id = claim_document_job(worker_id)
-                if job_id is None:
-                    time.sleep(DOCUMENT_JOB_POLL_SECONDS)
-                    continue
-                try:
-                    with maintain_document_job_lease(job_id, worker_id):
-                        process_document_job(job_id, worker_id)
-                except Exception:
-                    logger.exception("Unhandled document job failure", extra={"job_id": str(job_id)})
-    finally:
-        deregister_worker(worker_id)
-        logger.info("Document worker stopped", extra={"worker_id": worker_id})
+    DocumentWorker(worker_id).run()
 
 
 if __name__ == "__main__":
