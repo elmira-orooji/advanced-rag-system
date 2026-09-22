@@ -43,6 +43,7 @@ from app.services.document_upload import (
     upload_fingerprint,
     upload_metadata,
 )
+from app.services.document_ingestion_service import DocumentIngestionService
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 def _sync_active_chunks(document: Document) -> None:
@@ -210,76 +211,14 @@ def ingest_document(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    target_set: DocumentSet | None = None
-    if document_set_id is None:
-        if user.role != "admin":
-            raise HTTPException(status_code=403, detail="A permitted knowledge set is required")
-    else:
-        target_set = db.scalar(select(DocumentSet).where(DocumentSet.id == document_set_id, DocumentSet.organization_id == user.organization_id))
-        if target_set is None:
-            raise HTTPException(status_code=404, detail="Document set not found")
-        require_set_access(db, user, document_set_id, "edit")
-    try:
-        chunking = ChunkingRequest(chunk_size=chunk_size, overlap=overlap)
-    except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
-
-    document: Document | None = None
-    document_dir: Path | None = None
-    idempotency_key = get_idempotency_key(request)
-    try:
-        content_type, safe_filename, suffix = upload_metadata(file)
-        document_id, document_dir, original_path, _ = stage_and_scan_upload(file, content_type=content_type, suffix=suffix, filename=safe_filename, user_id=user.id, organization_id=user.organization_id, save_upload=_save_upload)
-        fingerprint = upload_fingerprint(original_path, document_set_id, chunk_size, overlap)
-        document = Document(
-            id=document_id, organization_id=user.organization_id, filename=safe_filename,
-            content_type=content_type, storage_path=document_storage_relative(original_path),
-            status="queued", processing_progress=0, processing_stage="queued", source_type="upload", tags=[],
-            idempotency_key=idempotency_key,
-            idempotency_fingerprint=fingerprint,
-        )
-        db.add(document)
-        db.flush()
-        if document_set_id is not None:
-            document.document_sets.append(target_set)
-        job = ProcessingJob(
-            organization_id=user.organization_id,
-            requested_by_id=user.id,
-            document_id=document.id,
-            chunk_size=target_set.child_chunk_size if target_set is not None else chunking.chunk_size,
-            chunk_overlap=target_set.chunk_overlap if target_set is not None else chunking.overlap,
-            parent_chunk_size=target_set.parent_chunk_size if target_set is not None else None,
-        )
-        db.add(job)
-        try:
-            db.commit()
-        except IntegrityError:
-            db.rollback()
-            if document_dir is not None:
-                shutil.rmtree(document_dir, ignore_errors=True)
-            existing = db.scalar(select(Document).where(Document.organization_id == user.organization_id, Document.idempotency_key == idempotency_key))
-            if existing is None or existing.idempotency_fingerprint != fingerprint:
-                raise HTTPException(status_code=409, detail="Idempotency-Key was already used for a different upload")
-            existing_job = db.scalar(select(ProcessingJob).where(ProcessingJob.document_id == existing.id))
-            if existing_job is None:
-                raise HTTPException(status_code=409, detail="The original upload is still being finalized; retry shortly")
-            return IngestResponse(**DocumentResponse.model_validate(existing).model_dump(), job_id=existing_job.id)
-        db.refresh(document)
-        db.refresh(job)
-        return IngestResponse(
-            **DocumentResponse.model_validate(document).model_dump(),
-            job_id=job.id,
-        )
-    except HTTPException:
-        db.rollback()
-        if document_dir is not None: shutil.rmtree(document_dir, ignore_errors=True)
-        raise
-    except (OSError, SQLAlchemyError) as exc:
-        db.rollback()
-        if document_dir is not None: shutil.rmtree(document_dir, ignore_errors=True)
-        raise HTTPException(status_code=500, detail="Could not queue document processing") from exc
-    finally:
-        file.file.close()
+    return DocumentIngestionService(db).ingest(
+        request,
+        file,
+        user,
+        chunk_size=chunk_size,
+        overlap=overlap,
+        document_set_id=document_set_id,
+    )
 
 
 @router.post("/{document_id}/retry", response_model=IngestResponse)
