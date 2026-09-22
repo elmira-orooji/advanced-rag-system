@@ -1,0 +1,141 @@
+import uuid
+from datetime import datetime, timezone
+
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
+
+from app.core.document_set_access import accessible_set_ids, require_document_access, require_set_access
+from app.models.answer_feedback import AnswerRecord
+from app.models.conversation import Conversation
+from app.models.message import Message
+from app.models.user import User
+from app.repositories.conversation_repository import ConversationRepository
+from app.schemas.conversation import ChatMessageCreate, ConversationCreate, ConversationUpdate
+from app.schemas.search import SearchHit
+from app.services.openrouter import OpenRouterError
+from app.services.provider_factory import get_language_model, get_vector_store
+from app.services.qdrant import QdrantError
+from app.services.query_rewriting import should_rewrite
+from app.services.retrieval import hybrid_search
+
+
+class ConversationService:
+    """Business rules for conversations, scoped retrieval, and generated answers."""
+
+    def __init__(self, db: Session, repository: ConversationRepository | None = None):
+        self.db = db
+        self.repository = repository or ConversationRepository(db)
+
+    def create(self, payload: ConversationCreate, user: User) -> Conversation:
+        scopes = sum(value is not None for value in (payload.document_id, payload.document_set_id, payload.assistant_id)) + int(payload.workspace_scope)
+        if scopes != 1:
+            raise HTTPException(status_code=422, detail="Choose exactly one document, knowledge set, assistant, or workspace scope")
+        if payload.document_id:
+            require_document_access(self.db, user, payload.document_id)
+        if payload.document_set_id:
+            if not self.repository.document_set_exists(payload.document_set_id, user.organization_id):
+                raise HTTPException(status_code=404, detail="Document set not found")
+            require_set_access(self.db, user, payload.document_set_id)
+        if payload.assistant_id:
+            assistant = self.repository.get_assistant(payload.assistant_id, user.organization_id)
+            if assistant is None:
+                raise HTTPException(status_code=404, detail="Assistant not found")
+            self._assistant_set_ids(assistant, user)
+        conversation = Conversation(user_id=user.id, title=payload.title or "New conversation", document_id=payload.document_id, document_set_id=payload.document_set_id, assistant_id=payload.assistant_id, workspace_scope=payload.workspace_scope)
+        self.repository.save(conversation)
+        return conversation
+
+    def list(self, user: User, offset: int, limit: int) -> list[Conversation]:
+        return self.repository.list_for_user(user.id, offset, limit)
+
+    def get(self, conversation_id: uuid.UUID, user: User, *, with_messages: bool = False) -> Conversation:
+        conversation = self.repository.get_owned(conversation_id, user.id, with_messages=with_messages)
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="Conversation not found")
+        return conversation
+
+    def update(self, conversation_id: uuid.UUID, payload: ConversationUpdate, user: User) -> Conversation:
+        conversation = self.get(conversation_id, user)
+        conversation.title = payload.title.strip()
+        conversation.updated_at = datetime.now(timezone.utc)
+        self.repository.save(conversation)
+        return conversation
+
+    def delete(self, conversation_id: uuid.UUID, user: User) -> None:
+        self.repository.delete(self.get(conversation_id, user))
+
+    def send_message(self, conversation_id: uuid.UUID, payload: ChatMessageCreate, user: User) -> Message:
+        conversation = self.get(conversation_id, user, with_messages=True)
+        history = [{"role": message.role, "content": message.content} for message in conversation.messages[-8:]]
+        document_id, document_ids, model_id, instructions, hybrid = self._resolve_scope(conversation, user)
+        retrieval_query = payload.content
+        if (document_id or document_ids) and should_rewrite(payload.content, history):
+            try:
+                retrieval_query = get_language_model(model=model_id).rewrite_query(payload.content, history)
+            except OpenRouterError:
+                retrieval_query = payload.content
+        try:
+            points = []
+            if document_id or document_ids:
+                vector_store = get_vector_store()
+                vector_store.ensure_collection()
+                points = hybrid_search(self.db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids, vector_store=vector_store)
+        except QdrantError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
+        answer_basis = ("hybrid" if sources else "general") if hybrid else "sources"
+        if sources or hybrid:
+            try:
+                answer = get_language_model(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
+            except OpenRouterError as exc:
+                raise HTTPException(status_code=502, detail=str(exc)) from exc
+        else:
+            answer = self._no_results_message(payload.content)
+        record = AnswerRecord(user_id=user.id, assistant_id=conversation.assistant_id, document_set_id=conversation.document_set_id, question=payload.content, answer=answer, grounded=bool(sources), citation_count=len(sources))
+        self.db.add(record)
+        self.db.flush()
+        assistant_message = Message(role="assistant", content=answer, sources=[source.model_dump(mode="json") for source in sources] or None, answer_basis=answer_basis, answer_id=record.id)
+        conversation.messages.extend([Message(role="user", content=payload.content), assistant_message])
+        if conversation.title == "New conversation":
+            conversation.title = payload.content[:200]
+        conversation.updated_at = datetime.now(timezone.utc)
+        self.db.commit()
+        self.db.refresh(assistant_message)
+        return assistant_message
+
+    def _resolve_scope(self, conversation: Conversation, user: User) -> tuple[str | None, list[str] | None, str | None, str | None, bool]:
+        if conversation.document_id:
+            require_document_access(self.db, user, conversation.document_id)
+            return str(conversation.document_id), None, None, None, False
+        if conversation.document_set_id:
+            require_set_access(self.db, user, conversation.document_set_id)
+            return None, self.repository.indexed_document_ids_for_set(conversation.document_set_id), None, None, False
+        if conversation.assistant_id:
+            assistant = self.repository.get_assistant(conversation.assistant_id, user.organization_id)
+            if assistant is None:
+                raise HTTPException(status_code=409, detail="Conversation assistant is unavailable")
+            set_ids = self._assistant_set_ids(assistant, user)
+            return None, self.repository.indexed_document_ids_for_sets(set_ids) if set_ids else [], assistant.model_id, assistant.instructions, assistant.answer_mode == "hybrid"
+        if conversation.workspace_scope:
+            set_ids = accessible_set_ids(self.db, user)
+            if not set_ids and user.role != "admin":
+                return None, [], None, None, False
+            return None, self.repository.indexed_workspace_document_ids(user.organization_id, set_ids), None, None, False
+        raise HTTPException(status_code=409, detail="Conversation has no valid knowledge scope")
+
+    def _assistant_set_ids(self, assistant, user: User) -> list[uuid.UUID]:
+        if not assistant.is_active:
+            raise HTTPException(status_code=409, detail="Assistant is inactive")
+        set_ids = [item.id for item in assistant.document_sets]
+        allowed = accessible_set_ids(self.db, user)
+        if allowed is not None:
+            set_ids = [value for value in set_ids if value in allowed]
+        if not set_ids and user.role != "admin":
+            raise HTTPException(status_code=403, detail="You do not have access to this assistant's knowledge")
+        return set_ids
+
+    @staticmethod
+    def _no_results_message(question: str) -> str:
+        if any("\u0600" <= character <= "\u06ff" for character in question):
+            return "در اسناد مجاز اطلاعات مرتبطی برای پاسخ پیدا نشد."
+        return "No relevant information was found in the permitted indexed documents."

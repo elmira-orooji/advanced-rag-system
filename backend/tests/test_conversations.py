@@ -6,8 +6,8 @@ from uuid import uuid4
 
 from fastapi import HTTPException
 
-from app.api.routes.conversations import send_message
 from app.schemas.conversation import ChatMessageCreate
+from app.services.conversation_service import ConversationService
 
 
 class ConversationAssistantTests(unittest.TestCase):
@@ -20,18 +20,19 @@ class ConversationAssistantTests(unittest.TestCase):
         self.db = MagicMock()
         self.db.scalar.return_value = self.assistant
         self.db.scalars.return_value.all.return_value = []
+        self.service = ConversationService(self.db)
         stack = self.enterContext(ExitStack())
-        stack.enter_context(patch("app.api.routes.conversations._owned", return_value=self.conversation))
-        stack.enter_context(patch("app.api.routes.conversations.accessible_set_ids", return_value=None))
-        self.rewrite = stack.enter_context(patch("app.api.routes.conversations.should_rewrite", return_value=False))
-        self.qdrant = stack.enter_context(patch("app.api.routes.conversations.get_vector_store"))
-        self.search = stack.enter_context(patch("app.api.routes.conversations.hybrid_search", return_value=[]))
-        self.client = stack.enter_context(patch("app.api.routes.conversations.get_language_model"))
+        stack.enter_context(patch.object(self.service.repository, "get_owned", return_value=self.conversation))
+        stack.enter_context(patch("app.services.conversation_service.accessible_set_ids", return_value=None))
+        self.rewrite = stack.enter_context(patch("app.services.conversation_service.should_rewrite", return_value=False))
+        self.qdrant = stack.enter_context(patch("app.services.conversation_service.get_vector_store"))
+        self.search = stack.enter_context(patch("app.services.conversation_service.hybrid_search", return_value=[]))
+        self.client = stack.enter_context(patch("app.services.conversation_service.get_language_model"))
         self.client.return_value.answer.return_value = "Generated answer"
         self.client.return_value.rewrite_query.return_value = "Rewritten question"
 
     def send(self):
-        return send_message(self.conversation.id, ChatMessageCreate(content="Test question"), self.db, self.user)
+        return self.service.send_message(self.conversation.id, ChatMessageCreate(content="Test question"), self.user)
 
     def test_hybrid_without_documents_uses_selected_model(self):
         result = self.send()
@@ -71,7 +72,7 @@ class ConversationAssistantTests(unittest.TestCase):
 
     def test_hybrid_does_not_bypass_member_permissions(self):
         self.user.role = "user"
-        with patch("app.api.routes.conversations.accessible_set_ids", return_value=set()):
+        with patch("app.services.conversation_service.accessible_set_ids", return_value=set()):
             with self.assertRaises(HTTPException) as raised:
                 self.send()
         self.assertEqual(raised.exception.status_code, 403)
