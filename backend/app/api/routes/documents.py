@@ -1,17 +1,16 @@
 import shutil
 import uuid
-import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from pypdf import PdfReader
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
-from app.core.config import BASE_DIR, MAX_UPLOAD_SIZE, UPLOAD_DIR, document_storage_relative, resolve_document_path
+from app.core.config import BASE_DIR, UPLOAD_DIR, document_storage_relative, resolve_document_path
 from app.core.document_set_access import require_document_access, require_set_access
 from app.api.routes.auth import get_current_user
 from app.db.database import get_db
@@ -37,35 +36,15 @@ from app.services.text_chunker import hierarchical_chunks
 from app.services.chunk_enrichment import enrich_chunk
 from app.services.upload_security import stage_and_scan_upload
 from app.services.file_storage import atomic_write_text
+from app.services.document_upload import (
+    ALLOWED_FILE_TYPES,
+    idempotency_key as get_idempotency_key,
+    save_upload as _save_upload,
+    upload_fingerprint,
+    upload_metadata,
+)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
-ALLOWED_FILE_TYPES = {
-    "application/pdf": (".pdf",),
-    "text/plain": (".txt",),
-    "image/jpeg": (".jpg", ".jpeg"),
-    "image/png": (".png",),
-    "image/tiff": (".tif", ".tiff"),
-}
-
-
-def _idempotency_key(request: Request) -> str | None:
-    value = request.headers.get("Idempotency-Key", "").strip()
-    if not value:
-        return None
-    if len(value) > 128:
-        raise HTTPException(status_code=422, detail="Idempotency-Key must be at most 128 characters")
-    return value
-
-
-def _upload_fingerprint(path: Path, document_set_id: uuid.UUID | None, chunk_size: int, overlap: int) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        while block := source.read(1024 * 1024):
-            digest.update(block)
-    digest.update(f"|{document_set_id or ''}|{chunk_size}|{overlap}".encode())
-    return digest.hexdigest()
-
-
 def _sync_active_chunks(document: Document) -> None:
     client = QdrantClient()
     client.ensure_collection()
@@ -177,18 +156,7 @@ def upload_document(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ):
-    content_type = file.content_type or ""
-    expected_suffixes = ALLOWED_FILE_TYPES.get(content_type)
-    safe_filename = Path(file.filename or "").name
-    suffix = Path(safe_filename).suffix.lower()
-
-    if expected_suffixes is None or suffix not in expected_suffixes:
-        raise HTTPException(
-            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail="Only PDF, UTF-8 TXT, JPEG, PNG, and TIFF files are supported",
-        )
-    if not safe_filename:
-        raise HTTPException(status_code=400, detail="A filename is required")
+    content_type, safe_filename, suffix = upload_metadata(file)
 
     document_dir: Path | None = None
 
@@ -258,18 +226,11 @@ def ingest_document(
 
     document: Document | None = None
     document_dir: Path | None = None
-    idempotency_key = _idempotency_key(request)
+    idempotency_key = get_idempotency_key(request)
     try:
-        content_type = file.content_type or ""
-        expected_suffixes = ALLOWED_FILE_TYPES.get(content_type)
-        safe_filename = Path(file.filename or "").name
-        suffix = Path(safe_filename).suffix.lower()
-        if expected_suffixes is None or suffix not in expected_suffixes:
-            raise HTTPException(status_code=415, detail="Only PDF, UTF-8 TXT, JPEG, PNG, and TIFF files are supported")
-        if not safe_filename:
-            raise HTTPException(status_code=400, detail="A filename is required")
+        content_type, safe_filename, suffix = upload_metadata(file)
         document_id, document_dir, original_path, _ = stage_and_scan_upload(file, content_type=content_type, suffix=suffix, filename=safe_filename, user_id=user.id, organization_id=user.organization_id, save_upload=_save_upload)
-        fingerprint = _upload_fingerprint(original_path, document_set_id, chunk_size, overlap)
+        fingerprint = upload_fingerprint(original_path, document_set_id, chunk_size, overlap)
         document = Document(
             id=document_id, organization_id=user.organization_id, filename=safe_filename,
             content_type=content_type, storage_path=document_storage_relative(original_path),
@@ -340,20 +301,6 @@ def retry_document(document_id: uuid.UUID, db: Session = Depends(get_db), user: 
     document.status = "queued"; document.processing_progress = 0; document.processing_stage = "queued"; document.processing_error = None
     db.commit(); db.refresh(job); db.refresh(document)
     return IngestResponse(**DocumentResponse.model_validate(document).model_dump(), job_id=job.id)
-
-
-def _save_upload(file: UploadFile, destination: Path) -> int:
-    total_size = 0
-    with destination.open("wb") as output:
-        while chunk := file.file.read(1024 * 1024):
-            total_size += len(chunk)
-            if total_size > MAX_UPLOAD_SIZE:
-                raise HTTPException(
-                    status_code=status.HTTP_413_CONTENT_TOO_LARGE,
-                    detail="File size cannot exceed 10 MB",
-                )
-            output.write(chunk)
-    return total_size
 
 
 @router.post("/{document_id}/chunks", response_model=DocumentDetail)

@@ -132,7 +132,7 @@ def stage_and_scan_upload(file, *, content_type: str, suffix: str, filename: str
 
 def _log_rejection(filename: str, content_type: str, size: int, path: Path, user_id: uuid.UUID, organization_id: uuid.UUID, reason: str, signature: str | None = None) -> None:
     digest = _file_sha256(path)
-    logger.warning("Upload rejected by security gate", extra={"reason": reason, "signature": signature, "filename": filename, "content_type": content_type, "size": size, "sha256": digest, "user_id": str(user_id), "organization_id": str(organization_id)})
+    logger.warning("Upload rejected by security gate", extra={"reason": reason, "signature": signature, "upload_filename": filename, "content_type": content_type, "size": size, "sha256": digest, "user_id": str(user_id), "organization_id": str(organization_id)})
 
 
 def _file_sha256(path: Path) -> str:
