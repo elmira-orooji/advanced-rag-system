@@ -15,10 +15,11 @@ from app.models.user import User
 from app.schemas.rag import Citation, RagRequest, RagResponse
 from app.schemas.search import SearchHit
 from app.core.rate_limit import rag_limiter, rate_limit
-from app.services.openrouter import OpenRouterClient, OpenRouterError
+from app.services.openrouter import OpenRouterError
+from app.services.provider_factory import get_language_model, get_vector_store
 from app.services.operational_alerts import send_operational_alert
 from app.services.operational_metrics import increment
-from app.services.qdrant import QdrantClient, QdrantError
+from app.services.qdrant import QdrantError
 from app.services.retrieval import hybrid_search
 from app.services.usage_tracking import record_usage
 
@@ -81,14 +82,14 @@ def answer_question(
         else:
             document_ids = [str(item) for item in available_ids]
     try:
-        qdrant = QdrantClient()
+        qdrant = get_vector_store()
         qdrant.ensure_collection()
         points = hybrid_search(
             db,
             query=payload.question,
             limit=payload.limit,
             document_id=str(payload.document_id) if payload.document_id else None,
-            document_ids=document_ids,
+            document_ids=document_ids, vector_store=qdrant,
         )
     except QdrantError as exc:
         increment("rag_failures_total", dependency="qdrant")
@@ -117,7 +118,7 @@ def answer_question(
 
     contexts = [source.model_dump(mode="json") for source in sources]
     try:
-        llm_result = OpenRouterClient().answer_with_usage(payload.question, contexts)
+        llm_result = get_language_model().answer_with_usage(payload.question, contexts)
         answer = llm_result.content
         record_usage(db, user.id, payload.document_set_id, "rag_answer", llm_result)
     except OpenRouterError as exc:

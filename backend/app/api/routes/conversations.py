@@ -17,8 +17,9 @@ from app.models.message import Message
 from app.models.user import User
 from app.schemas.conversation import ChatMessageCreate, ConversationCreate, ConversationDetail, ConversationResponse, ConversationUpdate, MessageResponse
 from app.schemas.search import SearchHit
-from app.services.openrouter import OpenRouterClient, OpenRouterError
-from app.services.qdrant import QdrantClient, QdrantError
+from app.services.openrouter import OpenRouterError
+from app.services.provider_factory import get_language_model, get_vector_store
+from app.services.qdrant import QdrantError
 from app.services.retrieval import hybrid_search
 from app.services.query_rewriting import should_rewrite
 
@@ -119,18 +120,18 @@ def send_message(conversation_id: uuid.UUID, payload: ChatMessageCreate, db: Ses
     retrieval_query = payload.content
     if (document_id or document_ids) and should_rewrite(payload.content, history):
         try:
-            retrieval_query = OpenRouterClient(model=model_id).rewrite_query(payload.content, history)
+            retrieval_query = get_language_model(model=model_id).rewrite_query(payload.content, history)
         except OpenRouterError:
             retrieval_query = payload.content
     try:
         points = []
         if document_id or document_ids:
-            qdrant = QdrantClient(); qdrant.ensure_collection(); points = hybrid_search(db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids)
+            qdrant = get_vector_store(); qdrant.ensure_collection(); points = hybrid_search(db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids, vector_store=qdrant)
     except QdrantError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
     answer_basis = ("hybrid" if sources else "general") if hybrid else "sources"
     if sources or hybrid:
-        try: answer = OpenRouterClient(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
+        try: answer = get_language_model(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
         except OpenRouterError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     else: answer = _no_results_message(payload.content)
     user_message = Message(role="user", content=payload.content)

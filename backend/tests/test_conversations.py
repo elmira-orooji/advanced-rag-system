@@ -24,9 +24,9 @@ class ConversationAssistantTests(unittest.TestCase):
         stack.enter_context(patch("app.api.routes.conversations._owned", return_value=self.conversation))
         stack.enter_context(patch("app.api.routes.conversations.accessible_set_ids", return_value=None))
         self.rewrite = stack.enter_context(patch("app.api.routes.conversations.should_rewrite", return_value=False))
-        self.qdrant = stack.enter_context(patch("app.api.routes.conversations.QdrantClient"))
+        self.qdrant = stack.enter_context(patch("app.api.routes.conversations.get_vector_store"))
         self.search = stack.enter_context(patch("app.api.routes.conversations.hybrid_search", return_value=[]))
-        self.client = stack.enter_context(patch("app.api.routes.conversations.OpenRouterClient"))
+        self.client = stack.enter_context(patch("app.api.routes.conversations.get_language_model"))
         self.client.return_value.answer.return_value = "Generated answer"
         self.client.return_value.rewrite_query.return_value = "Rewritten question"
 
