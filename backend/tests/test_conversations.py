@@ -20,14 +20,15 @@ class ConversationAssistantTests(unittest.TestCase):
         self.db = MagicMock()
         self.db.scalar.return_value = self.assistant
         self.db.scalars.return_value.all.return_value = []
-        self.service = ConversationService(self.db)
+        self.providers = MagicMock()
+        self.qdrant = self.providers.vector_store
+        self.client = self.providers.language_model
+        self.service = ConversationService(self.db, providers=self.providers)
         stack = self.enterContext(ExitStack())
         stack.enter_context(patch.object(self.service.repository, "get_owned", return_value=self.conversation))
         stack.enter_context(patch("app.services.conversation_service.accessible_set_ids", return_value=None))
         self.rewrite = stack.enter_context(patch("app.services.conversation_service.should_rewrite", return_value=False))
-        self.qdrant = stack.enter_context(patch("app.services.conversation_service.get_vector_store"))
         self.search = stack.enter_context(patch("app.services.conversation_service.hybrid_search", return_value=[]))
-        self.client = stack.enter_context(patch("app.services.conversation_service.get_language_model"))
         self.client.return_value.answer.return_value = "Generated answer"
         self.client.return_value.rewrite_query.return_value = "Rewritten question"
 

@@ -8,12 +8,13 @@ from app.db.database import get_db
 from app.models.user import User
 from app.schemas.conversation import ChatMessageCreate, ConversationCreate, ConversationDetail, ConversationResponse, ConversationUpdate, MessageResponse
 from app.services.conversation_service import ConversationService
+from app.services.provider_factory import get_provider_factory
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
 
 def get_conversation_service(db: Session) -> ConversationService:
-    return ConversationService(db)
+    return ConversationService(db, providers=get_provider_factory())
 
 
 @router.post("", response_model=ConversationResponse, status_code=status.HTTP_201_CREATED)

@@ -13,7 +13,7 @@ from app.repositories.conversation_repository import ConversationRepository
 from app.schemas.conversation import ChatMessageCreate, ConversationCreate, ConversationUpdate
 from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterError
-from app.services.provider_factory import get_language_model, get_vector_store
+from app.services.ports import ProviderFactoryPort
 from app.services.qdrant import QdrantError
 from app.services.query_rewriting import should_rewrite
 from app.services.retrieval import hybrid_search
@@ -22,8 +22,9 @@ from app.services.retrieval import hybrid_search
 class ConversationService:
     """Business rules for conversations, scoped retrieval, and generated answers."""
 
-    def __init__(self, db: Session, repository: ConversationRepository | None = None):
+    def __init__(self, db: Session, providers: ProviderFactoryPort, repository: ConversationRepository | None = None):
         self.db = db
+        self.providers = providers
         self.repository = repository or ConversationRepository(db)
 
     def create(self, payload: ConversationCreate, user: User) -> Conversation:
@@ -71,13 +72,13 @@ class ConversationService:
         retrieval_query = payload.content
         if (document_id or document_ids) and should_rewrite(payload.content, history):
             try:
-                retrieval_query = get_language_model(model=model_id).rewrite_query(payload.content, history)
+                retrieval_query = self.providers.language_model(model=model_id).rewrite_query(payload.content, history)
             except OpenRouterError:
                 retrieval_query = payload.content
         try:
             points = []
             if document_id or document_ids:
-                vector_store = get_vector_store()
+                vector_store = self.providers.vector_store()
                 vector_store.ensure_collection()
                 points = hybrid_search(self.db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids, vector_store=vector_store)
         except QdrantError as exc:
@@ -86,7 +87,7 @@ class ConversationService:
         answer_basis = ("hybrid" if sources else "general") if hybrid else "sources"
         if sources or hybrid:
             try:
-                answer = get_language_model(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
+                answer = self.providers.language_model(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
             except OpenRouterError as exc:
                 raise HTTPException(status_code=502, detail=str(exc)) from exc
         else:

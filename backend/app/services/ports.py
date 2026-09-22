@@ -8,6 +8,8 @@ from typing import Any, Protocol
 
 
 class VectorSearchPort(Protocol):
+    def ensure_collection(self) -> None: ...
+
     def search(
         self,
         query: str,
@@ -25,3 +27,11 @@ class LanguageModelPort(Protocol):
     def rewrite_query(self, question: str, history: list[dict[str, str]]) -> str: ...
 
     def research_plan(self, question: str, max_steps: int) -> list[str]: ...
+
+
+class ProviderFactoryPort(Protocol):
+    """Creates infrastructure adapters for an application service."""
+
+    def vector_store(self) -> VectorSearchPort: ...
+
+    def language_model(self, model: str | None = None) -> LanguageModelPort: ...
