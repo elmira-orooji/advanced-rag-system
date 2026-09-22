@@ -12,6 +12,8 @@ from sqlalchemy.orm import Session
 from app.models.chunk import Chunk
 from app.models.document import Document
 from app.services.qdrant import QdrantClient
+from app.services.retrieval_fusion import fuse_results
+from app.services.retrieval_ranking import rerank
 
 TOKEN_PATTERN = re.compile(r"[\w\u0600-\u06ff]+", re.UNICODE)
 RRF_K = 60
@@ -173,33 +175,9 @@ def _lexical_corpus(db: Session, scoped_ids: list[uuid.UUID]) -> _LexicalCorpus:
     return corpus
 
 
-def _proximity(query_terms: set[str], tokens: list[str]) -> float:
-    positions = [index for index, token in enumerate(tokens) if token in query_terms]
-    if len(positions) < 2:
-        return 0.0
-    return min(len(query_terms) / (positions[-1] - positions[0] + 1), 1.0)
-
-
 def _rerank(query: str, candidates: list[dict], limit: int) -> list[dict]:
-    query_tokens = _tokens(query)
-    query_terms = set(query_tokens)
-    if not query_terms:
-        return candidates[:limit]
-    normalized_query = " ".join(query_tokens)
-    reranked = []
-    for candidate in candidates:
-        payload = candidate["payload"]
-        content_tokens = _tokens(payload.get("content", ""))
-        content_terms = set(content_tokens)
-        filename_terms = set(_tokens(payload.get("filename", "")))
-        coverage = len(query_terms & content_terms) / len(query_terms)
-        title_coverage = len(query_terms & filename_terms) / len(query_terms)
-        phrase_match = normalized_query in " ".join(content_tokens)
-        hybrid_score = float(candidate.get("score", 0.0))
-        score = 0.50 * hybrid_score + 0.25 * coverage + 0.10 * _proximity(query_terms, content_tokens) + 0.10 * float(phrase_match) + 0.05 * title_coverage
-        reranked.append({**candidate, "score": min(score, 1.0), "retrieval": {**candidate.get("retrieval", {}), "reranked": True, "hybrid_score": round(hybrid_score, 6), "term_coverage": round(coverage, 6), "phrase_match": phrase_match}})
-    reranked.sort(key=lambda item: item["score"], reverse=True)
-    return reranked[:limit]
+    """Compatibility wrapper that keeps tokenization configurable in this module."""
+    return rerank(query, candidates, limit, _tokens)
 
 
 def _expand_parents(chunks: list[_ChunkSnapshot], ranked_children: list[dict], limit: int) -> list[dict]:
@@ -259,30 +237,14 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
     lexical_results = _bm25(query, chunks, candidate_limit, corpus) if bm25_weight > 0 else []
     active_chunks = {str(c.id): c for c in chunks}
     lexical_ms = round((perf_counter() - started) * 1000, 2)
-    fused: dict[str, dict] = {}
-    for source, source_name in ((vector_results, "vector"), (lexical_results, "bm25")):
-        for rank, result in enumerate(source, 1):
-            chunk_id = str(result.get("payload", {}).get("chunk_id") or result.get("id"))
-            if chunk_id not in active_chunks:
-                continue
-            chunk = active_chunks[chunk_id]
-            # Vector payloads may be stale after an edit or a failed reindex.
-            result = {**result, "payload": {
-                "chunk_id": chunk_id, "document_id": str(chunk.document_id),
-                "filename": chunk.filename, "chunk_index": chunk.chunk_index, "content": chunk.content,
-            }}
-            item = fused.setdefault(chunk_id, {"point": result, "score": 0.0, "vector_rank": None, "lexical_rank": None})
-            item["score"] += (vector_weight if source_name == "vector" else bm25_weight) / (RRF_K + rank)
-            if source_name == "vector":
-                item["vector_rank"] = rank
-                item["point"] = result
-            else:
-                item["lexical_rank"] = rank
-                if item["vector_rank"] is None:
-                    item["point"] = result
-    ranked = sorted(fused.values(), key=lambda item: item["score"], reverse=True)
-    maximum = (vector_weight + bm25_weight) / (RRF_K + 1)
-    candidates = [{**item["point"], "score": min(item["score"] / maximum, 1.0), "retrieval": {"method": "hybrid", "vector_rank": item["vector_rank"], "bm25_rank": item["lexical_rank"]}} for item in ranked]
+    candidates = fuse_results(
+        vector_results,
+        lexical_results,
+        active_chunks,
+        vector_weight,
+        bm25_weight,
+        RRF_K,
+    )
     started = perf_counter()
     reranked_children = _rerank(query, candidates, candidate_limit) if use_reranker else candidates[:candidate_limit]
     rerank_ms = round((perf_counter() - started) * 1000, 2)
