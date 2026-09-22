@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.models.chunk import Chunk
 from app.models.document import Document
+from app.services.ports import VectorSearchPort
 from app.services.qdrant import QdrantClient
 from app.services.retrieval_fusion import fuse_results
 from app.services.retrieval_ranking import rerank
@@ -216,7 +217,19 @@ def _expand_parents(chunks: list[_ChunkSnapshot], ranked_children: list[dict], l
     return expanded
 
 
-def hybrid_search(db: Session, query: str, limit: int, document_id: str | None = None, document_ids: list[str] | None = None, trace: dict | None = None, vector_weight: float = 1.0, bm25_weight: float = 1.0, use_reranker: bool = True) -> list[dict]:
+def hybrid_search(
+    db: Session,
+    query: str,
+    limit: int,
+    document_id: str | None = None,
+    document_ids: list[str] | None = None,
+    trace: dict | None = None,
+    vector_weight: float = 1.0,
+    bm25_weight: float = 1.0,
+    use_reranker: bool = True,
+    vector_store: VectorSearchPort | None = None,
+) -> list[dict]:
+    """Retrieve scoped context, optionally using an injected vector-store adapter."""
     if vector_weight <= 0 and bm25_weight <= 0:
         raise ValueError("At least one retrieval weight must be greater than zero")
     if document_id:
@@ -229,7 +242,16 @@ def hybrid_search(db: Session, query: str, limit: int, document_id: str | None =
         raise ValueError("Hybrid search requires an explicit document scope")
     candidate_limit = min(max(limit * 4, 20), 80)
     started = perf_counter()
-    vector_results = QdrantClient().search(query=query, limit=candidate_limit, document_id=document_id, document_ids=document_ids) if vector_weight > 0 else []
+    vector_results = (
+        (vector_store or QdrantClient()).search(
+            query=query,
+            limit=candidate_limit,
+            document_id=document_id,
+            document_ids=document_ids,
+        )
+        if vector_weight > 0
+        else []
+    )
     vector_ms = round((perf_counter() - started) * 1000, 2) if vector_weight > 0 else 0.0
     started = perf_counter()
     corpus = _lexical_corpus(db, scoped_ids)

@@ -94,6 +94,20 @@ class RetrievalContextTests(unittest.TestCase):
         client.assert_not_called()
         self.assertEqual(results[0]["payload"]["content"], "lexical match")
 
+    def test_hybrid_search_accepts_an_injected_vector_store(self):
+        chunk = self.chunk(0, "injected result")
+        db = MagicMock()
+        db.execute.side_effect = [
+            self.result([(self.document_id, datetime.now(timezone.utc))]),
+            self.result([(chunk, "test.txt")]),
+        ]
+        store = MagicMock()
+        store.search.return_value = []
+
+        hybrid_search(db, "injected", 5, document_id=str(self.document_id), vector_store=store)
+
+        store.search.assert_called_once()
+
     def test_unchanged_scope_reuses_cached_corpus_after_version_check(self):
         chunk = self.chunk(0, "cached lexical text")
         version = datetime.now(timezone.utc)
