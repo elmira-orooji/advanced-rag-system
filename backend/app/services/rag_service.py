@@ -3,6 +3,7 @@ import re
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.document_set_access import require_document_access, require_set_access
 from app.core.metadata_filters import filter_document_ids
@@ -20,6 +21,7 @@ from app.services.qdrant import QdrantError
 from app.services.provider_failures import provider_http_error
 from app.services.retrieval import hybrid_search
 from app.services.usage_tracking import record_usage
+from app.services.transactions import commit_or_rollback
 
 
 class RagService:
@@ -79,16 +81,22 @@ class RagService:
         answer, citation_ids = self._normalize_citations(answer, len(sources))
         citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename, chunk_index=source.chunk_index, excerpt=source.content, score=source.score) for index, source in enumerate(sources, start=1) if index in citation_ids]
         record = AnswerRecord(user_id=user.id, document_set_id=payload.document_set_id, question=payload.question, answer=answer, grounded=bool(citations), citation_count=len(citations))
-        self.db.add(record)
-        self.db.commit()
+        try:
+            self.db.add(record)
+            commit_or_rollback(self.db)
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=500, detail="Could not save the answer") from exc
         self.db.refresh(record)
         return RagResponse(response_id=record.id, question=payload.question, answer=answer, grounded=bool(citations), citations=citations, sources=sources)
 
     def _save_no_results(self, payload: RagRequest, user: User) -> RagResponse:
         message = "No relevant information was found in the indexed documents."
         record = AnswerRecord(user_id=user.id, document_set_id=payload.document_set_id, question=payload.question, answer=message, grounded=False, citation_count=0)
-        self.db.add(record)
-        self.db.commit()
+        try:
+            self.db.add(record)
+            commit_or_rollback(self.db)
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=500, detail="Could not save the answer") from exc
         self.db.refresh(record)
         return RagResponse(response_id=record.id, question=payload.question, answer=message, grounded=False, citations=[], sources=[])
 

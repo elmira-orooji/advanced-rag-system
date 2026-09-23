@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.core.document_set_access import accessible_set_ids, require_document_access, require_set_access
 from app.models.answer_feedback import AnswerRecord
@@ -18,6 +19,7 @@ from app.services.qdrant import QdrantError
 from app.services.provider_failures import provider_http_error
 from app.services.query_rewriting import should_rewrite
 from app.services.retrieval import hybrid_search
+from app.services.transactions import commit_or_rollback
 
 
 class ConversationService:
@@ -94,14 +96,17 @@ class ConversationService:
         else:
             answer = self._no_results_message(payload.content)
         record = AnswerRecord(user_id=user.id, assistant_id=conversation.assistant_id, document_set_id=conversation.document_set_id, question=payload.content, answer=answer, grounded=bool(sources), citation_count=len(sources))
-        self.db.add(record)
-        self.db.flush()
-        assistant_message = Message(role="assistant", content=answer, sources=[source.model_dump(mode="json") for source in sources] or None, answer_basis=answer_basis, answer_id=record.id)
-        conversation.messages.extend([Message(role="user", content=payload.content), assistant_message])
-        if conversation.title == "New conversation":
-            conversation.title = payload.content[:200]
-        conversation.updated_at = datetime.now(timezone.utc)
-        self.db.commit()
+        try:
+            self.db.add(record)
+            self.db.flush()
+            assistant_message = Message(role="assistant", content=answer, sources=[source.model_dump(mode="json") for source in sources] or None, answer_basis=answer_basis, answer_id=record.id)
+            conversation.messages.extend([Message(role="user", content=payload.content), assistant_message])
+            if conversation.title == "New conversation":
+                conversation.title = payload.content[:200]
+            conversation.updated_at = datetime.now(timezone.utc)
+            commit_or_rollback(self.db)
+        except SQLAlchemyError as exc:
+            raise HTTPException(status_code=500, detail="Could not save the conversation message") from exc
         self.db.refresh(assistant_message)
         return assistant_message
 
