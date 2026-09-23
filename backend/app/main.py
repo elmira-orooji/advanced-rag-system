@@ -22,6 +22,12 @@ from app.models.processing_job import ProcessingJob
 from app.models.indexing_outbox import IndexingOutbox
 from app.models.operational_alert import OperationalAlert
 from app.services.operational_metrics import increment, render
+from app.services.performance_measurement import (
+    begin_request_measurement,
+    finish_request_measurement,
+    process_memory_bytes,
+    register_sqlalchemy_query_metrics,
+)
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.worker_heartbeat import get_available_worker_types
 from app.core.rate_limit import RateLimitMiddleware
@@ -33,6 +39,7 @@ from app.api.contracts import API_MAJOR_VERSION, API_PREFIX, error_body
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Nexora API", version="1.0.0")
+register_sqlalchemy_query_metrics()
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -48,6 +55,7 @@ async def collect_request_metrics(request, call_next):
     supplied_request_id = request.headers.get("X-Request-ID", "").strip()
     request_id = supplied_request_id[:128] if supplied_request_id and supplied_request_id.isprintable() else str(uuid.uuid4())
     request_token = set_request_id(request_id)
+    measurement_token = begin_request_measurement(request.url.path)
     started = time.perf_counter()
     try:
         response = await call_next(request)
@@ -65,7 +73,20 @@ async def collect_request_metrics(request, call_next):
         return response
     finally:
         increment("http_requests_total", path=request.url.path, method=request.method)
-        increment("http_request_duration_seconds_total", time.perf_counter() - started, path=request.url.path)
+        elapsed_seconds = time.perf_counter() - started
+        increment("http_request_duration_seconds_total", elapsed_seconds, path=request.url.path)
+        measurement = finish_request_measurement(measurement_token, elapsed_seconds)
+        if measurement is not None:
+            logger.info(
+                "HTTP request measurement",
+                extra={
+                    "path": request.url.path,
+                    "duration_ms": round(elapsed_seconds * 1000, 2),
+                    "db_query_count": measurement.query_count,
+                    "db_query_duration_ms": round(measurement.query_duration_seconds * 1000, 2),
+                    "memory_rss_bytes": process_memory_bytes(),
+                },
+            )
         reset_request_id(request_token)
 
 

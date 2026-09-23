@@ -1,4 +1,5 @@
 import json
+from time import perf_counter
 from typing import Any
 from urllib.parse import quote
 
@@ -9,6 +10,7 @@ from app.core.config import (
     QDRANT_URL,
 )
 from app.services.http_resilience import HttpStatusError, ResilientHttpClient, ResilientHttpError
+from app.services.performance_measurement import observe_provider_latency
 
 VECTOR_NAME = "dense"
 VECTOR_SIZE = 384
@@ -175,6 +177,8 @@ class QdrantClient:
         timeout_seconds: float = 60,
     ) -> dict[str, Any]:
         data = json.dumps(body).encode("utf-8") if body is not None else None
+        started = perf_counter()
+        result = "success"
         try:
             response = _HTTP.request(
                 method,
@@ -189,6 +193,7 @@ class QdrantClient:
             )
             return json.loads(response.body.decode("utf-8"))
         except HttpStatusError as exc:
+            result = "failed"
             error_message = f"Qdrant returned HTTP {exc.status}"
             try:
                 error_body = json.loads(exc.body.decode("utf-8"))
@@ -199,6 +204,10 @@ class QdrantClient:
                 pass
             raise QdrantError(error_message, status_code=exc.status) from exc
         except ResilientHttpError as exc:
+            result = "failed"
             raise QdrantError("Could not communicate with Qdrant") from exc
         except json.JSONDecodeError as exc:
+            result = "failed"
             raise QdrantError("Qdrant returned an invalid response") from exc
+        finally:
+            observe_provider_latency("qdrant", f"{method} {path.split('?')[0]}", perf_counter() - started, result=result)

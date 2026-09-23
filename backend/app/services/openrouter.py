@@ -5,6 +5,7 @@ from typing import Any
 
 from app.core.config import OPENROUTER_API_KEY, OPENROUTER_INPUT_COST_PER_MILLION, OPENROUTER_MODEL, OPENROUTER_OUTPUT_COST_PER_MILLION
 from app.services.http_resilience import HttpStatusError, ResilientHttpClient, ResilientHttpError
+from app.services.performance_measurement import observe_provider_latency
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 _HTTP = ResilientHttpClient()
@@ -27,6 +28,8 @@ class LLMResult:
 
 class OpenRouterClient:
     def list_models(self) -> list[dict[str, Any]]:
+        started = perf_counter()
+        result = "success"
         try:
             response = _HTTP.request(
                 "GET",
@@ -49,7 +52,10 @@ class OpenRouterClient:
                 models.append({"id": item["id"], "name": item.get("name") or item["id"], "free": free})
             return sorted(models, key=lambda model: (not model["free"], model["name"].lower()))
         except (ResilientHttpError, json.JSONDecodeError, ValueError, TypeError, AttributeError) as exc:
+            result = "failed"
             raise OpenRouterError("Could not load model catalog. Please try again.") from exc
+        finally:
+            observe_provider_latency("openrouter", "model_catalog", perf_counter() - started, result=result)
 
     def __init__(self, model: str | None = None) -> None:
         if not OPENROUTER_API_KEY:
@@ -190,6 +196,8 @@ class OpenRouterClient:
             raise OpenRouterError("The research planner returned an invalid plan") from exc
 
     def _request(self, body: dict[str, Any]) -> dict[str, Any]:
+        started = perf_counter()
+        result = "success"
         try:
             response = _HTTP.request(
                 "POST",
@@ -204,6 +212,7 @@ class OpenRouterClient:
             )
             return json.loads(response.body.decode("utf-8"))
         except HttpStatusError as exc:
+            result = "failed"
             message = f"OpenRouter returned HTTP {exc.status}"
             try:
                 error_body = json.loads(exc.body.decode("utf-8"))
@@ -214,6 +223,10 @@ class OpenRouterClient:
                 pass
             raise OpenRouterError(message) from exc
         except ResilientHttpError as exc:
+            result = "failed"
             raise OpenRouterError("Could not communicate with OpenRouter") from exc
         except json.JSONDecodeError as exc:
+            result = "failed"
             raise OpenRouterError("OpenRouter returned an invalid response") from exc
+        finally:
+            observe_provider_latency("openrouter", "chat_completion", perf_counter() - started, result=result)
