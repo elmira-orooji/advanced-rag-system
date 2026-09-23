@@ -40,9 +40,12 @@ Playwright runs the application in Chromium with deterministic API stubs. The cr
 - file selection and upload acknowledgement;
 - starting a conversation, sending a message and rendering a source-grounded answer.
 
+The accessibility and responsive suite verifies landmark names for screen readers, keyboard opening and closing of the mobile navigation, the 44×44px mobile navigation target, reduced-motion behavior, RTL/LTR document semantics, and horizontal overflow at 320, 390, 768, 1024 and 1440px.
+
 ```powershell
 cd frontend\my-rag-app
 npm run test:e2e:critical
+npm run test:e2e:accessibility
 ```
 
 For the complete browser suite, run `npm run test:e2e`. On a fresh machine, install the browser once with `npx playwright install chromium`. If the Playwright download is unavailable, use an installed Edge browser locally: `$env:PW_CHANNEL = "msedge"; npm run test:e2e:critical`.

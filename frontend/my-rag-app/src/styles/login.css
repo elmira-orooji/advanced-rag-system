@@ -138,6 +138,8 @@
   .nexora-login__shell { display: block; }
   .nexora-login__visual { display: none; }
   .nexora-login__main { min-height: 100dvh; padding: 96px 28px 40px; border: 0; }
+  /* Prevent iOS Safari from zooming when a login field receives focus. */
+  .nexora-login__field .nexora-login__control > input { font-size: 16px; }
   .nexora-login__toolbar { top: 16px; right: 20px; }
   .nexora-login__brand { margin-bottom: 44px; }
 }

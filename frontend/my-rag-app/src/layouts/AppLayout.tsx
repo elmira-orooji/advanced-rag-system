@@ -176,7 +176,7 @@ export default function AppLayout() {
             type="button"
             onClick={() => setMobileMenuOpen(true)}
             aria-label="Open navigation"
-            className="app-icon-button grid size-10 place-items-center rounded-xl"
+            className="app-icon-button grid size-11 place-items-center rounded-xl"
           >
             <Menu size={20} />
           </button>
