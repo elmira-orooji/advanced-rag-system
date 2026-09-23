@@ -1,6 +1,7 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
@@ -26,6 +27,14 @@ def upsert_feedback(answer_id: uuid.UUID, payload: FeedbackUpsert, db: Session =
     if item is None:
         item = AnswerFeedback(answer_id=answer_id, user_id=user.id, rating=payload.rating)
         db.add(item)
+        try:
+            # The database constraint is the final guard when two retries race.
+            db.flush()
+        except IntegrityError:
+            db.rollback()
+            item = db.scalar(select(AnswerFeedback).where(AnswerFeedback.answer_id == answer_id, AnswerFeedback.user_id == user.id))
+            if item is None:
+                raise HTTPException(status_code=409, detail="Feedback is being saved; retry shortly")
     item.rating = payload.rating; item.reason = payload.reason; item.comment = payload.comment.strip() if payload.comment else None
     if payload.rating == -1 and answer.document_set_id and item.evaluation_case_id is None:
         keywords = [value.strip() for value in (item.comment or "").split(",") if len(value.strip()) >= 2][:20]

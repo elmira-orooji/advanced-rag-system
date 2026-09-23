@@ -68,6 +68,9 @@ def sync(set_id: uuid.UUID, connector_id: uuid.UUID, db: Session = Depends(get_d
     require_set_access(db, user, set_id, "edit")
     item = db.get(Connector, connector_id)
     if item is None or item.document_set_id != set_id: raise HTTPException(status_code=404, detail="Connector not found")
+    # A repeated click/request must not reset retry state or enqueue another run.
+    if getattr(item, "status", None) == "syncing":
+        return SyncResponse(connector_id=item.id, status="queued", message="Connector sync is already scheduled")
     with connector_sync_lock(db, connector_id) as acquired:
         if not acquired:
             raise HTTPException(status_code=409, detail="Connector is already syncing")
