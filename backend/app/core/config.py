@@ -118,10 +118,12 @@ MALWARE_QUARANTINE_DIR = UPLOAD_DIR / ".quarantine"
 if CLAMD_PORT < 1 or CLAMD_PORT > 65535 or CLAMD_TIMEOUT_SECONDS <= 0:
     raise RuntimeError("CLAMD_PORT must be valid and CLAMD_TIMEOUT_SECONDS must be positive")
 # OCR is deliberately opt-in: documents stay local unless a provider is
-# configured.  "auto" tries MinerU, Google Vision, then Azure.
+# configured. "auto" tries MinerU, Google Vision, then Azure. Jina is kept
+# explicit so an API key can never cause documents to leave the organization
+# merely because it happens to be configured.
 OCR_PROVIDER = os.getenv("OCR_PROVIDER", "disabled").strip().lower()
-if OCR_PROVIDER not in {"disabled", "auto", "mineru", "google_vision", "azure_document_intelligence"}:
-    raise RuntimeError("OCR_PROVIDER must be disabled, auto, mineru, google_vision, or azure_document_intelligence")
+if OCR_PROVIDER not in {"disabled", "auto", "mineru", "jina", "google_vision", "azure_document_intelligence"}:
+    raise RuntimeError("OCR_PROVIDER must be disabled, auto, mineru, jina, google_vision, or azure_document_intelligence")
 OCR_LANGUAGE_HINTS = [
     language.strip()
     for language in os.getenv("OCR_LANGUAGE_HINTS", "fa,en").split(",")
@@ -135,6 +137,9 @@ MINERU_MODEL_VERSION = os.getenv("MINERU_MODEL_VERSION", "vlm").strip().lower()
 MINERU_LANGUAGE = os.getenv("MINERU_LANGUAGE", "fa").strip().lower()
 MINERU_TIMEOUT_SECONDS = float(os.getenv("MINERU_TIMEOUT_SECONDS", "300"))
 MINERU_POLL_SECONDS = float(os.getenv("MINERU_POLL_SECONDS", "2"))
+JINA_API_KEY = os.getenv("JINA_API_KEY", "")
+JINA_OCR_API_BASE_URL = os.getenv("JINA_OCR_API_BASE_URL", "https://api.jina.ai/v1").rstrip("/")
+JINA_OCR_MODEL = os.getenv("JINA_OCR_MODEL", "jina-ocr-v1").strip()
 if OCR_TIMEOUT_SECONDS <= 0 or OCR_MAX_PAGES < 1 or MINERU_TIMEOUT_SECONDS <= 0 or MINERU_POLL_SECONDS <= 0:
     raise RuntimeError("OCR_TIMEOUT_SECONDS, OCR_MAX_PAGES, MINERU_TIMEOUT_SECONDS, and MINERU_POLL_SECONDS must be positive")
 if MINERU_MODEL_VERSION not in {"pipeline", "vlm"}:

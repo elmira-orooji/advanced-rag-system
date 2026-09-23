@@ -33,6 +33,26 @@ class CloudOCRTests(unittest.TestCase):
         with patch.object(cloud_ocr, "OCR_PROVIDER", "auto"), patch.object(cloud_ocr, "MINERU_API_TOKEN", "mineru"), patch.object(cloud_ocr, "GOOGLE_VISION_API_KEY", "google"), patch.object(cloud_ocr, "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT", "https://example.test"), patch.object(cloud_ocr, "AZURE_DOCUMENT_INTELLIGENCE_KEY", "azure"):
             self.assertEqual(cloud_ocr._providers(), [cloud_ocr._mineru, cloud_ocr._google_vision, cloud_ocr._azure_document_intelligence])
 
+    def test_jina_is_explicit_and_sends_the_document_as_a_data_uri(self):
+        response = _context(json.dumps({"choices": [{"message": {"content": "# گزارش\\n\\nمتن استخراج‌شده"}}]}).encode())
+        image = MagicMock()
+        image.read_bytes.return_value = b"png-bytes"
+
+        with patch.object(cloud_ocr, "JINA_API_KEY", "test-key"), patch.object(cloud_ocr, "urlopen", return_value=response) as urlopen:
+            text = cloud_ocr._jina(image, "image/png")
+
+        self.assertEqual(text, "# گزارش\\n\\nمتن استخراج‌شده")
+        request = urlopen.call_args.args[0]
+        self.assertEqual(request.full_url, "https://api.jina.ai/v1/chat/completions")
+        self.assertEqual(request.get_header("Authorization"), "Bearer test-key")
+        payload = json.loads(request.data)
+        self.assertEqual(payload["model"], "jina-ocr-v1")
+        self.assertTrue(payload["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,"))
+
+    def test_jina_requires_an_explicit_api_key(self):
+        with patch.object(cloud_ocr, "OCR_PROVIDER", "jina"), patch.object(cloud_ocr, "JINA_API_KEY", ""):
+            self.assertEqual(cloud_ocr._providers(), [])
+
     def test_mineru_uploads_then_polls_and_reads_markdown(self):
         archive = BytesIO()
         with ZipFile(archive, "w") as bundle:

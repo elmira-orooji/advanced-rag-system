@@ -21,6 +21,9 @@ from app.core.config import (
     AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT,
     AZURE_DOCUMENT_INTELLIGENCE_KEY,
     GOOGLE_VISION_API_KEY,
+    JINA_API_KEY,
+    JINA_OCR_API_BASE_URL,
+    JINA_OCR_MODEL,
     MINERU_API_BASE_URL,
     MINERU_API_TOKEN,
     MINERU_LANGUAGE,
@@ -42,7 +45,7 @@ def extract_scanned_document_text(file_path: Path, content_type: str) -> str:
     providers = _providers()
     if not providers:
         raise OCRUnavailableError(
-            "This document has no embedded text. Configure OCR_PROVIDER with MinerU, Google Vision, or Azure Document Intelligence."
+            "This document has no embedded text. Configure OCR_PROVIDER with MinerU, Jina, Google Vision, or Azure Document Intelligence."
         )
 
     errors: list[str] = []
@@ -67,6 +70,10 @@ def _providers():
         available.append(_google_vision)
     if AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY:
         available.append(_azure_document_intelligence)
+    # Jina is intentionally excluded from auto: it is an external, experimental
+    # OCR path and must be selected explicitly by an operator.
+    if OCR_PROVIDER == "jina":
+        return [_jina] if JINA_API_KEY else []
     if OCR_PROVIDER == "google_vision":
         return [_google_vision] if GOOGLE_VISION_API_KEY else []
     if OCR_PROVIDER == "azure_document_intelligence":
@@ -74,6 +81,59 @@ def _providers():
     if OCR_PROVIDER == "mineru":
         return [_mineru] if MINERU_API_TOKEN else []
     return available
+
+
+def _jina(file_path: Path, content_type: str) -> str:
+    """Send one document to Jina's hosted OCR model and return Markdown.
+
+    This is deliberately an explicit provider rather than part of ``auto``.
+    The file content leaves Nexora, so operators must enable it only for
+    approved, non-sensitive evaluation documents.
+    """
+    if not JINA_API_KEY:
+        raise OCRUnavailableError("Jina OCR requires JINA_API_KEY")
+    pages = _vision_pages(file_path, content_type)
+    page_content_type = "image/png" if content_type == "application/pdf" else content_type
+    page_texts = [_jina_page(page, page_content_type) for page in pages]
+    return "\n\n".join(text for text in page_texts if text)
+
+
+def _jina_page(page: bytes, content_type: str) -> str:
+    encoded = base64.b64encode(page).decode("ascii")
+    payload = {
+        "model": JINA_OCR_MODEL,
+        "stream": False,
+        "messages": [{
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": "Transcribe the provided document page into clean Markdown, preserving the natural reading order. Do not answer questions or infer missing content.",
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:{content_type};base64,{encoded}"},
+                },
+            ],
+        }],
+    }
+    request = Request(
+        f"{JINA_OCR_API_BASE_URL}/chat/completions",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={"Content-Type": "application/json", "Authorization": f"Bearer {JINA_API_KEY}"},
+        method="POST",
+    )
+    try:
+        with urlopen(request, timeout=OCR_TIMEOUT_SECONDS) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
+        raise OCRUnavailableError("Jina OCR request failed") from exc
+    choices = result.get("choices") or []
+    message = choices[0].get("message") if choices and isinstance(choices[0], dict) else None
+    text = message.get("content") if isinstance(message, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        raise OCRUnavailableError("Jina OCR returned no document text")
+    return text.strip()
 
 
 def _mineru(file_path: Path, content_type: str) -> str:

@@ -18,7 +18,7 @@ Create a knowledge set → add documents or sources → process and index conten
 - **Grounded conversations** — retrieve relevant document chunks and present answer sources alongside a confidence state.
 - **Knowledge sets** — organize documents into focused collections with per-user access levels.
 - **Document ingestion** — upload PDF, TXT, JPEG, PNG, and TIFF files; track queue, extraction, OCR, chunking, and indexing progress.
-- **Optional OCR** — extract content from scanned documents with MinerU, Google Vision, or Azure Document Intelligence.
+- **Optional OCR** — extract content from scanned documents with MinerU, Jina OCR, Google Vision, or Azure Document Intelligence.
 - **Assistants** — connect assistant behavior to one or more permitted knowledge sets.
 - **Controlled sharing and feedback** — publish revocable read-only conversation snapshots and collect answer feedback.
 - **Connectors** — synchronize supported website, GitHub, Google Drive, S3, SharePoint, and webhook sources through a background scheduler.
@@ -154,6 +154,16 @@ MINERU_MODEL_VERSION=vlm
 ```
 
 Set `OCR_PROVIDER=auto` to try configured providers in this order: MinerU, Google Vision, and Azure Document Intelligence. Before enabling a cloud OCR provider, confirm that sending the original document to that provider is permitted by the organization’s data policy.
+
+Jina OCR is available as an explicit, experimental provider for controlled evaluation without installing a local model:
+
+```dotenv
+OCR_PROVIDER=jina
+JINA_API_KEY=your-jina-api-key
+JINA_OCR_MODEL=jina-ocr-v1
+```
+
+It is intentionally excluded from `OCR_PROVIDER=auto`, so setting an API key cannot silently send documents to Jina. Use it only for approved, non-sensitive test documents until the organization has completed its data-processing review.
 
 The application does not currently include malware scanning. Do not treat MIME checks and file-size limits as an antivirus control. Before processing untrusted files in production, deploy a quarantine-and-scan workflow that blocks files when the scanner is unavailable. [SECURITY.md](SECURITY.md) defines the required controls.
 
