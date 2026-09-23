@@ -15,6 +15,12 @@ def increment(name: str, value: float = 1, **labels: str) -> None:
         _counters[key] += value
 
 
+def observe(name: str, seconds: float, **labels: str) -> None:
+    """Record a duration as Prometheus-compatible count and sum counters."""
+    increment(f"{name}_seconds_count", **labels)
+    increment(f"{name}_seconds_sum", value=seconds, **labels)
+
+
 def render(extra_metrics: dict[str, float] | None = None) -> str:
     with _lock:
         rows = list(_counters.items())

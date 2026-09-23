@@ -1,6 +1,7 @@
 import uuid
 import logging
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
@@ -17,7 +18,7 @@ from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
 from app.services.semantic_chunker import semantic_chunks
 from app.services.operational_alerts import send_operational_alert
-from app.services.operational_metrics import increment
+from app.services.operational_metrics import increment, observe
 from app.services.notifications import create_notification
 from app.services.incremental_index import checksum, incremental_chunks
 from app.services.file_storage import atomic_write_text
@@ -229,7 +230,13 @@ def process_document_job(
             if not stored_source:
                 raise RuntimeError("Document file is unavailable")
             source_path = resolve_document_path(stored_source)
-            text = extract_text(source_path, document.content_type or "")
+            extraction_started = time.perf_counter()
+            try:
+                text = extract_text(source_path, document.content_type or "")
+            except Exception:
+                observe("document_ocr_duration", time.perf_counter() - extraction_started, content_type=document.content_type or "unknown", result="failed")
+                raise
+            observe("document_ocr_duration", time.perf_counter() - extraction_started, content_type=document.content_type or "unknown", result="success")
             text_checksum = checksum(text)
             chunking_config = _chunking_config()
             chunking_is_unchanged = (
@@ -243,6 +250,7 @@ def process_document_job(
                 _progress(db, document, job, worker_id, 100, "unchanged", completed=True)
                 create_notification(db, user_id=job.requested_by_id, organization_id=job.organization_id, kind="document_processed", severity="success", title="Document is ready", body=f"{document.filename} is already indexed and ready to use.")
                 db.commit()
+                increment("document_jobs_completed_total", result="unchanged")
                 return
             extracted_path = source_path.parent / "extracted.txt"
             atomic_write_text(extracted_path, text)
@@ -297,6 +305,7 @@ def process_document_job(
             _progress(db, document, job, worker_id, 100, "ready", completed=True)
             create_notification(db, user_id=job.requested_by_id, organization_id=job.organization_id, kind="document_processed", severity="success", title="Document is ready", body=f"{document.filename} has been indexed and is ready to use.")
             db.commit()
+            increment("document_jobs_completed_total", result="indexed")
         except Exception as exc:
             db.rollback()
             if isinstance(exc, DocumentJobOwnershipLost):
@@ -327,7 +336,8 @@ def process_document_job(
                 if not retrying:
                     create_notification(db, user_id=job.requested_by_id, organization_id=job.organization_id, kind="document_failed", severity="error", title="Document processing failed", body=f"{document.filename} could not be processed. Review the document and retry it from Knowledge base.")
                     db.commit()
-                increment("document_processing_failures_total", error_type=type(exc).__name__)
+                failure_stage = "ocr" if isinstance(exc, ExtractionError) else "processing"
+                increment("document_processing_failures_total", error_type=type(exc).__name__, stage=failure_stage)
                 if not retrying:
                     category = "OCR" if "ocr" in message.lower() else "document processing"
                     send_operational_alert(

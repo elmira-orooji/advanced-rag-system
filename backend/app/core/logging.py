@@ -1,9 +1,31 @@
 """Application logging with optional bounded on-disk retention."""
 
 import logging
+import json
 from logging.handlers import RotatingFileHandler
 
 from app.core.config import LOG_BACKUP_COUNT, LOG_FILE, LOG_LEVEL, LOG_MAX_BYTES
+from app.core.request_context import get_request_id
+
+
+class JsonFormatter(logging.Formatter):
+    """Compact structured logs suitable for local files and log collectors."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        payload = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "logger": record.name,
+            "message": record.getMessage(),
+            "request_id": get_request_id(),
+        }
+        for key in ("job_id", "worker_id", "document_id", "connector_id", "user_id", "organization_id", "error_type", "method", "path", "status_code"):
+            value = getattr(record, key, None)
+            if value is not None:
+                payload[key] = str(value)
+        if record.exc_info:
+            payload["exception"] = self.formatException(record.exc_info)
+        return json.dumps(payload, ensure_ascii=False, default=str)
 
 
 def configure_logging() -> None:
@@ -11,8 +33,11 @@ def configure_logging() -> None:
     level = getattr(logging, LOG_LEVEL.upper(), logging.INFO)
     root = logging.getLogger()
     root.setLevel(level)
+    formatter = JsonFormatter()
     if not root.handlers:
         logging.basicConfig(level=level)
+    for handler in root.handlers:
+        handler.setFormatter(formatter)
     if LOG_FILE is None:
         return
 
@@ -27,5 +52,5 @@ def configure_logging() -> None:
         backupCount=LOG_BACKUP_COUNT,
         encoding="utf-8",
     )
-    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+    handler.setFormatter(formatter)
     root.addHandler(handler)
