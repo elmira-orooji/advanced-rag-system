@@ -11,13 +11,29 @@ export class ApiTimeoutError extends Error {
   }
 }
 
+export class ApiResponseError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  readonly requestId: string | null;
+
+  constructor(message: string, status: number, code: string | null, requestId: string | null) {
+    super(message);
+    this.name = "ApiResponseError";
+    this.status = status;
+    this.code = code;
+    this.requestId = requestId;
+  }
+}
+
 export type ApiRequestInit = RequestInit & { timeoutMs?: number };
 
 type ErrorPayload = {
   detail?: string | { message?: string };
+  error?: { code?: string; message?: string; request_id?: string };
 };
 
 function errorMessage(payload: ErrorPayload | null, fallback: string) {
+  if (typeof payload?.error?.message === "string") return payload.error.message;
   if (typeof payload?.detail === "string") return payload.detail;
   if (payload?.detail && typeof payload.detail.message === "string") return payload.detail.message;
   return fallback;
@@ -62,7 +78,15 @@ export async function apiRequest<T>(path: string, init?: ApiRequestInit, fallbac
   if (response.status === 204) return undefined as T;
 
   const payload = (await response.json().catch(() => null)) as ErrorPayload | T | null;
-  if (!response.ok) throw new Error(errorMessage(payload as ErrorPayload | null, fallback));
+  if (!response.ok) {
+    const error = payload as ErrorPayload | null;
+    throw new ApiResponseError(
+      errorMessage(error, fallback),
+      response.status,
+      typeof error?.error?.code === "string" ? error.error.code : null,
+      typeof error?.error?.request_id === "string" ? error.error.request_id : response.headers.get("X-Request-ID"),
+    );
+  }
   return payload as T;
 }
 

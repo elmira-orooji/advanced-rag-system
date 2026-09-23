@@ -47,6 +47,17 @@ def test_health_endpoint_runs_through_application_middleware(client):
 
 
 @pytest.mark.integration
+def test_v1_validation_errors_keep_detail_and_expose_a_stable_error_contract(client):
+    response = client.post("/api/v1/auth/login", json={"username": "a", "password": "short"})
+
+    assert response.status_code == 422
+    assert isinstance(response.json()["detail"], list)
+    assert response.json()["error"]["code"] == "validation_error"
+    assert response.json()["error"]["request_id"] == response.headers["X-Request-ID"]
+    assert response.headers["X-API-Version"] == "1"
+
+
+@pytest.mark.integration
 def test_login_returns_a_cookie_backed_session_over_http(client):
     organization_id = uuid4()
     user = SimpleNamespace(
@@ -120,3 +131,31 @@ def test_upload_endpoint_accepts_multipart_and_queues_processing(client):
     assert response.json()["status"] == "queued"
     assert response.json()["job_id"] == str(job_id)
     service_factory.return_value.ingest.assert_called_once()
+
+
+@pytest.mark.integration
+def test_conversation_list_exposes_additive_offset_pagination_headers(client):
+    user = SimpleNamespace(id=uuid4(), organization_id=uuid4(), role="user")
+    app.dependency_overrides[get_current_user] = lambda: user
+    app.dependency_overrides[get_db] = lambda: MagicMock()
+    conversation = SimpleNamespace(
+        id=uuid4(),
+        title="Policy questions",
+        document_id=None,
+        document_set_id=None,
+        assistant_id=None,
+        workspace_scope=False,
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+
+    with patch("app.api.routes.conversations.get_conversation_service") as service_factory:
+        service_factory.return_value.list.return_value = [conversation]
+        response = client.get("/api/v1/conversations?offset=20&limit=1")
+
+    assert response.status_code == 200
+    assert response.headers["X-Pagination-Offset"] == "20"
+    assert response.headers["X-Pagination-Limit"] == "1"
+    assert response.headers["X-Pagination-Returned"] == "1"
+    assert response.headers["X-Pagination-Has-More"] == "true"
+    assert response.headers["X-Pagination-Next-Offset"] == "21"

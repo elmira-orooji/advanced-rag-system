@@ -5,9 +5,10 @@ import time
 import uuid
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Response, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -26,10 +27,12 @@ from app.services.worker_heartbeat import get_available_worker_types
 from app.core.rate_limit import RateLimitMiddleware
 from app.core.logging import configure_logging
 from app.core.request_context import reset_request_id, set_request_id
+from app.core.request_context import get_request_id
+from app.api.contracts import API_MAJOR_VERSION, API_PREFIX, error_body
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="Advanced RAG API")
+app = FastAPI(title="Nexora API", version="1.0.0")
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +56,8 @@ async def collect_request_metrics(request, call_next):
         logger.exception("HTTP request failed", extra={"method": request.method, "path": request.url.path})
         raise
     else:
+        if request.url.path.startswith(API_PREFIX):
+            response.headers["X-API-Version"] = API_MAJOR_VERSION
         response.headers["X-Request-ID"] = request_id
         logger.info("HTTP request completed", extra={"method": request.method, "path": request.url.path, "status_code": response.status_code})
         if response.status_code >= 500:
@@ -62,6 +67,33 @@ async def collect_request_metrics(request, call_next):
         increment("http_requests_total", path=request.url.path, method=request.method)
         increment("http_request_duration_seconds_total", time.perf_counter() - started, path=request.url.path)
         reset_request_id(request_token)
+
+
+@app.exception_handler(HTTPException)
+async def api_http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    """Add stable error metadata to v1 without breaking existing ``detail`` users."""
+    if not request.url.path.startswith(API_PREFIX):
+        return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail}, headers=exc.headers)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content=error_body(status_code=exc.status_code, detail=exc.detail, request_id=get_request_id()),
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def api_validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    """Preserve FastAPI validation details and give clients a stable error code."""
+    if not request.url.path.startswith(API_PREFIX):
+        return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content={"detail": exc.errors()})
+    return JSONResponse(
+        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        content=error_body(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=exc.errors(),
+            request_id=get_request_id(),
+        ),
+    )
 
 
 @app.on_event("startup")

@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.responses import FileResponse
 from pypdf import PdfReader
 from sqlalchemy import select
@@ -44,6 +44,7 @@ from app.services.document_upload import (
     upload_metadata,
 )
 from app.services.document_ingestion_service import DocumentIngestionService
+from app.api.contracts import set_offset_pagination_headers
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 def _sync_active_chunks(document: Document) -> None:
@@ -124,6 +125,7 @@ def create_document(payload: DocumentCreate, db: Session = Depends(get_db), user
 
 @router.get("", response_model=list[DocumentResponse])
 def list_documents(
+    response: Response,
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     document_set_id: uuid.UUID | None = Query(default=None),
@@ -144,7 +146,9 @@ def list_documents(
         .offset(offset)
         .limit(limit)
     )
-    return db.scalars(statement).all()
+    items = db.scalars(statement).all()
+    set_offset_pagination_headers(response, offset=offset, limit=limit, returned=len(items))
+    return items
 
 
 @router.post(

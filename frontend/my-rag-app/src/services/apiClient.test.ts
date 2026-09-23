@@ -17,4 +17,21 @@ describe("apiRequest authentication handling", () => {
     expect(listener).toHaveBeenCalledOnce();
     window.removeEventListener(AUTH_EXPIRED_EVENT, listener);
   });
+
+  it("keeps the server error code and request ID for actionable UI feedback", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({
+      detail: "Document set not found",
+      error: { code: "not_found", message: "Document set not found", request_id: "req-contract-1" },
+    }), {
+      status: 404,
+      headers: { "Content-Type": "application/json", "X-Request-ID": "req-contract-1" },
+    }));
+
+    await expect(apiRequest("/document-sets/missing")).rejects.toMatchObject({
+      name: "ApiResponseError",
+      status: 404,
+      code: "not_found",
+      requestId: "req-contract-1",
+    });
+  });
 });

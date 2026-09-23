@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, Query, status
+from fastapi import APIRouter, Depends, Query, Response, status
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
@@ -9,6 +9,7 @@ from app.models.user import User
 from app.schemas.conversation import ChatMessageCreate, ConversationCreate, ConversationDetail, ConversationResponse, ConversationUpdate, MessageResponse
 from app.services.conversation_service import ConversationService
 from app.services.provider_factory import get_provider_factory
+from app.api.contracts import set_offset_pagination_headers
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])
 
@@ -23,8 +24,10 @@ def create_conversation(payload: ConversationCreate, db: Session = Depends(get_d
 
 
 @router.get("", response_model=list[ConversationResponse])
-def list_conversations(offset: int = Query(default=0, ge=0), limit: int = Query(default=20, ge=1, le=100), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return get_conversation_service(db).list(user, offset, limit)
+def list_conversations(response: Response, offset: int = Query(default=0, ge=0), limit: int = Query(default=20, ge=1, le=100), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    items = get_conversation_service(db).list(user, offset, limit)
+    set_offset_pagination_headers(response, offset=offset, limit=limit, returned=len(items))
+    return items
 
 
 @router.get("/{conversation_id}", response_model=ConversationDetail)
