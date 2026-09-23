@@ -59,6 +59,9 @@ LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_MAX_BYTES = int(os.getenv("LOG_MAX_BYTES", str(10 * 1024 * 1024)))
 LOG_BACKUP_COUNT = int(os.getenv("LOG_BACKUP_COUNT", "5"))
 RATE_LIMIT_REDIS_URL = os.getenv("RATE_LIMIT_REDIS_URL", "").strip()
+TRUSTED_PROXY_IPS = frozenset(
+    value.strip() for value in os.getenv("TRUSTED_PROXY_IPS", "").split(",") if value.strip()
+)
 if LOG_MAX_BYTES <= 0 or LOG_BACKUP_COUNT < 1:
     raise RuntimeError("LOG_MAX_BYTES must be positive and LOG_BACKUP_COUNT must be at least 1")
 

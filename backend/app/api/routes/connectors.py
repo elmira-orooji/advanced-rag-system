@@ -17,6 +17,8 @@ from app.schemas.connector import ConnectorCreate, ConnectorResponse, ConnectorS
 from app.services.connector_sync import ConnectorSyncError, ingest_webhook_event
 from app.services.connector_lock import connector_sync_lock
 from app.services.qdrant import QdrantError
+from app.core.rate_limit import rate_limit, webhook_limiter
+from app.services.security_audit import audit_security_event
 
 router = APIRouter(prefix="/document-sets/{set_id}/connectors", tags=["connectors"])
 
@@ -50,12 +52,14 @@ def create_webhook_connector(set_id: uuid.UUID, payload: WebhookConnectorCreate,
     return WebhookConnectorCreated(connector=item, endpoint=endpoint, secret=secret)
 
 
-@router.post("/{connector_id}/events", response_model=WebhookEventResponse)
+@router.post("/{connector_id}/events", response_model=WebhookEventResponse, dependencies=[Depends(rate_limit(webhook_limiter))])
 def receive_webhook_event(set_id: uuid.UUID, connector_id: uuid.UUID, payload: WebhookEvent, x_webhook_secret: str | None = Header(default=None, alias="X-Webhook-Secret"), db: Session = Depends(get_db)):
     item = db.get(Connector, connector_id)
     if item is None or item.document_set_id != set_id or item.connector_type != "webhook": raise HTTPException(status_code=404, detail="Webhook not found")
     supplied = hashlib.sha256((x_webhook_secret or "").encode()).hexdigest()
-    if not item.webhook_secret_hash or not hmac.compare_digest(supplied, item.webhook_secret_hash): raise HTTPException(status_code=401, detail="Invalid webhook secret")
+    if not item.webhook_secret_hash or not hmac.compare_digest(supplied, item.webhook_secret_hash):
+        audit_security_event("webhook_authentication", "denied", reason="invalid_secret")
+        raise HTTPException(status_code=401, detail="Invalid webhook secret")
     try: result = ingest_webhook_event(db, item, payload.action, payload.external_id, payload.title, payload.content, payload.source_url)
     except (ConnectorSyncError, QdrantError) as exc:
         db.rollback(); item = db.get(Connector, connector_id); item.status = "failed"; item.last_error = str(exc)[:500]; db.commit()

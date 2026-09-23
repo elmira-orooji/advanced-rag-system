@@ -21,6 +21,8 @@ from app.models.auth_session import AuthSession
 from app.models.organization import Organization
 from app.schemas.auth import AuthUser, LoginRequest, LoginResponse, PasswordChangeRequest
 from app.services.login_throttle import clear_account_failures, record_failure, retry_after, throttle_keys
+from app.services.security_audit import audit_security_event
+from app.core.rate_limit import auth_limiter, rate_limit
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 bearer = HTTPBearer(auto_error=False)
@@ -96,7 +98,7 @@ def get_current_user(
     return user
 
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse, dependencies=[Depends(rate_limit(auth_limiter))])
 def login(payload: LoginRequest, response: Response, request: Request, db: Session = Depends(get_db)):
     organization_slug = payload.organization.strip().lower()
     username = payload.username.strip()
@@ -104,19 +106,23 @@ def login(payload: LoginRequest, response: Response, request: Request, db: Sessi
     keys = throttle_keys(organization_slug, username, client_ip)
     wait_seconds = retry_after(db, keys)
     if wait_seconds is not None:
+        audit_security_event("login", "blocked", client_ip=client_ip, reason="account_throttled")
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Too many login attempts. Try again later.", headers={"Retry-After": str(wait_seconds)})
     organization = db.scalar(select(Organization).where(Organization.slug == organization_slug))
     user = db.scalar(select(User).where(User.username == username, User.organization_id == organization.id)) if organization else None
     if user is None or not verify_password(payload.password, user.password_hash):
         lock_seconds = record_failure(db, keys)
+        audit_security_event("login", "denied", client_ip=client_ip, reason="invalid_credentials")
         logger.warning("Login failed", extra={"account_key": keys[0], "ip_key": keys[1], "locked_seconds": lock_seconds})
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
     if not user.is_active:
+        audit_security_event("login", "denied", actor_id=str(user.id), client_ip=client_ip, reason="inactive_account")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="User is inactive")
     clear_account_failures(db, keys[0])
+    audit_security_event("login", "allowed", actor_id=str(user.id), client_ip=client_ip)
 
     expires_in = AUTH_REMEMBER_SECONDS if payload.remember_me else AUTH_SESSION_SECONDS
     session_id = uuid4()

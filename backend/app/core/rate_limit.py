@@ -13,7 +13,8 @@ from typing import Callable
 
 from fastapi import HTTPException, Request, Response, status
 from starlette.middleware.base import BaseHTTPMiddleware
-from app.core.config import RATE_LIMIT_REDIS_URL
+from app.core.config import RATE_LIMIT_REDIS_URL, TRUSTED_PROXY_IPS
+from app.services.security_audit import audit_security_event
 
 
 class RateLimiter:
@@ -101,14 +102,16 @@ def _limiter(namespace: str, max_requests: int) -> RateLimiter:
 rag_limiter = _limiter("rag", 20)
 auth_limiter = _limiter("auth", 10)
 general_limiter = _limiter("general", 60)
+webhook_limiter = _limiter("webhook", 30)
 
 
 def _get_client_ip(request: Request) -> str:
     """Extract client IP, respecting X-Forwarded-For behind reverse proxies."""
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
+    peer_ip = request.client.host if request.client else "unknown"
+    if forwarded and peer_ip in TRUSTED_PROXY_IPS:
         return forwarded.split(",")[0].strip()
-    return request.client.host if request.client else "unknown"
+    return peer_ip
 
 
 def rate_limit(limiter: RateLimiter) -> Callable:
@@ -117,6 +120,7 @@ def rate_limit(limiter: RateLimiter) -> Callable:
         key = _get_client_ip(request)
         allowed, headers = limiter.check(key)
         if not allowed:
+            audit_security_event("rate_limit_exceeded", "blocked", client_ip=key)
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail="Rate limit exceeded. Please try again later.",
@@ -130,6 +134,15 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
     """Middleware that attaches rate limit headers from request state to the response."""
 
     async def dispatch(self, request: Request, call_next):
+        # Enforce a safe baseline on state-changing endpoints. More restrictive
+        # endpoint limiters (auth/RAG/webhook) remain available as dependencies.
+        if request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            key = _get_client_ip(request)
+            allowed, headers = general_limiter.check(key)
+            if not allowed:
+                audit_security_event("rate_limit_exceeded", "blocked", client_ip=key)
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=status.HTTP_429_TOO_MANY_REQUESTS, content={"detail": "Rate limit exceeded. Please try again later."}, headers=headers)
         response = await call_next(request)
         headers = getattr(request.state, "rate_limit_headers", None)
         if headers:
