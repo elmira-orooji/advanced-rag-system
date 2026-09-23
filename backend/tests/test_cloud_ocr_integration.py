@@ -16,6 +16,7 @@ def _enabled(variable: str) -> bool:
 
 
 @pytest.mark.integration
+@pytest.mark.cloud
 class CloudOCRIntegrationTests(unittest.TestCase):
     @unittest.skipUnless(
         _enabled("RUN_GOOGLE_VISION_OCR_INTEGRATION") and bool(cloud_ocr.GOOGLE_VISION_API_KEY),

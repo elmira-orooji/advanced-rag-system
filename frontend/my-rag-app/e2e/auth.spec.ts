@@ -33,6 +33,7 @@ test.describe("Authentication", () => {
 
     await expect(page.locator('aside[aria-label="Main sidebar"]')).toBeVisible();
     await page.getByRole("button", { name: "Log out" }).click();
+    await page.getByRole("button", { name: "Yes, confirm" }).click();
 
     await expect(page).toHaveURL(/\/$/);
     await expect(page.locator("#username")).toBeVisible();

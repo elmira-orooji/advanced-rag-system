@@ -9,8 +9,11 @@
     "build": "tsc -b && vite build --configLoader native",
     "lint": "eslint .",
     "test": "vitest run --configLoader native",
+    "test:unit": "vitest run --configLoader native",
     "test:watch": "vitest --configLoader native",
     "test:e2e": "playwright test",
+    "test:e2e:critical": "playwright test e2e/auth.spec.ts e2e/upload.spec.ts e2e/chat.spec.ts",
+    "test:pyramid": "npm run test:unit && npm run test:e2e:critical",
     "test:e2e:watch": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "preview": "vite preview --configLoader native"

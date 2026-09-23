@@ -39,12 +39,11 @@ class CloudOCRTests(unittest.TestCase):
             bundle.writestr("result/full.md", "# عنوان\n\nسلام NEXORA")
         responses = [
             _context(json.dumps({"code": 0, "data": {"batch_id": "batch-1", "file_urls": ["https://upload.test/file"]}}).encode()),
-            _context(),
             _context(json.dumps({"code": 0, "data": {"extract_result": [{"state": "done", "full_zip_url": "https://result.test/archive.zip"}]}}).encode()),
             _context(archive.getvalue()),
         ]
         source = Path(__file__).parent / "fixtures" / "scanned-blank.pdf"
-        with patch.object(cloud_ocr, "MINERU_API_TOKEN", "test-token"), patch.object(cloud_ocr, "urlopen", side_effect=responses) as urlopen, patch.object(cloud_ocr.time, "sleep"):
+        with patch.object(cloud_ocr, "MINERU_API_TOKEN", "test-token"), patch.object(cloud_ocr, "urlopen", side_effect=responses) as urlopen, patch.object(cloud_ocr, "_mineru_upload") as upload, patch.object(cloud_ocr.time, "sleep"):
             text = cloud_ocr._mineru(source, "application/pdf")
 
         self.assertEqual(text, "# عنوان\n\nسلام NEXORA")
@@ -52,8 +51,8 @@ class CloudOCRTests(unittest.TestCase):
         self.assertEqual(requests[0].full_url, "https://mineru.net/api/v4/file-urls/batch")
         self.assertEqual(requests[0].get_header("Authorization"), "Bearer test-token")
         self.assertEqual(json.loads(requests[0].data)["language"], cloud_ocr.MINERU_LANGUAGE)
-        self.assertEqual(requests[1].method, "PUT")
-        self.assertEqual(requests[2].full_url, "https://mineru.net/api/v4/extract-results/batch/batch-1")
+        upload.assert_called_once_with("https://upload.test/file", source.read_bytes())
+        self.assertEqual(requests[1].full_url, "https://mineru.net/api/v4/extract-results/batch/batch-1")
 
     def test_mineru_rejects_archive_without_markdown(self):
         archive = BytesIO()
@@ -69,10 +68,10 @@ class CloudOCRTests(unittest.TestCase):
         connection = MagicMock()
         connection.getresponse.return_value = response
 
-        with patch.object(cloud_ocr, "HTTPSConnection", return_value=connection):
+        with patch.object(cloud_ocr, "HTTPSConnection", return_value=connection) as connection_factory:
             cloud_ocr._mineru_upload("https://signed-upload.test/file?signature=secret", b"pdf-bytes")
 
-        cloud_ocr.HTTPSConnection.assert_called_once_with("signed-upload.test", timeout=cloud_ocr.OCR_TIMEOUT_SECONDS)
+        connection_factory.assert_called_once_with("signed-upload.test", timeout=cloud_ocr.OCR_TIMEOUT_SECONDS)
         connection.request.assert_called_once_with("PUT", "/file?signature=secret", body=b"pdf-bytes", headers={"Content-Length": "9"})
         connection.close.assert_called_once()
 
