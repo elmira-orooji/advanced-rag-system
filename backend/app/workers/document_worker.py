@@ -5,9 +5,15 @@ import socket
 import time
 import uuid
 
-from app.core.config import DOCUMENT_JOB_POLL_SECONDS, WORKER_HEARTBEAT_SECONDS
+from app.core.config import (
+    DATA_RETENTION_ENABLED,
+    DATA_RETENTION_MAINTENANCE_SECONDS,
+    DOCUMENT_JOB_POLL_SECONDS,
+    WORKER_HEARTBEAT_SECONDS,
+)
 from app.core.logging import configure_logging
 from app.services.document_jobs import claim_document_job, maintain_document_job_lease, process_document_job, recover_document_jobs
+from app.services.data_retention import purge_expired_operational_data
 from app.services.indexing_reconciler import reconcile_indexing_outbox
 from app.services.operational_alerts import deliver_due_operational_alerts
 from app.services.worker_heartbeat import deregister_worker, maintain_worker_heartbeat, register_worker
@@ -30,6 +36,7 @@ class DocumentWorker:
         self.next_recovery = 0.0
         self.next_reconcile = 0.0
         self.next_alert_delivery = 0.0
+        self.next_retention = 0.0
 
     def run(self) -> None:
         register_worker(worker_id=self.worker_id, worker_type="document_worker", metadata=self.metadata)
@@ -40,6 +47,7 @@ class DocumentWorker:
                 self.next_recovery = started_at + 60
                 self.next_reconcile = started_at + 10
                 self.next_alert_delivery = started_at + 10
+                self.next_retention = started_at + 60
                 logger.info("Document worker started", extra={"worker_id": self.worker_id})
                 while not _stopping:
                     self._run_due_maintenance()
@@ -60,6 +68,9 @@ class DocumentWorker:
         if now >= self.next_alert_delivery:
             self._deliver_alerts()
             self.next_alert_delivery = now + 30
+        if DATA_RETENTION_ENABLED and now >= self.next_retention:
+            self._run_data_retention()
+            self.next_retention = now + DATA_RETENTION_MAINTENANCE_SECONDS
 
     def _recover_jobs(self) -> None:
         recovered = recover_document_jobs()
@@ -81,6 +92,14 @@ class DocumentWorker:
                 logger.info("Delivered operational alerts", extra={"delivered_alerts": delivered})
         except Exception:
             logger.exception("Operational alert delivery cycle failed")
+
+    def _run_data_retention(self) -> None:
+        try:
+            result = purge_expired_operational_data()
+            if result.total:
+                logger.info("Purged expired operational data", extra={"retention": result.as_dict()})
+        except Exception:
+            logger.exception("Data retention cycle failed")
 
     def _process_next_job(self) -> bool:
         job_id = claim_document_job(self.worker_id)

@@ -210,6 +210,29 @@ if SMTP_PORT < 1 or SMTP_PORT > 65535 or SMTP_TIMEOUT_SECONDS <= 0:
 if OPERATIONAL_ALERT_COOLDOWN_SECONDS < 60:
     raise RuntimeError("OPERATIONAL_ALERT_COOLDOWN_SECONDS must be at least 60")
 
+# Retention is opt-in because it irreversibly removes operational records.
+# Content-bearing data (documents, chunks, embeddings and messages) is never
+# included here: it requires an organization-approved deletion request.
+DATA_RETENTION_ENABLED = _boolean_setting("DATA_RETENTION_ENABLED", default=False)
+DATA_RETENTION_MAINTENANCE_SECONDS = int(
+    os.getenv("DATA_RETENTION_MAINTENANCE_SECONDS", str(60 * 60))
+)
+DATA_RETENTION_SESSION_DAYS = int(os.getenv("DATA_RETENTION_SESSION_DAYS", "30"))
+DATA_RETENTION_CHAT_SHARE_DAYS = int(os.getenv("DATA_RETENTION_CHAT_SHARE_DAYS", "30"))
+DATA_RETENTION_READ_NOTIFICATION_DAYS = int(
+    os.getenv("DATA_RETENTION_READ_NOTIFICATION_DAYS", "90")
+)
+DATA_RETENTION_LLM_USAGE_DAYS = int(os.getenv("DATA_RETENTION_LLM_USAGE_DAYS", "365"))
+if DATA_RETENTION_MAINTENANCE_SECONDS < 60:
+    raise RuntimeError("DATA_RETENTION_MAINTENANCE_SECONDS must be at least 60")
+if min(
+    DATA_RETENTION_SESSION_DAYS,
+    DATA_RETENTION_CHAT_SHARE_DAYS,
+    DATA_RETENTION_READ_NOTIFICATION_DAYS,
+    DATA_RETENTION_LLM_USAGE_DAYS,
+) < 1:
+    raise RuntimeError("Data retention periods must be at least one day")
+
 
 # --- Chunking Strategy ---
 CHUNKING_STRATEGY = os.getenv("CHUNKING_STRATEGY", "hierarchical").strip().lower()

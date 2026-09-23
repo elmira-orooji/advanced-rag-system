@@ -24,3 +24,12 @@ def test_worker_sleeps_only_when_no_job_is_claimed():
         processed = worker._process_next_job()
 
     assert processed is False
+
+
+def test_worker_runs_retention_without_disrupting_jobs():
+    worker = DocumentWorker("worker-1")
+
+    with patch("app.workers.document_worker.purge_expired_operational_data") as purge:
+        worker._run_data_retention()
+
+    purge.assert_called_once_with()
