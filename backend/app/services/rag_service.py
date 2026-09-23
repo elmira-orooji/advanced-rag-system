@@ -17,6 +17,7 @@ from app.services.operational_alerts import send_operational_alert
 from app.services.operational_metrics import increment
 from app.services.ports import ProviderFactoryPort
 from app.services.qdrant import QdrantError
+from app.services.provider_failures import provider_http_error
 from app.services.retrieval import hybrid_search
 from app.services.usage_tracking import record_usage
 
@@ -60,7 +61,7 @@ class RagService:
         except QdrantError as exc:
             increment("rag_failures_total", dependency="qdrant")
             send_operational_alert("qdrant-failure", "Vector store is unavailable", "A RAG request could not reach Qdrant. Check the Qdrant service and its network connection.")
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+            raise provider_http_error(exc) from exc
 
         sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
         if not sources:
@@ -73,7 +74,7 @@ class RagService:
         except OpenRouterError as exc:
             increment("model_failures_total", provider="openrouter")
             send_operational_alert("model-failure", "Model request failed", "A RAG request could not be completed by the configured model provider. Check provider status, credentials, quota, and request logs.")
-            raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+            raise provider_http_error(exc) from exc
 
         answer, citation_ids = self._normalize_citations(answer, len(sources))
         citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename, chunk_index=source.chunk_index, excerpt=source.content, score=source.score) for index, source in enumerate(sources, start=1) if index in citation_ids]

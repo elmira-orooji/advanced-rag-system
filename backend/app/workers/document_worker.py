@@ -9,6 +9,7 @@ from app.core.config import DOCUMENT_JOB_POLL_SECONDS, WORKER_HEARTBEAT_SECONDS
 from app.core.logging import configure_logging
 from app.services.document_jobs import claim_document_job, maintain_document_job_lease, process_document_job, recover_document_jobs
 from app.services.indexing_reconciler import reconcile_indexing_outbox
+from app.services.operational_alerts import deliver_due_operational_alerts
 from app.services.worker_heartbeat import deregister_worker, maintain_worker_heartbeat, register_worker
 
 logger = logging.getLogger(__name__)
@@ -28,6 +29,7 @@ class DocumentWorker:
         self.metadata = {"hostname": socket.gethostname(), "pid": os.getpid()}
         self.next_recovery = 0.0
         self.next_reconcile = 0.0
+        self.next_alert_delivery = 0.0
 
     def run(self) -> None:
         register_worker(worker_id=self.worker_id, worker_type="document_worker", metadata=self.metadata)
@@ -37,6 +39,7 @@ class DocumentWorker:
                 started_at = time.monotonic()
                 self.next_recovery = started_at + 60
                 self.next_reconcile = started_at + 10
+                self.next_alert_delivery = started_at + 10
                 logger.info("Document worker started", extra={"worker_id": self.worker_id})
                 while not _stopping:
                     self._run_due_maintenance()
@@ -54,6 +57,9 @@ class DocumentWorker:
         if now >= self.next_reconcile:
             self._reconcile_outbox()
             self.next_reconcile = now + 30
+        if now >= self.next_alert_delivery:
+            self._deliver_alerts()
+            self.next_alert_delivery = now + 30
 
     def _recover_jobs(self) -> None:
         recovered = recover_document_jobs()
@@ -67,6 +73,14 @@ class DocumentWorker:
                 logger.info("Reconciled pending indexing outbox entries", extra={"reconciled": reconciled})
         except Exception:
             logger.exception("Indexing outbox reconciliation failed")
+
+    def _deliver_alerts(self) -> None:
+        try:
+            delivered = deliver_due_operational_alerts()
+            if delivered:
+                logger.info("Delivered operational alerts", extra={"delivered_alerts": delivered})
+        except Exception:
+            logger.exception("Operational alert delivery cycle failed")
 
     def _process_next_job(self) -> bool:
         job_id = claim_document_job(self.worker_id)

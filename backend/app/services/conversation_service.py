@@ -15,6 +15,7 @@ from app.schemas.search import SearchHit
 from app.services.openrouter import OpenRouterError
 from app.services.ports import ProviderFactoryPort
 from app.services.qdrant import QdrantError
+from app.services.provider_failures import provider_http_error
 from app.services.query_rewriting import should_rewrite
 from app.services.retrieval import hybrid_search
 
@@ -82,14 +83,14 @@ class ConversationService:
                 vector_store.ensure_collection()
                 points = hybrid_search(self.db, query=retrieval_query, limit=payload.limit, document_id=document_id, document_ids=document_ids, vector_store=vector_store)
         except QdrantError as exc:
-            raise HTTPException(status_code=502, detail=str(exc)) from exc
+            raise provider_http_error(exc) from exc
         sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
         answer_basis = ("hybrid" if sources else "general") if hybrid else "sources"
         if sources or hybrid:
             try:
                 answer = self.providers.language_model(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
             except OpenRouterError as exc:
-                raise HTTPException(status_code=502, detail=str(exc)) from exc
+                raise provider_http_error(exc) from exc
         else:
             answer = self._no_results_message(payload.content)
         record = AnswerRecord(user_id=user.id, assistant_id=conversation.assistant_id, document_set_id=conversation.document_set_id, question=payload.content, answer=answer, grounded=bool(sources), citation_count=len(sources))
