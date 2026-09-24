@@ -58,7 +58,7 @@ export default function ChatInput({ disabled, onSend, isSending = false, onCance
         placeholder={isFa ? "از پایگاه دانش خود بپرسید..." : "Ask your knowledge base..."}
         className="chat-composer-textarea max-h-32 min-h-10 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-sm leading-6 outline-none disabled:opacity-50"
       />
-      <BorderBeam active={isSending && motionAllowed} className="chat-send-beam mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl" colorVariant="ocean" duration={2.8} size="md" staticColors strength={0.94} theme={theme}>
+      <BorderBeam active={isSending && motionAllowed} borderRadius={12} className="chat-send-beam mb-0.5 grid size-10 shrink-0 place-items-center rounded-xl" colorVariant="colorful" size="md" strength={1} theme={theme}>
         <button
           type="button"
           onClick={isSending ? onCancel : () => void handleSend()}
