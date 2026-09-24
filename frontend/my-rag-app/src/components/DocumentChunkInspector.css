@@ -29,6 +29,31 @@
 .inspector-panel button[class*="bg-[#7c27ff]"] { color: white !important; background: #7950bb; }
 .inspector-panel input, .inspector-panel textarea { color: var(--kb-text); }
 .inspector-empty { padding: 40px 20px; text-align: center; color: var(--kb-muted); font-size: 13px; }
+.unicode-inspector { margin-top: 12px; overflow: hidden; border: 1px solid var(--kb-line); border-radius: 12px; background: var(--kb-panel); }
+.unicode-inspector-summary { display: flex; min-height: 44px; align-items: center; gap: 9px; padding: 10px 12px; color: var(--kb-text); cursor: pointer; list-style: none; }
+.unicode-inspector-summary::-webkit-details-marker { display: none; }
+.unicode-inspector-summary > svg { flex: 0 0 auto; color: var(--kb-accent); }
+.unicode-inspector-summary > span:nth-of-type(1) { font-size: 12px; font-weight: 600; }
+.unicode-inspector-summary > bdi { border-radius: 5px; background: var(--kb-bg); padding: 2px 5px; color: var(--kb-muted); font-size: 10px; }
+.unicode-inspector-count { margin-inline-start: auto; color: var(--kb-muted); font-size: 11px; }
+.unicode-inspector-body { border-top: 1px solid var(--kb-line); padding: 12px; }
+.unicode-inspector-stats { display: flex; flex-wrap: wrap; gap: 7px; }
+.unicode-inspector-stats > span { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--kb-line); border-radius: 7px; background: var(--kb-bg); padding: 5px 7px; color: var(--kb-muted); font-size: 10px; }
+.unicode-inspector-stats bdi { color: var(--kb-text); font-variant-numeric: tabular-nums; }
+.unicode-inspector-note { margin: 10px 0; color: var(--kb-muted); font-size: 10px; line-height: 1.7; }
+.unicode-inspector-findings { display: grid; max-height: 220px; gap: 6px; overflow-y: auto; padding: 0; list-style: none; }
+.unicode-inspector-finding { display: flex; min-width: 0; align-items: center; gap: 9px; border: 1px solid var(--kb-line); border-radius: 9px; background: var(--kb-bg); padding: 8px; }
+.unicode-inspector-glyph { display: grid; width: 30px; height: 30px; flex: 0 0 auto; place-items: center; border-radius: 7px; background: var(--kb-tint); color: var(--kb-accent); font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+.unicode-inspector-finding.is-bidi-control .unicode-inspector-glyph { color: #d38a47; }
+.unicode-inspector-finding.is-replacement .unicode-inspector-glyph { color: #db6473; }
+.unicode-inspector-description { min-width: 0; flex: 1; }
+.unicode-inspector-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--kb-text); font-size: 11px; font-weight: 600; }
+.unicode-inspector-title > span { flex: 0 0 auto; color: var(--kb-muted); font-size: 10px; font-variant-numeric: tabular-nums; }
+.unicode-inspector-description p { margin: 3px 0 0; color: var(--kb-muted); font-size: 10px; line-height: 1.6; }
+.unicode-inspector-finding > button { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; border: 1px solid var(--kb-line); border-radius: 6px; background: var(--kb-panel); padding: 5px 6px; color: var(--kb-muted); font: 10px ui-monospace, Consolas, monospace; }
+.unicode-inspector-finding > button:hover, .unicode-inspector-summary:hover { color: var(--kb-accent); }
+.unicode-inspector-finding > button:focus-visible, .unicode-inspector-summary:focus-visible { outline: 2px solid var(--kb-accent); outline-offset: 2px; }
+.unicode-inspector-empty { margin: 10px 0 0; border-radius: 8px; background: var(--kb-bg); padding: 10px; color: var(--kb-muted); font-size: 11px; line-height: 1.6; }
 @media (max-width: 700px) {
   .inspector-overlay { padding: 12px; }
   .inspector-panel { height: calc(100dvh - 24px); border-radius: 14px; }
