@@ -26,10 +26,10 @@ export default function AnswerLoading({ isFa, assistantName, slow = false }: { i
       active={motionAllowed}
       className="chat-answer-beam"
       colorVariant="ocean"
-      duration={4.8}
+      duration={3.2}
       size="md"
       staticColors
-      strength={0.78}
+      strength={0.94}
       theme={theme}
     >
     <div className="chat-answer-body" role="status" aria-live="polite">
