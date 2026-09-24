@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="2520" viewBox="0 0 1920 2520">
+  <style>
+    .page { fill:#fff; stroke:#25304a; stroke-width:2; }
+    .panel { fill:#f5f6fa; stroke:#aab3c2; stroke-width:1.5; }
+    .line { stroke:#667085; stroke-width:2; stroke-linecap:round; }
+    .soft { fill:#e5e8ef; } .dark { fill:#25304a; } .brand { fill:#7c4dcc; }
+    .label { font: 600 17px sans-serif; fill:#25304a; }
+    .meta { font: 13px sans-serif; fill:#667085; }
+    .small { font: 11px sans-serif; fill:#667085; }
+    .title { font: 700 24px sans-serif; fill:#25304a; }
+    .board { fill:#fbfcfe; stroke:#cfd6e2; stroke-width:2; }
+    .callout { fill:#fff; stroke:#7c4dcc; stroke-width:2; }
+  </style>
+  <rect width="1920" height="2520" fill="#eef1f7"/>
+  <text x="80" y="74" class="title">Nexora · Product wireframes</text>
+  <text x="80" y="104" class="meta">Desktop and mobile foundations · import this SVG directly into Figma</text>
+
+  <!-- 01 Login -->
+  <g transform="translate(80 150)">
+    <rect width="840" height="500" rx="20" class="board"/>
+    <text x="32" y="40" class="label">01 · Login</text>
+    <rect x="0" y="64" width="840" height="436" rx="0" fill="#eef0ff"/>
+    <rect x="38" y="96" width="70" height="70" rx="18" class="brand"/>
+    <text x="51" y="140" font-family="sans-serif" font-size="28" fill="#fff">N</text>
+    <text x="122" y="130" class="title">Nexora</text><text x="122" y="156" class="meta">by elmira</text>
+    <rect x="425" y="104" width="330" height="345" rx="16" class="page"/>
+    <text x="457" y="152" class="title">Sign in</text>
+    <text x="457" y="180" class="meta">Continue to your knowledge workspace</text>
+    <text x="457" y="220" class="small">Username</text><rect x="457" y="230" width="266" height="42" rx="8" class="panel"/>
+    <text x="457" y="310" class="small">Password</text><rect x="457" y="320" width="266" height="42" rx="8" class="panel"/>
+    <rect x="457" y="390" width="266" height="42" rx="8" class="brand"/><text x="548" y="416" font-family="sans-serif" font-size="14" fill="#fff">Sign in</text>
+  </g>
+
+  <!-- 02 Workspace -->
+  <g transform="translate(1000 150)">
+    <rect width="840" height="500" rx="20" class="board"/><text x="32" y="40" class="label">02 · Workspace</text>
+    <rect x="20" y="64" width="150" height="415" rx="12" class="page"/>
+    <rect x="40" y="88" width="34" height="34" rx="9" class="brand"/><text x="84" y="111" class="label">Nexora</text>
+    <rect x="40" y="145" width="110" height="32" rx="7" class="panel"/><text x="50" y="165" class="small">＋ New chat</text>
+    <text x="40" y="215" class="small">WORKSPACE</text><text x="40" y="245" class="meta">▣ Overview</text><text x="40" y="278" class="meta">▤ Knowledge</text><text x="40" y="311" class="meta">◌ Assistants</text><text x="40" y="344" class="meta">⚙ Settings</text>
+    <text x="205" y="112" class="title">Workspace</text><text x="205" y="140" class="meta">Your knowledge activity at a glance</text>
+    <rect x="205" y="170" width="185" height="102" rx="12" class="page"/><text x="225" y="205" class="meta">Knowledge sets</text><text x="225" y="244" class="title">04</text>
+    <rect x="410" y="170" width="185" height="102" rx="12" class="page"/><text x="430" y="205" class="meta">Indexed documents</text><text x="430" y="244" class="title">18</text>
+    <rect x="615" y="170" width="185" height="102" rx="12" class="page"/><text x="635" y="205" class="meta">Grounded answers</text><text x="635" y="244" class="title">96%</text>
+    <rect x="205" y="300" width="595" height="160" rx="12" class="page"/><text x="225" y="334" class="label">Recent activity</text>
+    <line x1="225" y1="368" x2="766" y2="368" class="line" opacity=".18"/><line x1="225" y1="404" x2="718" y2="404" class="line" opacity=".18"/><line x1="225" y1="438" x2="745" y2="438" class="line" opacity=".18"/>
+  </g>
+
+  <!-- 03 Conversation -->
+  <g transform="translate(80 710)">
+    <rect width="840" height="500" rx="20" class="board"/><text x="32" y="40" class="label">03 · Conversation + sources</text>
+    <rect x="20" y="64" width="150" height="415" rx="12" class="page"/><rect x="40" y="88" width="34" height="34" rx="9" class="brand"/><text x="84" y="111" class="label">Nexora</text>
+    <text x="40" y="158" class="small">RECENT</text><rect x="36" y="172" width="116" height="32" rx="7" class="soft"/><text x="46" y="193" class="small">Project brief</text><text x="40" y="234" class="meta">New conversation</text>
+    <text x="205" y="108" class="title">Project brief</text><text x="205" y="136" class="meta">Company-Confirmation · grounded answers</text>
+    <rect x="205" y="165" width="360" height="66" rx="12" class="soft"/><text x="225" y="193" class="small">You</text><text x="225" y="215" class="meta">What does the company confirmation state?</text>
+    <rect x="205" y="250" width="360" height="112" rx="12" class="page"/><rect x="225" y="270" width="26" height="26" rx="7" class="brand"/><text x="262" y="289" class="small">Nexora · source-grounded</text><line x1="225" y1="313" x2="522" y2="313" class="line" opacity=".18"/><line x1="225" y1="334" x2="488" y2="334" class="line" opacity=".18"/>
+    <rect x="205" y="400" width="360" height="48" rx="14" class="page"/><text x="225" y="430" class="meta">Ask your knowledge base…</text><circle cx="535" cy="424" r="15" class="brand"/>
+    <rect x="590" y="90" width="220" height="358" rx="14" class="page"/><text x="610" y="120" class="label">Sources</text><text x="610" y="147" class="meta">1 cited document</text><rect x="610" y="170" width="180" height="60" rx="9" class="panel"/><text x="625" y="195" class="small">▤ Prjct.txt</text><text x="625" y="216" class="small">Chunk 1</text><text x="610" y="270" class="small">SOURCE PASSAGE</text><rect x="610" y="284" width="180" height="120" rx="9" class="soft"/><line x1="625" y1="310" x2="772" y2="310" class="line" opacity=".22"/><line x1="625" y1="334" x2="760" y2="334" class="line" opacity=".22"/>
+  </g>
+
+  <!-- 04 Knowledge -->
+  <g transform="translate(1000 710)">
+    <rect width="840" height="500" rx="20" class="board"/><text x="32" y="40" class="label">04 · Knowledge base and upload</text>
+    <rect x="20" y="64" width="150" height="415" rx="12" class="page"/><rect x="40" y="88" width="34" height="34" rx="9" class="brand"/><text x="84" y="111" class="label">Nexora</text><text x="40" y="178" class="meta">▤ Knowledge</text>
+    <text x="205" y="108" class="title">Knowledge base</text><text x="205" y="136" class="meta">Organize documents into focused collections</text><rect x="685" y="86" width="112" height="38" rx="8" class="callout"/><text x="704" y="110" class="small">＋ New set</text>
+    <text x="205" y="171" class="small">KNOWLEDGE SETS</text>
+    <rect x="205" y="185" width="166" height="92" rx="10" class="callout"/><text x="221" y="215" class="label">Company</text><text x="221" y="239" class="small">1 document · ready</text>
+    <rect x="387" y="185" width="166" height="92" rx="10" class="page"/><text x="403" y="215" class="label">OCR-test</text><text x="403" y="239" class="small">1 document · ready</text>
+    <rect x="569" y="185" width="166" height="92" rx="10" class="page"/><text x="585" y="215" class="label">Project</text><text x="585" y="239" class="small">2 documents · ready</text>
+    <text x="205" y="316" class="label">Company</text><rect x="205" y="330" width="595" height="68" rx="12" class="panel"/><text x="360" y="363" class="label">Drop files into this set</text><text x="360" y="384" class="small">PDF, TXT or image · processing status shown here</text>
+    <rect x="205" y="414" width="595" height="52" rx="10" class="page"/><text x="225" y="445" class="label">▤ Company-confirmation.pdf</text><rect x="665" y="427" width="80" height="24" rx="12" fill="#d9f4e9"/><text x="681" y="444" class="small">Indexed</text>
+  </g>
+
+  <!-- 05 Assistants -->
+  <g transform="translate(80 1270)">
+    <rect width="840" height="500" rx="20" class="board"/><text x="32" y="40" class="label">05 · Assistants</text>
+    <rect x="20" y="64" width="150" height="415" rx="12" class="page"/><rect x="40" y="88" width="34" height="34" rx="9" class="brand"/><text x="84" y="111" class="label">Nexora</text><text x="40" y="178" class="meta">◌ Assistants</text>
+    <text x="205" y="108" class="title">Assistants</text><text x="205" y="136" class="meta">Purpose-built experts with focused knowledge</text><rect x="666" y="87" width="132" height="38" rx="8" class="brand"/><text x="686" y="111" font-family="sans-serif" font-size="12" fill="#fff">＋ New assistant</text>
+    <rect x="205" y="172" width="280" height="220" rx="14" class="callout"/><rect x="225" y="193" width="42" height="42" rx="11" class="soft"/><text x="285" y="217" class="label">Nexora assistant</text><text x="225" y="268" class="meta">Answers from approved sources</text><line x1="225" y1="300" x2="458" y2="300" class="line" opacity=".18"/><text x="225" y="330" class="small">▤ Company-Confirmation</text><text x="225" y="360" class="small">◌ New chats saved</text>
+    <rect x="510" y="172" width="280" height="220" rx="14" class="page"/><text x="530" y="217" class="label">Create assistant</text><line x1="530" y1="252" x2="760" y2="252" class="line" opacity=".18"/><text x="530" y="285" class="small">Name · instructions · model</text><text x="530" y="315" class="small">Knowledge set permissions</text><rect x="530" y="342" width="130" height="30" rx="7" class="soft"/><text x="552" y="362" class="small">Save assistant</text>
+  </g>
+
+  <!-- 06 Team -->
+  <g transform="translate(1000 1270)">
+    <rect width="840" height="500" rx="20" class="board"/><text x="32" y="40" class="label">06 · Team members</text>
+    <rect x="20" y="64" width="150" height="415" rx="12" class="page"/><rect x="40" y="88" width="34" height="34" rx="9" class="brand"/><text x="84" y="111" class="label">Nexora</text><text x="40" y="178" class="meta">♙ Team members</text>
+    <text x="205" y="108" class="title">Member directory</text><rect x="600" y="86" width="135" height="38" rx="8" class="panel"/><text x="620" y="110" class="small">⌕ Search users</text><rect x="745" y="86" width="54" height="38" rx="8" class="panel"/><text x="758" y="110" class="small">Role</text>
+    <text x="205" y="163" class="small">ADMINS</text><rect x="205" y="176" width="595" height="70" rx="10" class="page"/><rect x="225" y="192" width="36" height="36" rx="10" class="soft"/><text x="236" y="215" class="small">AD</text><text x="280" y="205" class="label">admin</text><text x="280" y="228" class="small">Administrator · Aug 5, 2026</text><rect x="710" y="198" width="66" height="27" rx="7" class="soft"/><text x="725" y="216" class="small">Admin</text>
+    <text x="205" y="286" class="small">MEMBERS</text><rect x="205" y="299" width="595" height="70" rx="10" class="page"/><rect x="225" y="315" width="36" height="36" rx="10" class="soft"/><text x="236" y="338" class="small">US</text><text x="280" y="328" class="label">user</text><text x="280" y="351" class="small">Product manager · Aug 31, 2026</text><rect x="746" y="319" width="30" height="30" rx="8" class="panel"/><text x="755" y="340" class="small">⌫</text>
+  </g>
+
+  <!-- 07 Settings -->
+  <g transform="translate(80 1830)">
+    <rect width="840" height="500" rx="20" class="board"/><text x="32" y="40" class="label">07 · Settings</text>
+    <rect x="20" y="64" width="150" height="415" rx="12" class="page"/><rect x="40" y="88" width="34" height="34" rx="9" class="brand"/><text x="84" y="111" class="label">Nexora</text><text x="40" y="178" class="meta">⚙ Settings</text>
+    <text x="205" y="108" class="title">Settings</text><text x="205" y="136" class="meta">Personal preferences and account security</text>
+    <rect x="205" y="170" width="285" height="125" rx="12" class="page"/><text x="225" y="202" class="label">Appearance</text><text x="225" y="226" class="small">Choose a theme for your environment</text><rect x="225" y="245" width="112" height="30" rx="8" class="soft"/><text x="246" y="265" class="small">☼ Light</text><rect x="348" y="245" width="112" height="30" rx="8" class="callout"/><text x="373" y="265" class="small">☾ Dark</text>
+    <rect x="510" y="170" width="290" height="125" rx="12" class="page"/><text x="530" y="202" class="label">Language</text><text x="530" y="226" class="small">Interface and localized date format</text><rect x="530" y="245" width="240" height="30" rx="8" class="panel"/><text x="546" y="265" class="small">English / فارسی</text>
+    <rect x="205" y="320" width="595" height="120" rx="12" class="page"/><text x="225" y="354" class="label">Change password</text><text x="225" y="378" class="small">Current password · New password · Confirm password</text><rect x="610" y="384" width="160" height="32" rx="8" class="brand"/><text x="642" y="405" font-family="sans-serif" font-size="12" fill="#fff">Save password</text>
+  </g>
+
+  <!-- 08 Mobile -->
+  <g transform="translate(1000 1830)">
+    <rect width="840" height="500" rx="20" class="board"/><text x="32" y="40" class="label">08 · Mobile conversation and knowledge</text>
+    <rect x="85" y="75" width="260" height="385" rx="25" class="page"/><rect x="85" y="75" width="260" height="46" rx="25" class="soft"/><text x="110" y="104" class="label">☰</text><text x="180" y="104" class="label">Nexora</text><text x="110" y="154" class="small">Company-Confirmation</text><rect x="110" y="170" width="210" height="58" rx="10" class="soft"/><text x="125" y="197" class="small">You · What is the project?</text><rect x="110" y="242" width="210" height="90" rx="10" class="page"/><text x="125" y="270" class="small">Nexora · source-grounded</text><line x1="125" y1="290" x2="295" y2="290" class="line" opacity=".18"/><line x1="125" y1="309" x2="280" y2="309" class="line" opacity=".18"/><rect x="105" y="387" width="220" height="43" rx="14" class="panel"/><text x="120" y="414" class="small">Ask a question…</text><circle cx="300" cy="408" r="13" class="brand"/>
+    <rect x="475" y="75" width="260" height="385" rx="25" class="page"/><rect x="475" y="75" width="260" height="46" rx="25" class="soft"/><text x="500" y="104" class="label">☰</text><text x="555" y="104" class="label">Knowledge</text><text x="500" y="150" class="small">Company-Confirmation</text><rect x="500" y="165" width="210" height="82" rx="11" class="callout"/><text x="525" y="198" class="label">Drop files</text><text x="525" y="220" class="small">PDF, TXT, image</text><rect x="500" y="264" width="210" height="55" rx="10" class="page"/><text x="518" y="288" class="small">▤ Confirmation.pdf</text><text x="518" y="309" class="small">Indexed</text><rect x="500" y="335" width="210" height="55" rx="10" class="page"/><text x="518" y="359" class="small">▤ Scan.pdf</text><text x="518" y="380" class="small">Processing · 40%</text>
+  </g>
+</svg>
