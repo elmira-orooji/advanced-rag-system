@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import "../styles/knowledge.css";
 import "./DocumentChunkInspector.css";
@@ -6,6 +6,7 @@ import { Boxes, ChevronRight, Copy, Eye, FileText, Pencil, Power, ScanSearch, Se
 import toast from "react-hot-toast";
 import { knowledgeService, type DocumentChunk, type DocumentDetail } from "../services/knowledgeService";
 import { inspectUnicode, type UnicodeFinding } from "../lib/unicodeInspector";
+import { findPersianSearchMatches, toPersianSearchKey } from "../lib/persianSearch";
 
 type Props = { documentId: string; isAdmin: boolean; isFa: boolean; onClose: () => void };
 
@@ -36,10 +37,10 @@ export default function DocumentChunkInspector({ documentId, isAdmin, isFa, onCl
 
   const parents = useMemo(() => {
     if (!document) return [];
-    const needle = query.trim().toLocaleLowerCase();
+    const needle = toPersianSearchKey(query);
     const groups = new Map<number, { index: number; content: string; children: DocumentChunk[] }>();
     for (const chunk of document.chunks) {
-      if (needle && !chunk.content.toLocaleLowerCase().includes(needle) && !chunk.parent_content.toLocaleLowerCase().includes(needle)) continue;
+      if (needle && !toPersianSearchKey(chunk.content).includes(needle) && !toPersianSearchKey(chunk.parent_content).includes(needle)) continue;
       const group = groups.get(chunk.parent_index) || { index: chunk.parent_index, content: chunk.parent_content, children: [] };
       group.children.push(chunk); groups.set(chunk.parent_index, group);
     }
@@ -115,8 +116,16 @@ function ChunkEnrichment({ chunk, isFa, isAdmin, saving, onEnrich }: { chunk: Do
 }
 
 function HighlightedSource({ text, query }: { text: string; query: string }) {
-  const needle = query.trim();
-  if (!needle) return <mark className="mt-4 block whitespace-pre-wrap rounded-xl inspector-tint p-3 text-xs leading-6 inspector-text">{text}</mark>;
-  const parts = text.split(new RegExp(`(${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")})`, "gi"));
-  return <p className="mt-4 whitespace-pre-wrap rounded-xl inspector-surface p-3 text-xs leading-6 inspector-text">{parts.map((part, index) => part.toLocaleLowerCase() === needle.toLocaleLowerCase() ? <mark key={index} className="rounded inspector-tint px-0.5 text-white">{part}</mark> : part)}</p>;
+  const ranges = findPersianSearchMatches(text, query);
+  if (!ranges.length) return <p className="mt-4 whitespace-pre-wrap rounded-xl inspector-surface p-3 text-xs leading-6 inspector-text">{text}</p>;
+
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  for (const [index, range] of ranges.entries()) {
+    if (range.start > cursor) parts.push(text.slice(cursor, range.start));
+    parts.push(<mark key={index} className="rounded inspector-tint px-0.5 text-white">{text.slice(range.start, range.end)}</mark>);
+    cursor = range.end;
+  }
+  if (cursor < text.length) parts.push(text.slice(cursor));
+  return <p className="mt-4 whitespace-pre-wrap rounded-xl inspector-surface p-3 text-xs leading-6 inspector-text">{parts}</p>;
 }
