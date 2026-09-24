@@ -175,6 +175,9 @@ html:not(.dark) :is(.chat-answer, .chat-question, .chat-evidence) {
 .chat-thread .chat-answer-action { width: 32px; height: 32px; }
 .chat-thread .chat-answer-source-count { margin-inline-start: auto; font-size: var(--font-size-helper); }
 .chat-loading .chat-answer-body { width: 100%; padding-bottom: 20px; }
+.chat-answer-beam { position: relative; isolation: isolate; width: 100%; border: 1px solid color-mix(in srgb, var(--answer-accent) 52%, var(--answer-border)); border-radius: 16px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--answer-accent) 10%, transparent), 0 0 20px color-mix(in srgb, var(--answer-accent) 11%, transparent); }
+.chat-answer-beam > .chat-answer-body { position: relative; z-index: 1; margin: 0; border-color: transparent; background: var(--answer-panel); }
+@media (prefers-reduced-motion: reduce) { .chat-answer-beam, .chat-answer-beam::before, .chat-answer-beam::after, .chat-answer-beam [data-beam-bloom] { animation: none !important; transition: none !important; } }
 .answer-thinking-state { display: inline-flex; align-items: center; gap: 7px; margin-inline-start: auto; color: var(--answer-muted); font-size: var(--font-size-helper); font-weight: 500; }
 .answer-thinking-state > span { width: 7px; height: 7px; border-radius: 99px; background: var(--answer-accent); box-shadow: 0 0 0 0 color-mix(in srgb, var(--answer-accent) 45%, transparent); animation: answer-thinking-pulse 1.8s ease-out infinite; }
 .answer-thinking-content { display: flex; align-items: center; gap: 8px; min-height: 28px; padding-inline-start: 48px; }
