@@ -6,7 +6,7 @@ const request = <T,>(path: string, init?: RequestInit) => apiRequest<T>(path, in
 
 export interface CustomAssistant { model_id: string | null; answer_mode: "sources" | "hybrid"; id: string; name: string; description: string | null; instructions: string; is_active: boolean; created_by_id: string; document_set_ids: string[]; document_set_names: string[]; created_at: string; updated_at: string; }
 export interface AssistantPayload { model_id: string | null; answer_mode: "sources" | "hybrid"; name: string; description?: string; instructions: string; document_set_ids: string[]; is_active: boolean; }
-export interface AssistantAnswer { answer_basis: "sources" | "general" | "hybrid"; response_id: string; answer: string; grounded: boolean; citations: Array<{ id: number; chunk_id: string; document_id: string; filename: string; chunk_index: number; excerpt: string; score: number; page: number | null; section: string | null }>; }
+export interface AssistantAnswer { answer_basis: "sources" | "general" | "hybrid"; response_id: string; answer: string; grounded: boolean; citations: Array<{ id: number; chunk_id: string; document_id: string; filename: string; chunk_index: number; excerpt: string; score: number; page: number | null; section: string | null; ocr_provenance: { provider: string; model?: string; completed_at: string } | null }>; }
 
 export const assistantService = {
   models: () => request<Array<{ id: string; name: string; free: boolean }>>("/assistants/models", { headers: headers() }),

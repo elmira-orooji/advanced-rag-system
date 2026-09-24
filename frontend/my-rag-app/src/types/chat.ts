@@ -7,6 +7,12 @@ export type AnswerBasis =
   | "general"
   | "hybrid";
 
+export interface OcrProvenance {
+  provider: string;
+  model?: string;
+  completed_at: string;
+}
+
 export interface Source {
   id: string;
   title: string;
@@ -17,6 +23,7 @@ export interface Source {
   score?: number;
   page?: number | null;
   section?: string | null;
+  ocrProvenance?: OcrProvenance | null;
 }
 
 export interface ChatMessage {

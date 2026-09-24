@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Bot, Check, ChevronDown, FileSearch, FileText, FileUp, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
+import { BookOpen, Check, ChevronDown, FileSearch, FileText, FileUp, Loader2, MessageSquareText, RefreshCw, ShieldCheck, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 
@@ -39,6 +39,7 @@ function toChatMessage(message: PersistedMessage): ChatMessage {
       score: source.score,
       page: source.page,
       section: source.section,
+      ocrProvenance: source.ocr_provenance,
     })),
   };
 }
@@ -254,12 +255,14 @@ export default function ConversationPage({ conversationId, onConversationChange,
   }
 
   return <div dir={isFa ? "rtl" : "ltr"} className="conversation-page relative mx-auto flex h-full w-full flex-col overflow-hidden px-4 sm:px-7 lg:px-10">
-    <header className="relative z-10 flex h-[72px] shrink-0 items-center justify-between gap-4 border-b border-white/[.045]">
-      <div className="flex min-w-0 items-center gap-3">
-        <NexoraAvatar />
-        <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1><p className="mt-0.5 flex items-center gap-1.5 text-xs conversation-muted">{assistantName ? <><Bot size={12} className="conversation-accent" />{isFa ? `دستیار: ${assistantName}` : `Assistant: ${assistantName}`}</> : (isFa ? "پاسخ‌گویی مبتنی بر منابع" : "Source-grounded conversation")}</p></div>
+    <header className="relative z-10 h-[72px] shrink-0">
+      <div className="conversation-header-inner flex h-full w-full items-center justify-between gap-4 border-b border-white/[.045]">
+        <div className="flex min-w-0 items-center gap-3">
+          <NexoraAvatar />
+          <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1></div>
+        </div>
+        {assistantName && <div className="hidden items-center sm:flex"><span className="conversation-assistant-context" title={assistantSources.length ? assistantSources.join(" · ") : undefined}><BookOpen size={12} />{assistantSources.length ? (isFa ? `${assistantSources.length} پایگاه دانش متصل` : `${assistantSources.length} connected knowledge ${assistantSources.length === 1 ? "base" : "bases"}`) : (isFa ? "بدون منبع اختصاصی" : "No dedicated knowledge base")}</span></div>}
       </div>
-      <div className="hidden items-center gap-3 sm:flex">{assistantName && <span className="conversation-assistant-context" title={assistantSources.length ? assistantSources.join(" · ") : undefined}><BookOpen size={12} />{assistantSources.length ? (isFa ? `${assistantSources.length} پایگاه دانش متصل` : `${assistantSources.length} connected knowledge ${assistantSources.length === 1 ? "base" : "bases"}`) : (isFa ? "بدون منبع اختصاصی" : "No dedicated knowledge base")}</span>}<span className="conversation-save-status flex items-center gap-2 text-xs"><span className="size-1.5 rounded-full bg-emerald-300/70" />{isFa ? "ذخیره خودکار" : "Saved automatically"}</span></div>
     </header>
 
     <section className="relative z-10 min-h-0 flex-1 overflow-hidden px-0 sm:px-3">

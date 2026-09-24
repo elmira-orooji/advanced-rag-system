@@ -8,6 +8,7 @@ export interface KnowledgeDocument {
   processing_error: string | null;
   processing_progress: number;
   processing_stage: string;
+  ocr_provenance: { provider: string; model?: string; completed_at: string } | null;
   author: string | null;
   language: string | null;
   source_type: string | null;
@@ -73,8 +74,16 @@ interface RagResponse {
     score: number;
     page: number | null;
     section: string | null;
+    ocr_provenance: { provider: string; model?: string; completed_at: string } | null;
   }>;
-  sources: Array<{ chunk_id: string; document_id: string; filename: string; content: string; score: number }>;
+  sources: Array<{
+    chunk_id: string;
+    document_id: string;
+    filename: string;
+    content: string;
+    score: number;
+    ocr_provenance: { provider: string; model?: string; completed_at: string } | null;
+  }>;
 }
 
 export interface ResearchResponse extends RagResponse {
@@ -92,7 +101,7 @@ export interface PipelineTraceResponse {
   question: string; answer: string; grounded: boolean; total_duration_ms: number;
   stages: Array<{ key: "question" | "retrieval" | "rerank" | "answer"; duration_ms: number; input_count: number; output_count: number }>;
   results: PlaygroundResult[];
-  citations: Array<{ id: number; chunk_id: string; filename: string }>;
+  citations: Array<{ id: number; chunk_id: string; filename: string; ocr_provenance: { provider: string; model?: string; completed_at: string } | null }>;
   usage: UsageMetrics | null;
 }
 export interface UsageMetrics { model: string; latency_ms: number; prompt_tokens: number; completion_tokens: number; total_tokens: number; estimated_cost_usd: number; }

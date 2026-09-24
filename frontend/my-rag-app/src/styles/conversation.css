@@ -1,4 +1,5 @@
 .conversation-page {
+  --conversation-content-max: 800px;
   --cv-bg: var(--surface-canvas);
   --cv-panel: var(--surface-panel);
   --cv-text: var(--text-primary);
@@ -21,6 +22,7 @@ html:not(.dark) .conversation-page {
   --cv-success: var(--status-success);
 }
 .conversation-page .conversation-muted { color: var(--cv-muted); }
+.conversation-header-inner { max-width: var(--conversation-content-max); margin-inline: auto; }
 .conversation-page .conversation-accent { color: var(--cv-accent); }
 .conversation-header { min-height: 68px; gap: 16px; border-bottom: 1px solid var(--cv-line); }
 .conversation-header-icon { display: grid; place-items: center; width: 28px; height: 28px; border: 1px solid var(--cv-line); border-radius: 8px; color: var(--cv-accent); }
@@ -97,8 +99,25 @@ html:not(.dark) .conversation-page {
 .conversation-page { font-family: Inter, Vazirmatn, sans-serif; }
 .conversation-page[dir="rtl"] { font-family: Vazirmatn, Inter, sans-serif; }
 .conversation-page .conversation-dock { border-top: 0; }
-.app-shell .conversation-page .app-composer { max-width: 780px; border-radius: 18px; padding: 14px; box-shadow: 0 8px 30px #10192c08; }
+.app-shell .conversation-page .app-composer { max-width: var(--conversation-content-max); border-radius: 18px; padding: 14px; box-shadow: 0 8px 30px #10192c08; }
 .conversation-page .conversation-save-status { color: var(--cv-muted); }
 .conversation-page .conversation-save-status > span { background: var(--cv-success); }
 .conversation-assistant-context { display: inline-flex; max-width: 240px; align-items: center; gap: 6px; overflow: hidden; padding: 5px 8px; border: 1px solid var(--cv-line); border-radius: 999px; color: var(--cv-muted); background: var(--cv-panel); font-size: var(--font-size-helper); white-space: nowrap; text-overflow: ellipsis; }
 .conversation-assistant-context svg { flex-shrink: 0; color: var(--cv-accent); }
+.conversation-page:has(.chat-thread--with-evidence) > section { position: static; z-index: 40; overflow: visible; }
+
+@media (min-width: 761px) {
+  .conversation-page:has(.chat-thread--with-evidence) > header,
+  .conversation-page:has(.chat-thread--with-evidence) > section,
+  .conversation-page:has(.chat-thread--with-evidence) > .conversation-dock {
+    width: calc(100% - 356px);
+  }
+  .conversation-page[dir="rtl"]:has(.chat-thread--with-evidence) > header,
+  .conversation-page[dir="rtl"]:has(.chat-thread--with-evidence) > section,
+  .conversation-page[dir="rtl"]:has(.chat-thread--with-evidence) > .conversation-dock { align-self: flex-end; }
+  .conversation-page[dir="ltr"]:has(.chat-thread--with-evidence) > header,
+  .conversation-page[dir="ltr"]:has(.chat-thread--with-evidence) > section,
+  .conversation-page[dir="ltr"]:has(.chat-thread--with-evidence) > .conversation-dock { align-self: flex-start; }
+  .conversation-page:has(.chat-thread--with-evidence) > section,
+  .conversation-page:has(.chat-thread--with-evidence) > .conversation-dock { padding-inline: 0; }
+}
