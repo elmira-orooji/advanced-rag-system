@@ -8,6 +8,8 @@
   --cv-accent: var(--brand);
   --cv-tint: var(--brand-soft);
   --cv-success: var(--status-success);
+  --cv-send-bg: #59677d;
+  --cv-send-hover: #46546a;
   background: var(--cv-bg);
   color: var(--cv-text);
 }
@@ -63,6 +65,7 @@ html:not(.dark) .conversation-page {
 }
 .app-shell .conversation-page .app-composer:focus-within { border-color: var(--cv-accent); box-shadow: 0 0 0 3px var(--cv-tint); }
 .app-shell .conversation-page textarea.chat-composer-textarea {
+  width: 100%; min-height: 40px; max-height: 128px; field-sizing: content;
   color: var(--cv-text); caret-color: var(--cv-text); background: transparent; border: 0; box-shadow: none; font-size: 14px; line-height: 1.5;
 }
 .app-shell .conversation-page textarea.chat-composer-textarea:focus { box-shadow: none; }
@@ -73,10 +76,10 @@ html:not(.dark) .conversation-page {
 .app-shell .conversation-page .app-composer .app-icon-button:hover { color: var(--cv-accent) !important; background: var(--cv-tint); border-color: var(--cv-accent); }
 .app-shell .conversation-page .chat-rag-label { color: var(--cv-muted) !important; font-size: var(--font-size-helper); align-self: center; }
 .app-shell .conversation-page .chat-send-button {
-  border-radius: 9px; background: var(--brand-action); color: var(--text-inverse) !important; box-shadow: none; transform: none;
+  border-radius: 9px; background: var(--cv-send-bg); color: var(--text-inverse) !important; box-shadow: none; transform: none;
   transition: background-color 140ms ease;
 }
-.app-shell .conversation-page .chat-send-button:hover:not(:disabled) { background: var(--brand-action-hover); }
+.app-shell .conversation-page .chat-send-button:hover:not(:disabled) { background: var(--cv-send-hover); }
 .app-shell .conversation-page .chat-send-button:disabled { background: var(--cv-tint) !important; color: var(--cv-muted) !important; cursor: not-allowed; }
 .conversation-suggestion { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 12px; border: 1px solid var(--cv-line); border-radius: 9px; background: transparent; text-align: start; cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
 .conversation-suggestion:hover { background: var(--cv-tint); border-color: var(--cv-accent); }
@@ -103,6 +106,7 @@ html:not(.dark) .conversation-page {
 .conversation-page .conversation-save-status { color: var(--cv-muted); }
 .conversation-page .conversation-save-status > span { background: var(--cv-success); }
 .conversation-assistant-context { display: inline-flex; max-width: 240px; align-items: center; gap: 6px; overflow: hidden; padding: 5px 8px; border: 1px solid var(--cv-line); border-radius: 999px; color: var(--cv-muted); background: var(--cv-panel); font-size: var(--font-size-helper); white-space: nowrap; text-overflow: ellipsis; }
+html.dark .conversation-page { --cv-send-bg: #66748a; --cv-send-hover: #78869a; }
 .conversation-assistant-context svg { flex-shrink: 0; color: var(--cv-accent); }
 .conversation-page:has(.chat-thread--with-evidence) > section { position: static; z-index: 40; overflow: visible; }
 
