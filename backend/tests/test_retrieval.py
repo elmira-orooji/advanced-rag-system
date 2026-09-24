@@ -66,6 +66,7 @@ class RetrievalContextTests(unittest.TestCase):
         db.execute.side_effect = [
             self.result([(self.document_id, datetime.now(timezone.utc))]),
             self.result([(edited, "test.txt")]),
+            self.result([(self.document_id, {"provider": "jina", "model": "jina-ocr-v1", "completed_at": "2026-09-24T10:00:00Z"})]),
         ]
         stale_point = {"id": str(uuid4()), "score": 0.9, "payload": {
             "chunk_id": str(uuid4()), "document_id": str(self.document_id),
@@ -78,6 +79,7 @@ class RetrievalContextTests(unittest.TestCase):
         self.assertEqual(len(candidates), 1)
         self.assertEqual(candidates[0]["payload"]["content"], "edited text")
         self.assertEqual(results[0]["payload"]["content"], "edited text")
+        self.assertEqual(results[0]["payload"]["ocr_provenance"]["provider"], "jina")
 
     def test_zero_vector_weight_skips_qdrant(self):
         chunk = self.chunk(0, "lexical match")
@@ -85,6 +87,7 @@ class RetrievalContextTests(unittest.TestCase):
         db.execute.side_effect = [
             self.result([(self.document_id, datetime.now(timezone.utc))]),
             self.result([(chunk, "test.txt")]),
+            self.result([(self.document_id, None)]),
         ]
         with patch("app.services.retrieval.get_vector_store") as client:
             results = hybrid_search(
@@ -100,6 +103,7 @@ class RetrievalContextTests(unittest.TestCase):
         db.execute.side_effect = [
             self.result([(self.document_id, datetime.now(timezone.utc))]),
             self.result([(chunk, "test.txt")]),
+            self.result([(self.document_id, None)]),
         ]
         store = MagicMock()
         store.search.return_value = []
@@ -116,7 +120,9 @@ class RetrievalContextTests(unittest.TestCase):
         db.execute.side_effect = [
             self.result([(self.document_id, version)]),
             self.result([(chunk, "test.txt")]),
+            self.result([(self.document_id, None)]),
             self.result([(self.document_id, version)]),
+            self.result([(self.document_id, None)]),
         ]
         with patch("app.services.retrieval.get_vector_store") as client, patch(
             "app.services.retrieval._tokens", wraps=retrieval._tokens
@@ -129,7 +135,7 @@ class RetrievalContextTests(unittest.TestCase):
             call for call in tokens.call_args_list if call.args[0] == "cached lexical text"
         ]
         self.assertEqual(len(corpus_tokenizations), 1)
-        self.assertEqual(db.execute.call_count, 3)
+        self.assertEqual(db.execute.call_count, 5)
 
     def test_changed_document_version_rebuilds_cached_corpus(self):
         original = self.chunk(0, "old text")

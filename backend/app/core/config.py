@@ -117,11 +117,10 @@ MALWARE_RETAIN_DETECTED = _boolean_setting("MALWARE_RETAIN_DETECTED", default=Fa
 MALWARE_QUARANTINE_DIR = UPLOAD_DIR / ".quarantine"
 if CLAMD_PORT < 1 or CLAMD_PORT > 65535 or CLAMD_TIMEOUT_SECONDS <= 0:
     raise RuntimeError("CLAMD_PORT must be valid and CLAMD_TIMEOUT_SECONDS must be positive")
-# OCR is deliberately opt-in: documents stay local unless a provider is
-# configured. "auto" tries MinerU, Google Vision, then Azure. Jina is kept
-# explicit so an API key can never cause documents to leave the organization
-# merely because it happens to be configured.
-OCR_PROVIDER = os.getenv("OCR_PROVIDER", "disabled").strip().lower()
+# Jina is the requested default for scanned files, with MinerU as fallback.
+# Both providers are hosted services, so enabling this default sends document
+# content outside the deployment. Set OCR_PROVIDER=disabled to opt out.
+OCR_PROVIDER = os.getenv("OCR_PROVIDER", "jina").strip().lower()
 if OCR_PROVIDER not in {"disabled", "auto", "mineru", "jina", "google_vision", "azure_document_intelligence"}:
     raise RuntimeError("OCR_PROVIDER must be disabled, auto, mineru, jina, google_vision, or azure_document_intelligence")
 OCR_LANGUAGE_HINTS = [

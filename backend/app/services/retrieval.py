@@ -271,6 +271,14 @@ def hybrid_search(
     reranked_children = _rerank(query, candidates, candidate_limit) if use_reranker else candidates[:candidate_limit]
     rerank_ms = round((perf_counter() - started) * 1000, 2)
     expanded = _expand_parents(chunks, reranked_children, limit)
+    ocr_provenance_by_document = dict(
+        db.execute(
+            select(Document.id, Document.ocr_provenance).where(Document.id.in_(scoped_ids))
+        ).all()
+    )
+    for item in expanded:
+        document_id = uuid.UUID(item["payload"]["document_id"])
+        item["payload"]["ocr_provenance"] = ocr_provenance_by_document.get(document_id)
     if trace is not None:
         trace.update({"vector_ms": vector_ms, "bm25_ms": lexical_ms, "rerank_ms": rerank_ms, "vector_count": len(vector_results), "bm25_count": len(lexical_results), "fused_count": len(candidates), "reranked_count": len(reranked_children), "answer_context_count": len(expanded)})
     return expanded

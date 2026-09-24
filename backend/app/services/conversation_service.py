@@ -90,7 +90,7 @@ class ConversationService:
         answer_basis = ("hybrid" if sources else "general") if hybrid else "sources"
         if sources or hybrid:
             try:
-                answer = self.providers.language_model(model=model_id).answer(payload.content, [source.model_dump(mode="json") for source in sources], history=history, instructions=instructions, hybrid=hybrid)
+                answer = self.providers.language_model(model=model_id).answer(payload.content, [source.model_dump(mode="json", exclude={"ocr_provenance"}) for source in sources], history=history, instructions=instructions, hybrid=hybrid)
             except OpenRouterError as exc:
                 raise provider_http_error(exc) from exc
         else:

@@ -30,12 +30,13 @@ while OAuth and network downloads are in progress.
 
 ## OCR for scanned documents
 
-PDFs with an embedded text layer are extracted locally. Scanned PDFs and images
-can use MinerU's hosted Precision API without installing a local OCR model. Set
-`OCR_PROVIDER=mineru`, configure `MINERU_API_TOKEN`, and use `MINERU_LANGUAGE=fa`
-for Persian documents. MinerU receives the original file through a signed upload
-URL, processes it asynchronously, and returns structured Markdown; keep OCR
-disabled unless the organisation has approved sending documents to MinerU.
+PDFs with an embedded text layer are extracted locally. By default, scanned
+PDFs and images are sent to Jina OCR first, then to MinerU if Jina is unavailable,
+fails, times out, or returns no text. Configure `JINA_API_KEY` and
+`MINERU_API_TOKEN`; both are hosted services and receive document content, so
+enable this route only when approved by the organisation's data policy. Use
+`OCR_PROVIDER=disabled` to disable hosted OCR, or `OCR_PROVIDER=mineru` to use
+MinerU only. Set `MINERU_LANGUAGE=fa` for Persian documents.
 
 Set `OCR_PROVIDER=auto` to try configured MinerU, Google Vision, then Azure
 Document Intelligence. The API also accepts JPEG, PNG, and TIFF images when OCR

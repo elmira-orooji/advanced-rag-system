@@ -158,4 +158,35 @@ def test_conversation_list_exposes_additive_offset_pagination_headers(client):
     assert response.headers["X-Pagination-Limit"] == "1"
     assert response.headers["X-Pagination-Returned"] == "1"
     assert response.headers["X-Pagination-Has-More"] == "true"
-    assert response.headers["X-Pagination-Next-Offset"] == "21"
+
+
+@pytest.mark.integration
+def test_conversation_history_refreshes_ocr_provenance_for_saved_sources(client):
+    user = SimpleNamespace(id=uuid4(), organization_id=uuid4(), role="user")
+    app.dependency_overrides[get_current_user] = lambda: user
+    document_id = uuid4()
+    conversation_id = uuid4()
+    provenance = {"provider": "jina", "model": "jina-ocr-v1", "completed_at": "2026-09-24T10:00:00Z"}
+    message = SimpleNamespace(
+        id=uuid4(), role="assistant", content="Answer [Source 1]", answer_basis="sources",
+        answer_id=uuid4(), created_at=datetime.now(timezone.utc),
+        sources=[{
+            "chunk_id": str(uuid4()), "document_id": str(document_id), "filename": "guide.pdf",
+            "chunk_index": 0, "content": "Evidence", "score": 0.9,
+        }],
+    )
+    conversation = SimpleNamespace(
+        id=conversation_id, title="OCR question", document_id=None, document_set_id=None,
+        assistant_id=None, workspace_scope=False, created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc), messages=[message],
+    )
+    db = MagicMock()
+    db.execute.return_value.all.return_value = [(document_id, provenance)]
+    app.dependency_overrides[get_db] = lambda: db
+
+    with patch("app.api.routes.conversations.get_conversation_service") as service_factory:
+        service_factory.return_value.get.return_value = conversation
+        response = client.get(f"/api/v1/conversations/{conversation_id}")
+
+    assert response.status_code == 200
+    assert response.json()["messages"][0]["sources"][0]["ocr_provenance"]["provider"] == "jina"

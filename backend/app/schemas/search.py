@@ -20,6 +20,7 @@ class SearchHit(BaseModel):
     chunk_index: int
     content: str
     score: float
+    ocr_provenance: dict[str, str] | None = None
 
 
 class SearchResponse(BaseModel):

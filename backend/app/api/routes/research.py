@@ -52,7 +52,7 @@ def run_research(payload: ResearchRequest, db: Session = Depends(get_db), user: 
         db.add(record); db.commit(); db.refresh(record)
         return ResearchResponse(response_id=record.id, question=payload.question, answer=message, grounded=False, citations=[], steps=steps, evidence_reviewed=0)
     instructions = "Write a structured research report with a short executive summary, findings, limitations, and conclusion. Synthesize across sources instead of listing them. Every factual claim must retain inline [Source N] citations. Explicitly state uncertainty or conflicting evidence."
-    try: answer = client.answer(payload.question, [source.model_dump(mode="json") for source in sources], instructions=instructions)
+    try: answer = client.answer(payload.question, [source.model_dump(mode="json", exclude={"ocr_provenance"}) for source in sources], instructions=instructions)
     except OpenRouterError as exc: raise HTTPException(status_code=502, detail=str(exc)) from exc
     used: set[int] = set()
     def normalize(match: re.Match[str]) -> str:
@@ -60,7 +60,7 @@ def run_research(payload: ResearchRequest, db: Session = Depends(get_db), user: 
         if 1 <= number <= len(sources): used.add(number); return f"[{number}]"
         return ""
     answer = re.sub(r"\[\s*(?:Source\s*)?(\d+)\s*\]", normalize, answer, flags=re.I).strip()
-    citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename, chunk_index=source.chunk_index, excerpt=source.content, score=source.score) for index, source in enumerate(sources, 1) if index in used]
+    citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename, chunk_index=source.chunk_index, excerpt=source.content, score=source.score, ocr_provenance=source.ocr_provenance) for index, source in enumerate(sources, 1) if index in used]
     record = AnswerRecord(user_id=user.id, document_set_id=payload.document_set_id, question=payload.question, answer=answer, grounded=bool(citations), citation_count=len(citations))
     db.add(record); db.commit(); db.refresh(record)
     return ResearchResponse(response_id=record.id, question=payload.question, answer=answer, grounded=bool(citations), citations=citations, steps=steps, evidence_reviewed=len(sources))

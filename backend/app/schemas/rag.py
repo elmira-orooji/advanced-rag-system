@@ -36,3 +36,4 @@ class Citation(BaseModel):
     score: float
     page: int | None = None
     section: str | None = None
+    ocr_provenance: dict[str, str] | None = None

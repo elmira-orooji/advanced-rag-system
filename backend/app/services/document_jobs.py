@@ -13,7 +13,7 @@ from app.db.database import SessionLocal
 from app.models.document import Document
 from app.models.indexing_outbox import IndexingOutbox
 from app.models.processing_job import ProcessingJob
-from app.services.document_extractor import ExtractionError, extract_text
+from app.services.document_extractor import ExtractionError, extract_text_with_provenance
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
 from app.services.semantic_chunker import semantic_chunks
@@ -232,11 +232,18 @@ def process_document_job(
             source_path = resolve_document_path(stored_source)
             extraction_started = time.perf_counter()
             try:
-                text = extract_text(source_path, document.content_type or "")
+                extraction = extract_text_with_provenance(source_path, document.content_type or "")
             except Exception:
                 observe("document_ocr_duration", time.perf_counter() - extraction_started, content_type=document.content_type or "unknown", result="failed")
                 raise
             observe("document_ocr_duration", time.perf_counter() - extraction_started, content_type=document.content_type or "unknown", result="success")
+            text = extraction.text
+            document.ocr_provenance = extraction.ocr_provenance
+            if extraction.ocr_provenance:
+                logger.info(
+                    "Document OCR completed",
+                    extra={"document_id": str(document.id), **extraction.ocr_provenance},
+                )
             text_checksum = checksum(text)
             chunking_config = _chunking_config()
             chunking_is_unchanged = (

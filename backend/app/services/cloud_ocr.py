@@ -6,7 +6,10 @@ MinerU uses its hosted asynchronous Precision API, so no local model is loaded.
 from __future__ import annotations
 
 import base64
+from dataclasses import dataclass
+from datetime import datetime, timezone
 import hashlib
+import logging
 from http.client import HTTPConnection, HTTPSConnection, HTTPException
 from io import BytesIO
 import json
@@ -41,7 +44,20 @@ class OCRUnavailableError(RuntimeError):
     """OCR was needed but no configured provider could return text."""
 
 
+logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class OCRResult:
+    text: str
+    provenance: dict[str, str]
+
+
 def extract_scanned_document_text(file_path: Path, content_type: str) -> str:
+    return extract_scanned_document_text_with_provenance(file_path, content_type).text
+
+
+def extract_scanned_document_text_with_provenance(file_path: Path, content_type: str) -> OCRResult:
     providers = _providers()
     if not providers:
         raise OCRUnavailableError(
@@ -53,11 +69,42 @@ def extract_scanned_document_text(file_path: Path, content_type: str) -> str:
         try:
             text = provider(file_path, content_type).strip()
             if text:
-                return text
+                provider_name = _provider_name(provider)
+                model = {
+                    "jina": JINA_OCR_MODEL,
+                    "mineru": MINERU_MODEL_VERSION,
+                }.get(provider_name)
+                provenance = {"provider": provider_name, "completed_at": datetime.now(timezone.utc).isoformat()}
+                if model:
+                    provenance["model"] = model
+                return OCRResult(text=text, provenance=provenance)
             errors.append("provider returned no text")
+            if provider is not providers[-1]:
+                logger.warning(
+                    "OCR provider returned no text; trying fallback",
+                    extra={"provider": _provider_name(provider), "error_type": "EmptyResult"},
+                )
         except OCRUnavailableError as exc:
             errors.append(str(exc))
+            if provider is not providers[-1]:
+                logger.warning(
+                    "OCR provider failed; trying fallback",
+                    extra={"provider": _provider_name(provider), "error_type": type(exc).__name__},
+                )
     raise OCRUnavailableError("OCR could not read this document. " + " | ".join(errors[:2]))
+
+
+def _provider_name(provider) -> str:
+    return next(
+        name
+        for name, candidate in (
+            ("jina", _jina),
+            ("mineru", _mineru),
+            ("google_vision", _google_vision),
+            ("azure_document_intelligence", _azure_document_intelligence),
+        )
+        if provider is candidate
+    )
 
 
 def _providers():
@@ -70,10 +117,10 @@ def _providers():
         available.append(_google_vision)
     if AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT and AZURE_DOCUMENT_INTELLIGENCE_KEY:
         available.append(_azure_document_intelligence)
-    # Jina is intentionally excluded from auto: it is an external, experimental
-    # OCR path and must be selected explicitly by an operator.
     if OCR_PROVIDER == "jina":
-        return [_jina] if JINA_API_KEY else []
+        # Jina is primary by explicit configuration; MinerU is a fallback for
+        # missing credentials, provider errors, timeouts, or empty OCR output.
+        return ([_jina] if JINA_API_KEY else []) + ([_mineru] if MINERU_API_TOKEN else [])
     if OCR_PROVIDER == "google_vision":
         return [_google_vision] if GOOGLE_VISION_API_KEY else []
     if OCR_PROVIDER == "azure_document_intelligence":

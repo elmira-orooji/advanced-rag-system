@@ -38,6 +38,7 @@ class DocumentResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     content_checksum: str | None
+    ocr_provenance: dict[str, str] | None = None
 
 
 class IngestResponse(DocumentResponse):

@@ -1,15 +1,22 @@
 import csv
 import io
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from pypdf import PdfReader
 
-from app.services.cloud_ocr import OCRUnavailableError, extract_scanned_document_text
+from app.services.cloud_ocr import OCRUnavailableError, extract_scanned_document_text_with_provenance
 
 
 class ExtractionError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class ExtractionResult:
+    text: str
+    ocr_provenance: dict[str, str] | None = None
 
 
 # Supported MIME types mapped to extraction functions
@@ -31,17 +38,29 @@ def supported_content_types() -> list[str]:
 
 
 def extract_text(file_path: Path, content_type: str) -> str:
+    return extract_text_with_provenance(file_path, content_type).text
+
+
+def extract_text_with_provenance(file_path: Path, content_type: str) -> ExtractionResult:
     handler_name = _EXTRACTORS.get(content_type)
     if handler_name is None:
         raise ExtractionError(
             f"Unsupported file type '{content_type}'. "
             f"Supported types: {', '.join(supported_content_types())}"
         )
+    if handler_name == "_extract_pdf":
+        return _extract_pdf_with_provenance(file_path)
+    if handler_name == "_extract_image":
+        return _extract_image_with_provenance(file_path)
     handler = globals()[handler_name]
-    return handler(file_path)
+    return ExtractionResult(text=handler(file_path))
 
 
 def _extract_pdf(file_path: Path) -> str:
+    return _extract_pdf_with_provenance(file_path).text
+
+
+def _extract_pdf_with_provenance(file_path: Path) -> ExtractionResult:
     try:
         reader = PdfReader(file_path)
         text = "\n\n".join((page.extract_text() or "").strip() for page in reader.pages)
@@ -50,21 +69,26 @@ def _extract_pdf(file_path: Path) -> str:
 
     text = text.strip()
     if text:
-        return text
+        return ExtractionResult(text=text)
     try:
-        return extract_scanned_document_text(file_path, "application/pdf")
+        result = extract_scanned_document_text_with_provenance(file_path, "application/pdf")
+        return ExtractionResult(text=result.text, ocr_provenance=result.provenance)
     except OCRUnavailableError as exc:
         raise ExtractionError(str(exc)) from exc
 
 
 def _extract_image(file_path: Path) -> str:
+    return _extract_image_with_provenance(file_path).text
+
+
+def _extract_image_with_provenance(file_path: Path) -> ExtractionResult:
     try:
-        text = extract_scanned_document_text(file_path, _content_type_for_image(file_path))
+        result = extract_scanned_document_text_with_provenance(file_path, _content_type_for_image(file_path))
     except OCRUnavailableError as exc:
         raise ExtractionError(str(exc)) from exc
-    if not text.strip():
+    if not result.text.strip():
         raise ExtractionError("No text was found in the image")
-    return text
+    return ExtractionResult(text=result.text, ocr_provenance=result.provenance)
 
 
 def _content_type_for_image(file_path: Path) -> str:

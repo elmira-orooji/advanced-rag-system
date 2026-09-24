@@ -1,4 +1,5 @@
 import shutil
+import logging
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -30,7 +31,7 @@ from app.schemas.document import (
     DocumentMetadataUpdate,
     IngestResponse,
 )
-from app.services.document_extractor import ExtractionError, extract_text
+from app.services.document_extractor import ExtractionError, extract_text_with_provenance
 from app.services.qdrant import QdrantClient, QdrantError
 from app.services.text_chunker import hierarchical_chunks
 from app.services.chunk_enrichment import enrich_chunk
@@ -47,6 +48,7 @@ from app.services.document_ingestion_service import DocumentIngestionService
 from app.api.contracts import set_offset_pagination_headers
 
 router = APIRouter(prefix="/documents", tags=["documents"])
+logger = logging.getLogger(__name__)
 def _sync_active_chunks(document: Document) -> None:
     client = QdrantClient()
     client.ensure_collection()
@@ -169,8 +171,8 @@ def upload_document(
         document_id, document_dir, original_path, _ = stage_and_scan_upload(file, content_type=content_type, suffix=suffix, filename=safe_filename, user_id=user.id, organization_id=user.organization_id, save_upload=_save_upload)
         extracted_path = document_dir / "extracted.txt"
 
-        extracted_text = extract_text(original_path, content_type)
-        atomic_write_text(extracted_path, extracted_text)
+        extraction = extract_text_with_provenance(original_path, content_type)
+        atomic_write_text(extracted_path, extraction.text)
 
         document = Document(
             id=document_id,
@@ -180,7 +182,13 @@ def upload_document(
             storage_path=document_storage_relative(original_path),
             extracted_text_path=document_storage_relative(extracted_path),
             status="extracted",
+            ocr_provenance=extraction.ocr_provenance,
         )
+        if extraction.ocr_provenance:
+            logger.info(
+                "Document OCR completed",
+                extra={"document_id": str(document.id), **extraction.ocr_provenance},
+            )
         db.add(document)
         db.commit()
         db.refresh(document)

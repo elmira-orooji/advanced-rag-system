@@ -33,6 +33,20 @@ class CloudOCRTests(unittest.TestCase):
         with patch.object(cloud_ocr, "OCR_PROVIDER", "auto"), patch.object(cloud_ocr, "MINERU_API_TOKEN", "mineru"), patch.object(cloud_ocr, "GOOGLE_VISION_API_KEY", "google"), patch.object(cloud_ocr, "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT", "https://example.test"), patch.object(cloud_ocr, "AZURE_DOCUMENT_INTELLIGENCE_KEY", "azure"):
             self.assertEqual(cloud_ocr._providers(), [cloud_ocr._mineru, cloud_ocr._google_vision, cloud_ocr._azure_document_intelligence])
 
+    def test_jina_provider_prefers_jina_then_falls_back_to_mineru(self):
+        with patch.object(cloud_ocr, "OCR_PROVIDER", "jina"), patch.object(cloud_ocr, "JINA_API_KEY", "jina"), patch.object(cloud_ocr, "MINERU_API_TOKEN", "mineru"):
+            self.assertEqual(cloud_ocr._providers(), [cloud_ocr._jina, cloud_ocr._mineru])
+
+    def test_jina_failure_falls_back_to_mineru(self):
+        source = Path(__file__).parent / "fixtures" / "scanned-blank.pdf"
+        with patch.object(cloud_ocr, "OCR_PROVIDER", "jina"), patch.object(cloud_ocr, "JINA_API_KEY", "jina"), patch.object(cloud_ocr, "MINERU_API_TOKEN", "mineru"), patch.object(cloud_ocr, "_jina", side_effect=cloud_ocr.OCRUnavailableError("Jina timed out")), patch.object(cloud_ocr, "_mineru", return_value="# Extracted by MinerU") as mineru:
+            result = cloud_ocr.extract_scanned_document_text_with_provenance(source, "application/pdf")
+
+        self.assertEqual(result.text, "# Extracted by MinerU")
+        self.assertEqual(result.provenance["provider"], "mineru")
+        self.assertEqual(result.provenance["model"], cloud_ocr.MINERU_MODEL_VERSION)
+        mineru.assert_called_once_with(source, "application/pdf")
+
     def test_jina_is_explicit_and_sends_the_document_as_a_data_uri(self):
         response = _context(json.dumps({"choices": [{"message": {"content": "# گزارش\\n\\nمتن استخراج‌شده"}}]}).encode())
         image = MagicMock()
@@ -50,7 +64,7 @@ class CloudOCRTests(unittest.TestCase):
         self.assertTrue(payload["messages"][0]["content"][1]["image_url"]["url"].startswith("data:image/png;base64,"))
 
     def test_jina_requires_an_explicit_api_key(self):
-        with patch.object(cloud_ocr, "OCR_PROVIDER", "jina"), patch.object(cloud_ocr, "JINA_API_KEY", ""):
+        with patch.object(cloud_ocr, "OCR_PROVIDER", "jina"), patch.object(cloud_ocr, "JINA_API_KEY", ""), patch.object(cloud_ocr, "MINERU_API_TOKEN", ""):
             self.assertEqual(cloud_ocr._providers(), [])
 
     def test_mineru_uploads_then_polls_and_reads_markdown(self):
@@ -107,9 +121,19 @@ class CloudOCRTests(unittest.TestCase):
     def test_scanned_pdf_uses_ocr_after_native_extraction_is_empty(self):
         reader = MagicMock()
         reader.pages = [MagicMock(extract_text=lambda: "")]
-        with patch("app.services.document_extractor.PdfReader", return_value=reader), patch("app.services.document_extractor.extract_scanned_document_text", return_value="متن اسکن‌شده") as ocr:
+        with patch("app.services.document_extractor.PdfReader", return_value=reader), patch("app.services.document_extractor.extract_scanned_document_text_with_provenance", return_value=cloud_ocr.OCRResult("متن اسکن‌شده", {"provider": "jina", "model": "jina-ocr-v1", "completed_at": "2026-09-24T00:00:00+00:00"})) as ocr:
             self.assertEqual(_extract_pdf(Path("scan.pdf")), "متن اسکن‌شده")
         ocr.assert_called_once_with(Path("scan.pdf"), "application/pdf")
+
+    def test_ocr_result_records_provider_and_model(self):
+        source = Path(__file__).parent / "fixtures" / "scanned-blank.pdf"
+        with patch.object(cloud_ocr, "OCR_PROVIDER", "jina"), patch.object(cloud_ocr, "JINA_API_KEY", "jina"), patch.object(cloud_ocr, "MINERU_API_TOKEN", "mineru"), patch.object(cloud_ocr, "_jina", return_value="# Extracted"):
+            result = cloud_ocr.extract_scanned_document_text_with_provenance(source, "application/pdf")
+
+        self.assertEqual(result.text, "# Extracted")
+        self.assertEqual(result.provenance["provider"], "jina")
+        self.assertEqual(result.provenance["model"], cloud_ocr.JINA_OCR_MODEL)
+        self.assertIn("completed_at", result.provenance)
 
     def test_real_pdf_without_text_layer_is_rendered_as_a_png_page(self):
         # This mirrors the scanned-PDF route: a page without an embedded text layer.

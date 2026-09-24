@@ -10,6 +10,7 @@ class SharedSource(BaseModel):
     excerpt: str | None = Field(default=None, max_length=3000)
     page: int | None = None
     section: str | None = Field(default=None, max_length=255)
+    ocr_provenance: dict[str, str] | None = None
 
 
 class SharedMessage(BaseModel):

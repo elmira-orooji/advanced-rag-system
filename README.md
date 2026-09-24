@@ -142,7 +142,7 @@ The development server runs on [http://localhost:5173](http://localhost:5173) an
 
 ## Document processing and OCR
 
-PDF files with a text layer and TXT files are extracted locally. OCR is disabled by default, so scanned documents are not sent to an external provider until one is configured.
+PDF files with a text layer and TXT files are extracted locally. For scanned files, the default OCR route tries Jina first and falls back to MinerU if Jina is unavailable, fails, times out, or returns no text. Both are hosted services and receive document content; set `OCR_PROVIDER=disabled` to disable cloud OCR.
 
 To enable MinerU for Persian scanned documents:
 
@@ -155,7 +155,7 @@ MINERU_MODEL_VERSION=vlm
 
 Set `OCR_PROVIDER=auto` to try configured providers in this order: MinerU, Google Vision, and Azure Document Intelligence. Before enabling a cloud OCR provider, confirm that sending the original document to that provider is permitted by the organization’s data policy.
 
-Jina OCR is available as an explicit, experimental provider for controlled evaluation without installing a local model:
+Jina OCR can be configured as the primary provider without installing a local model. MinerU is used as its fallback when configured:
 
 ```dotenv
 OCR_PROVIDER=jina
@@ -163,7 +163,7 @@ JINA_API_KEY=your-jina-api-key
 JINA_OCR_MODEL=jina-ocr-v1
 ```
 
-It is intentionally excluded from `OCR_PROVIDER=auto`, so setting an API key cannot silently send documents to Jina. Use it only for approved, non-sensitive test documents until the organization has completed its data-processing review.
+With `OCR_PROVIDER=jina`, Jina is attempted first and MinerU second. Use this route only when the organization approves sending document content to both providers. If either credential is missing, the configured provider list adjusts accordingly.
 
 The application does not currently include malware scanning. Do not treat MIME checks and file-size limits as an antivirus control. Before processing untrusted files in production, deploy a quarantine-and-scan workflow that blocks files when the scanner is unavailable. [SECURITY.md](SECURITY.md) defines the required controls.
 

@@ -145,7 +145,7 @@ def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerReque
         db.add(record); db.commit(); db.refresh(record)
         return RagResponse(response_id=record.id, question=payload.question, answer=message, grounded=False, citations=[], sources=[])
     try:
-        answer = OpenRouterClient(model=item.model_id).answer(payload.question, [source.model_dump(mode="json") for source in sources], instructions=item.instructions, hybrid=item.answer_mode == "hybrid")
+        answer = OpenRouterClient(model=item.model_id).answer(payload.question, [source.model_dump(mode="json", exclude={"ocr_provenance"}) for source in sources], instructions=item.instructions, hybrid=item.answer_mode == "hybrid")
     except OpenRouterError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     used = set()
@@ -155,7 +155,7 @@ def answer_with_assistant(assistant_id: uuid.UUID, payload: AssistantAnswerReque
         return ""
     answer = re.sub(r"\[\s*(?:Source\s*)?(\d+)\s*\]", replace, answer, flags=re.I).strip()
     citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename,
-                          chunk_index=source.chunk_index, excerpt=source.content, score=source.score)
+                          chunk_index=source.chunk_index, excerpt=source.content, score=source.score, ocr_provenance=source.ocr_provenance)
                  for index, source in enumerate(sources, 1) if index in used]
     record = AnswerRecord(user_id=user.id, assistant_id=item.id, question=payload.question, answer=answer, grounded=bool(citations), citation_count=len(citations))
     db.add(record); db.commit(); db.refresh(record)

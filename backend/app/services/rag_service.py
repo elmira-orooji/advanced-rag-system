@@ -68,7 +68,7 @@ class RagService:
         sources = [SearchHit(score=point["score"], **point["payload"]) for point in points]
         if not sources:
             return self._save_no_results(payload, user)
-        contexts = [source.model_dump(mode="json") for source in sources]
+        contexts = [source.model_dump(mode="json", exclude={"ocr_provenance"}) for source in sources]
         try:
             llm_result = self.providers.language_model().answer_with_usage(payload.question, contexts)
             answer = llm_result.content
@@ -79,7 +79,7 @@ class RagService:
             raise provider_http_error(exc) from exc
 
         answer, citation_ids = self._normalize_citations(answer, len(sources))
-        citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename, chunk_index=source.chunk_index, excerpt=source.content, score=source.score) for index, source in enumerate(sources, start=1) if index in citation_ids]
+        citations = [Citation(id=index, chunk_id=source.chunk_id, document_id=source.document_id, filename=source.filename, chunk_index=source.chunk_index, excerpt=source.content, score=source.score, ocr_provenance=source.ocr_provenance) for index, source in enumerate(sources, start=1) if index in citation_ids]
         record = AnswerRecord(user_id=user.id, document_set_id=payload.document_set_id, question=payload.question, answer=answer, grounded=bool(citations), citation_count=len(citations))
         try:
             self.db.add(record)

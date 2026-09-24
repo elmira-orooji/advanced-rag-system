@@ -1,10 +1,12 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Query, Response, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import get_current_user
 from app.db.database import get_db
+from app.models.document import Document
 from app.models.user import User
 from app.schemas.conversation import ChatMessageCreate, ConversationCreate, ConversationDetail, ConversationResponse, ConversationUpdate, MessageResponse
 from app.services.conversation_service import ConversationService
@@ -32,7 +34,26 @@ def list_conversations(response: Response, offset: int = Query(default=0, ge=0),
 
 @router.get("/{conversation_id}", response_model=ConversationDetail)
 def get_conversation(conversation_id: uuid.UUID, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    return get_conversation_service(db).get(conversation_id, user, with_messages=True)
+    conversation = get_conversation_service(db).get(conversation_id, user, with_messages=True)
+    detail = ConversationDetail.model_validate(conversation)
+    document_ids = {
+        source.document_id
+        for message in detail.messages
+        for source in message.sources or []
+    }
+    if document_ids:
+        provenance_by_document = dict(
+            db.execute(
+                select(Document.id, Document.ocr_provenance).where(Document.id.in_(document_ids))
+            ).all()
+        )
+        for message in detail.messages:
+            if message.sources:
+                message.sources = [
+                    source.model_copy(update={"ocr_provenance": provenance_by_document.get(source.document_id)})
+                    for source in message.sources
+                ]
+    return detail
 
 
 @router.patch("/{conversation_id}", response_model=ConversationResponse)
