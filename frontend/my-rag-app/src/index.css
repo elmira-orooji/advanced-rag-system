@@ -372,7 +372,8 @@ html:not(.dark) .settings-theme-option.is-active { color: #5520bd !important; bo
 html:not(.dark) .settings-theme-option.is-active > svg { color: #7c27ff !important; }
 html:not(.dark) .app-shell [class*="border-white/"] { border-color: #e0e5ed !important; }
 html:not(.dark) .app-shell [class*="divide-white/"] > :not(:last-child) { border-color: #e4e8ef !important; }
-html:not(.dark) .app-shell [class*="bg-white/["] { background-color: rgba(255,255,255,.74) !important; }
+html:not(.dark) .app-shell [class^="bg-white/["],
+html:not(.dark) .app-shell [class*=" bg-white/["] { background-color: rgba(255,255,255,.74) !important; }
 html:not(.dark) .app-shell [class*="bg-black/"] { background-color: rgba(225,229,237,.52) !important; }
 html:not(.dark) .app-shell [class*="text-white/"] { color: #667188 !important; }
 html:not(.dark) .app-shell [class*="text-white/20"],
