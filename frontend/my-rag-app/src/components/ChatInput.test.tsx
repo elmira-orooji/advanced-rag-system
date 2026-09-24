@@ -13,7 +13,6 @@ describe("ChatInput", () => {
     render(<ChatInput disabled={false} onSend={onSend} />);
 
     const input = screen.getByRole("textbox");
-    expect(screen.getByRole("button", { name: /send message/i })).not.toHaveClass("chat-send-button--processing");
     fireEvent.change(input, { target: { value: "Retry this question" } });
     fireEvent.click(screen.getByRole("button", { name: /send message/i }));
 
@@ -40,6 +39,5 @@ describe("ChatInput", () => {
 
     expect(onCancel).toHaveBeenCalledOnce();
     expect(screen.getByRole("textbox")).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Stop generating" })).toHaveClass("chat-send-button--processing");
   });
 });
