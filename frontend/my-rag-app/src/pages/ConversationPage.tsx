@@ -261,7 +261,7 @@ export default function ConversationPage({ conversationId, onConversationChange,
           <NexoraAvatar />
           <div className="min-w-0"><h1 className="truncate text-sm font-semibold tracking-[-.02em] conversation-muted">{detail?.title || (isFa ? "گفتگوی جدید" : "New conversation")}</h1></div>
         </div>
-        {assistantName && <div className="hidden items-center sm:flex"><span className="conversation-assistant-context" title={assistantSources.length ? assistantSources.join(" · ") : undefined}><BookOpen size={12} />{assistantSources.length ? (isFa ? `${assistantSources.length} پایگاه دانش متصل` : `${assistantSources.length} connected knowledge ${assistantSources.length === 1 ? "base" : "bases"}`) : (isFa ? "بدون منبع اختصاصی" : "No dedicated knowledge base")}</span></div>}
+        {assistantName && <div className="hidden items-center gap-3 sm:flex"><span className="conversation-assistant-context">{isFa ? `دستیار: ${assistantName}` : `Assistant: ${assistantName}`}</span><span className="conversation-assistant-context" title={assistantSources.length ? assistantSources.join(" · ") : undefined}><BookOpen size={12} />{assistantSources.length ? (isFa ? `${assistantSources.length} پایگاه دانش متصل` : `${assistantSources.length} connected knowledge ${assistantSources.length === 1 ? "base" : "bases"}`) : (isFa ? "بدون منبع اختصاصی" : "No dedicated knowledge base")}</span></div>}
       </div>
     </header>
 
