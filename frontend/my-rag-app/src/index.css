@@ -375,15 +375,9 @@ html:not(.dark) .app-shell [class*="divide-white/"] > :not(:last-child) { border
 html:not(.dark) .app-shell [class^="bg-white/["],
 html:not(.dark) .app-shell [class*=" bg-white/["] { background-color: rgba(255,255,255,.74) !important; }
 html:not(.dark) .app-shell [class*="bg-black/"] { background-color: rgba(225,229,237,.52) !important; }
-html:not(.dark) .app-shell [class*="text-white/"] { color: #667188 !important; }
-html:not(.dark) .app-shell [class*="text-white/20"],
-html:not(.dark) .app-shell [class*="text-white/18"],
-html:not(.dark) .app-shell [class*="text-white/25"] { color: #929bad !important; }
-html:not(.dark) .app-shell [class*="text-white/65"],
-html:not(.dark) .app-shell [class*="text-white/70"],
-html:not(.dark) .app-shell [class*="text-white/75"],
-html:not(.dark) .app-shell [class*="text-white/80"],
-html:not(.dark) .app-shell [class*="text-white/85"] { color: #263148 !important; }
+html:not(.dark) .app-shell :is([class^="text-white/"], [class*=" text-white/"]) { color: #667188 !important; }
+html:not(.dark) .app-shell :is([class~="text-white/20"], [class~="text-white/18"], [class~="text-white/25"]) { color: #929bad !important; }
+html:not(.dark) .app-shell :is([class~="text-white/65"], [class~="text-white/70"], [class~="text-white/75"], [class~="text-white/80"], [class~="text-white/85"]) { color: #263148 !important; }
 html:not(.dark) .app-shell [class*="bg-[rgba(10,8,15"],
 html:not(.dark) .app-shell [class*="bg-[rgba(10,8,14"],
 html:not(.dark) .app-shell [class*="bg-[rgba(8,6,12"] { background: #f8f9fc !important; }
