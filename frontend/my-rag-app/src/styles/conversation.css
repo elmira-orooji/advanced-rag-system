@@ -8,8 +8,8 @@
   --cv-accent: var(--brand);
   --cv-tint: var(--brand-soft);
   --cv-success: var(--status-success);
-  --cv-send-bg: #59677d;
-  --cv-send-hover: #46546a;
+  --cv-send-bg: color-mix(in srgb, var(--brand-action) 84%, var(--cv-panel));
+  --cv-send-hover: color-mix(in srgb, var(--brand-action-hover) 88%, var(--cv-panel));
   background: var(--cv-bg);
   color: var(--cv-text);
 }
@@ -106,7 +106,6 @@ html:not(.dark) .conversation-page {
 .conversation-page .conversation-save-status { color: var(--cv-muted); }
 .conversation-page .conversation-save-status > span { background: var(--cv-success); }
 .conversation-assistant-context { display: inline-flex; max-width: 240px; align-items: center; gap: 6px; overflow: hidden; padding: 5px 8px; border: 1px solid var(--cv-line); border-radius: 999px; color: var(--cv-muted); background: var(--cv-panel); font-size: var(--font-size-helper); white-space: nowrap; text-overflow: ellipsis; }
-html.dark .conversation-page { --cv-send-bg: #66748a; --cv-send-hover: #78869a; }
 .conversation-assistant-context svg { flex-shrink: 0; color: var(--cv-accent); }
 .conversation-page:has(.chat-thread--with-evidence) > section { position: static; z-index: 40; overflow: visible; }
 
